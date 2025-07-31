@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Moodlight - KI-gestütztes Stimmungslicht basierend auf Weltlage-Analyse">
+    <title>Moodlight</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add favicon -->
+    <link rel="icon" type="image/png" href="/favicon.png">
+</head>
+<body>
+    <div class="header">
+        <div class="title">Moodlight<span class="version" id="version">Lädt...</span></div>
+        <div class="header-controls">
+            <a href="/setup" class="btn btn-sm" aria-label="Einstellungen öffnen">
+                <i class="fas fa-cog" aria-hidden="true"></i> Einstellungen
+            </a>
+            <a href="/mood" class="btn btn-sm" aria-label="Statistik Ansicht öffnen">
+                <i class="fas fa-chart-line" aria-hidden="true"></i> Statistik
+            </a>
+            <a href="/diagnostics" class="btn btn-sm" aria-label="Systemdiagnose öffnen">
+                <i class="fas fa-stethoscope" aria-hidden="true"></i> Diagnose
+            </a>
+            <button id="theme-btn" class="btn btn-sm" onclick="toggleDarkMode()" aria-label="Zwischen Hell- und Dunkelmodus wechseln">☼</button>
+        </div>
+    </div>
+    
+    <div class="grid">
+        <div class="card">
+            <h2>Weltlage</h2>
+            <div class="gauge">
+                <div class="gauge-fill" id="mood-gauge" style="width:50%"></div>
+            </div>
+            <div style="text-align:center;margin:16px 0">
+                <div style="font-size:1.3rem;font-weight:500;margin-bottom:4px" id="mood-value">--</div>
+                <div class="mood mood-neutral" id="mood-class">Neutral</div>
+            </div>
+            <div class="section">
+                <button class="btn" onclick="refreshSentiment()" aria-label="Weltlage-Analyse aktualisieren">
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i> Aktualisieren
+                </button>
+                <div style="margin-top:16px">
+                    <label for="headlines">Headlines pro Quelle</label>
+                    <input type="range" class="range" id="headlines" min="1" max="10" value="1" onchange="setHeadlines(this.value)">
+                    <div class="control-label">Aktuell: <span id="headlines-val">1</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Steuerung <span id="mode-text" style="font-size:0.8rem;color:#6c757d;margin-left:4px">Auto</span></h2>
+            <div class="led-row" id="leds" aria-label="LED-Vorschau"></div>
+            <div class="flex">
+                <span>Licht</span>
+                <label class="switch">
+                    <input type="checkbox" id="light-switch" onchange="toggleLight()" checked aria-label="Licht ein/ausschalten">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="flex">
+                <span>Auto-Modus</span>
+                <label class="switch">
+                    <input type="checkbox" id="mode-switch" onchange="toggleMode()" checked aria-label="Zwischen Auto-Modus und manuellem Modus wechseln">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="section">
+                <label for="brightness">Helligkeit</label>
+                <input type="range" class="range" id="brightness" min="10" max="255" value="255" onchange="setBrightness(this.value)" aria-valuemin="10" aria-valuemax="255" aria-valuenow="255">
+                <div class="control-label">Wert: <span id="brightness-val">255</span></div>
+            </div>
+            <div class="section">
+                <label>Farbe</label>
+                <div class="color-grid" id="color-grid" role="radiogroup" aria-label="Farbauswahl"></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>System Status</h2>
+            <div class="stat"><span class="stat-label">WLAN</span> <span class="stat-value"><span id="wifi-status">--</span> <span id="wifi-ind" class="badge">--</span></span></div>
+            <div class="stat"><span class="stat-label">MQTT</span> <span class="stat-value"><span id="mqtt-status">--</span> <span id="mqtt-ind" class="badge">--</span></span></div>
+            <div class="stat"><span class="stat-label">Uptime</span> <span class="stat-value" id="uptime">--</span></div>
+            <div class="stat"><span class="stat-label">WiFi Signal</span> <span class="stat-value" id="rssi">--</span></div>
+            <div class="stat" id="dht-row"><span class="stat-label">Temp/Luftfeuchte</span> <span class="stat-value" id="dht">--</span></div>
+            <div class="stat"><span class="stat-label">Speicher</span> <span class="stat-value" id="heap">--</span></div>
+            <div style="margin-top:16px">
+                <button class="btn" onclick="if(confirm('Gerät neustarten?')) window.location.href='/restart'" aria-label="Gerät neustarten">
+                    <i class="fas fa-power-off" aria-hidden="true"></i> Neustarten
+                </button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>System Log</h2>
+            <div class="logs" id="logContent" aria-live="polite">Lade Logs...</div>
+            <div style="margin-top:16px">
+                <button class="btn" onclick="refreshLog()" aria-label="Logdaten aktualisieren">
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i> Log aktualisieren
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/script.js"></script>
+</body>
+</html>

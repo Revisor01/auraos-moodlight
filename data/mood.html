@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Moodlight Weltlage Dashboard - Analysiere und visualisiere die Stimmung der Weltlage">
+    <title>Moodlight Weltlage Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/mood.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="/favicon.png">
+</head>
+<body>
+    <div class="header">
+        <div class="title">Moodlight Statistik<span class="version" id="version">Lädt...</span></div>
+        <div class="header-controls">
+            <a href="/" class="btn btn-sm" aria-label="Zurück zur Hauptseite">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Zurück
+            </a>
+            <button id="theme-btn" class="btn btn-sm" onclick="toggleDarkMode()" aria-label="Zwischen Hell- und Dunkelmodus wechseln">☼</button>
+        </div>
+    </div>
+    
+    <div class="archive-toggle">
+        <button class="btn" id="toggle-archives-btn" onclick="toggleArchivesView()" aria-label="Zwischen Archiv- und Dashboard-Ansicht wechseln">
+            <i class="fas fa-archive" aria-hidden="true"></i> Archive anzeigen
+        </button>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="dashboard-item full-width">
+            <div class="chart-header">
+                <div class="chart-header-info">
+                    <h2>Stimmungsverlauf</h2>
+                    <div class="chart-subtitle" id="trend-indicator" aria-live="polite"></div>
+                </div>
+                <ul class="nav-tabs" id="main-chart-tabs" role="tablist">
+                    <li class="active" data-tab="all" role="tab" aria-selected="true" aria-controls="all-tab">Gesamter Zeitraum</li>
+                    <li data-tab="week" role="tab" aria-selected="false" aria-controls="week-tab">Letzte Woche</li>
+                    <li data-tab="day" role="tab" aria-selected="false" aria-controls="day-tab">Letzter Tag</li>
+                </ul>
+            </div>
+            
+            <div class="filter-control">
+                <div class="filter-label">Nicht aktualisierte Werte ausblenden:</div>
+                <label class="filter-toggle">
+                    <input type="checkbox" id="filter-stale-data" checked aria-label="Filtert identische Datenpunkte aus">
+                    <span class="filter-slider"></span>
+                </label>
+                <div class="tooltip">
+                    <i class="fas fa-question-circle" aria-hidden="true"></i>
+                    <span class="tooltip-text">Filtert Datenpunkte, bei denen der gleiche Wert mehrfach hintereinander auftritt, was auf fehlende Aktualisierungen hindeuten könnte.</span>
+                </div>
+            </div>
+            
+            <div class="filter-control" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                <div>
+                    <button class="btn" onclick="showDataTable()" aria-label="Datenpunkte verwalten">
+                        <i class="fas fa-table" aria-hidden="true"></i> Datenpunkte verwalten
+                    </button>
+                </div>
+                <div>
+                    <button class="btn btn-danger" onclick="resetAllData()" aria-label="Alle Daten zurücksetzen">
+                        <i class="fas fa-trash" aria-hidden="true"></i> Alle Daten zurücksetzen
+                    </button>
+                </div>
+            </div>
+            
+            <div class="tab-content active" id="all-tab" role="tabpanel" aria-labelledby="all-tab">
+                <div class="chart-container">
+                    <canvas id="all-chart" aria-label="Stimmungsverlauf über gesamten Zeitraum" role="img"></canvas>
+                </div>
+            </div>
+            <div class="tab-content" id="week-tab" role="tabpanel" aria-labelledby="week-tab">
+                <div class="chart-container">
+                    <canvas id="week-chart" aria-label="Stimmungsverlauf der letzten Woche" role="img"></canvas>
+                </div>
+            </div>
+            <div class="tab-content" id="day-tab" role="tabpanel" aria-labelledby="day-tab">
+                <div class="chart-container">
+                    <canvas id="day-chart" aria-label="Stimmungsverlauf der letzten 24 Stunden" role="img"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-container" id="archives-container" style="display:none;">
+        <div class="dashboard-item full-width">
+            <div class="chart-header">
+                <div class="chart-header-info">
+                    <h2>Datenarchive</h2>
+                    <div class="chart-subtitle">Historische Daten älter als 90 Tage</div>
+                </div>
+                <div>
+                    <button class="btn" onclick="loadArchivesList()" aria-label="Archivliste aktualisieren">
+                        <i class="fas fa-sync-alt" aria-hidden="true"></i> Aktualisieren
+                    </button>
+                    <button class="btn" onclick="runArchiveProcess()" aria-label="Archivierungsprozess starten">
+                        <i class="fas fa-archive" aria-hidden="true"></i> Archivierung starten
+                    </button>
+                </div>
+            </div>
+            
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Zeitraum</th>
+                            <th scope="col">Datenpunkte</th>
+                            <th scope="col">Größe</th>
+                            <th scope="col">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archives-list">
+                        <tr>
+                            <td colspan="4" class="center">Lade Archive...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-balance-scale" aria-hidden="true"></i></div>
+            <div class="stat-label">Durchschnitt</div>
+            <div class="stat-value" id="avg-value" aria-live="polite">--</div>
+            <div class="trend-indicator" id="avg-trend" aria-live="polite"></div>
+        </div>
+        <div class="stat-card negative">
+            <div class="stat-icon"><i class="fas fa-arrow-down" aria-hidden="true"></i></div>
+            <div class="stat-label">Minimum</div>
+            <div class="stat-value negative" id="min-value" aria-live="polite">--</div>
+            <div class="trend-indicator" id="min-trend" aria-live="polite"></div>
+        </div>
+        <div class="stat-card positive">
+            <div class="stat-icon"><i class="fas fa-arrow-up" aria-hidden="true"></i></div>
+            <div class="stat-label">Maximum</div>
+            <div class="stat-value positive" id="max-value" aria-live="polite">--</div>
+            <div class="trend-indicator" id="max-trend" aria-live="polite"></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-chart-pie" aria-hidden="true"></i></div>
+            <div class="stat-label">Messungen</div>
+            <div class="stat-value neutral" id="count-value" aria-live="polite">--</div>
+            <span class="badge badge-primary" id="filtered-badge">0 gefiltert</span>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="dashboard-item">
+            <div class="chart-header">
+                <h2>Stündliche Analyse</h2>
+                <div class="chart-subtitle">Durchschnittswerte nach Tageszeit</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="hourly-chart" aria-label="Stimmungswerte nach Stunden" role="img"></canvas>
+            </div>
+            <div class="chart-legend" id="hourly-legend" aria-label="Legende für stündliche Analyse"></div>
+        </div>
+        <div class="dashboard-item">
+            <div class="chart-header">
+                <h2>Wochentag-Analyse</h2>
+                <div class="chart-subtitle">Durchschnittliche Stimmung nach Wochentag</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="weekday-chart" aria-label="Stimmungswerte nach Wochentagen" role="img"></canvas>
+            </div>
+            <div class="chart-legend" id="weekday-legend" aria-label="Legende für Wochentag-Analyse"></div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="dashboard-item half-width">
+            <div class="chart-header">
+                <h2>Stimmungsverteilung</h2>
+                <div class="chart-subtitle">Histogramm der Stimmungswerte</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="distribution-chart" aria-label="Verteilung der Stimmungswerte" role="img"></canvas>
+            </div>
+        </div>
+        <div class="dashboard-item half-width">
+            <div class="chart-header">
+                <h2>Trendanalyse</h2>
+                <div class="chart-subtitle">Langfristige Entwicklung der Stimmung</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="trend-chart" aria-label="Langfristiger Trend der Stimmungswerte" role="img"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-card">
+        <div class="info-card-icon">
+            <i class="fa-solid fa-earth-europe" aria-hidden="true"></i>
+        </div>
+        <div class="info-card-content">
+            <div class="info-card-title">Zusammenfassung der Weltlage</div>
+            <div class="info-card-text" id="summary-text" aria-live="polite">
+                Daten werden geladen...
+            </div>
+        </div>
+    </div>
+    
+    <div class="info-card">
+        <div class="info-card-icon">
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+        </div>
+        <div class="info-card-content">
+            <div class="info-card-title">Über die Stimmungswerte</div>
+            <div class="info-card-text">
+                Die Werte reichen von -1.0 (extrem negative Stimmung) bis +1.0 (extrem positive Stimmung), wobei 0 neutral ist.
+                Die Analyse basiert auf KI-gestützter Sentiment-Analyse globaler Nachrichtenüberschriften.
+            </div>
+        </div>
+    </div>
+    
+    <div class="info-card">
+        <div class="info-card-icon">
+            <i class="fas fa-download" aria-hidden="true"></i>
+        </div>
+        <div class="info-card-content">
+            <div class="info-card-title">Daten exportieren</div>
+            <div class="info-card-text">
+                Laden Sie die CSV-Statistikdaten für Backups oder externe Analyse herunter.
+                <div style="margin-top: 10px;">
+                    <a href="/api/export/stats" class="btn btn-sm" target="_blank">
+                        <i class="fas fa-file-csv" aria-hidden="true"></i> Statistikdaten herunterladen
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="info-card" style="margin-top: 15px;">
+        <div class="info-card-icon">
+            <i class="fas fa-tools" aria-hidden="true"></i>
+        </div>
+        <div class="info-card-content">
+            <div class="info-card-title">Datenwartung</div>
+            <div class="info-card-text">
+                Werkzeuge zur Reparatur und Wartung der Statistikdaten.
+                <div style="margin-top: 10px;">
+                    <button onclick="repairStatsCSV()" class="btn btn-sm btn-warning">
+                        <i class="fas fa-wrench" aria-hidden="true"></i> CSV-Datei reparieren
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="storage-info-card">
+        <div class="storage-info-title">Datenspeicher</div>
+        <div class="storage-progress">
+            <div class="upload-progress">
+                <div class="upload-progress-bar" id="mood-storage-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+        <div class="storage-details">
+            <div class="storage-stat">
+                <div class="storage-stat-label">Datenpunkte</div>
+                <div class="storage-stat-value" id="mood-records">0</div>
+            </div>
+            <div class="storage-stat">
+                <div class="storage-stat-label">Speicher</div>
+                <div class="storage-stat-value" id="mood-storage">0</div>
+            </div>
+        </div>
+    </div>
+    
+    <p class="data-source" id="loading-message" aria-live="polite">Lade Daten...</p>
+    
+    <script src="/js/script.js" defer></script>
+    <script src="/js/mood.js" defer></script>
+</body>
+</html>
