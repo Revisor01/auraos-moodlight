@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Moodlight Einstellungen - Konfiguriere dein Stimmungslicht für die Weltlage-Analyse">
+    <title>Moodlight Einstellungen</title>
+    <link rel="stylesheet" href="file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add favicon -->
+    <link rel="icon" type="image/png" href="file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/favicon.png">
+</head>
+<body>
+    <div class="header">
+        <div class="title">Moodlight Einstellungen<span class="version" id="version">Lädt...</span></div>
+        <div class="header-controls">
+            <a href="file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/" class="btn btn-sm" aria-label="Zurück zur Hauptseite">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Zurück
+            </a>
+            <button id="theme-btn" class="btn btn-sm" onclick="toggleDarkMode()" aria-label="Zwischen Hell- und Dunkelmodus wechseln">☼</button>
+        </div>
+    </div>
+    
+    <!-- Navigation Tabs with improved accessibility -->
+    <nav aria-label="Einstellungsbereiche">
+        <div class="nav-tabs" role="tablist">
+            <a href="#" class="tab-link active" data-tab="wifi" role="tab" aria-selected="true" aria-controls="wifi-tab">
+                <i class="fas fa-wifi" aria-hidden="true"></i> WLAN
+            </a>
+            <a href="#" class="tab-link" data-tab="mqtt" role="tab" aria-selected="false" aria-controls="mqtt-tab">
+                <i class="fas fa-server" aria-hidden="true"></i> MQTT
+            </a>
+            <a href="#" class="tab-link" data-tab="api" role="tab" aria-selected="false" aria-controls="api-tab">
+                <i class="fas fa-cogs" aria-hidden="true"></i> Einstellungen
+            </a>
+            <a href="#" class="tab-link" data-tab="feeds" role="tab" aria-selected="false" aria-controls="feeds-tab">
+                <i class="fas fa-rss" aria-hidden="true"></i> RSS-Feeds
+            </a>
+            <a href="#" class="tab-link" data-tab="colors" role="tab" aria-selected="false" aria-controls="colors-tab">
+                <i class="fas fa-palette" aria-hidden="true"></i> Farben
+            </a>
+            <a href="#" class="tab-link" data-tab="download" role="tab" aria-selected="false" aria-controls="colors-tab">
+                <i class="fas fa-export" aria-hidden="true"></i> Daten Import/Export
+            </a>
+            <a href="#" class="tab-link" data-tab="ui-update" role="tab" aria-selected="false" aria-controls="ui-update-tab">
+                <i class="fas fa-download" aria-hidden="true"></i> Update
+            </a>
+            <a href="#" class="tab-link" data-tab="hardware" role="tab" aria-selected="false" aria-controls="hardware-tab">
+                <i class="fas fa-microchip" aria-hidden="true"></i> Hardware
+            </a>
+            <a href="#" class="tab-link" data-tab="about" role="tab" aria-selected="false" aria-controls="about-tab">
+                <i class="fas fa-info-circle" aria-hidden="true"></i> Info
+            </a>
+        </div>
+    </nav>
+    
+    <!-- WLAN Tab with enhanced descriptions -->
+    <div id="wifi-tab" class="tab-content active" role="tabpanel" aria-labelledby="wifi-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>WLAN Konfiguration</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Hier kannst du dein Moodlight mit deinem WLAN-Netzwerk verbinden. Nach der Speicherung wird das Gerät neu gestartet und versucht, sich mit dem angegebenen Netzwerk zu verbinden.</p>
+            </div>
+            
+            <div id="wifi-status-info"></div>
+            
+            <div class="form-group">
+                <label for="wifi-ssid">WLAN Netzwerk (SSID)</label>
+                <input type="text" id="wifi-ssid" name="wifi-ssid" placeholder="Gib den Namen deines WLAN-Netzwerks ein" aria-required="true">
+                <div class="help-text">Der Name deines WLAN-Netzwerks (Groß-/Kleinschreibung beachten)</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="wifi-pass">WLAN Passwort</label>
+                <input type="password" id="wifi-pass" name="wifi-pass" placeholder="Gib das WLAN-Passwort ein">
+                <div class="help-text">Das Passwort deines WLAN-Netzwerks. Leer lassen für ungesicherte Netzwerke.</div>
+            </div>
+            
+            <button class="btn" onclick="scanWifi()" aria-label="Nach verfügbaren WLAN-Netzwerken suchen">
+                <span id="scan-spinner"></span><i class="fas fa-search" aria-hidden="true"></i> WLAN-Netzwerke suchen
+            </button>
+            
+            <div class="wifi-list" id="wifi-list" aria-live="polite">
+                <!-- WLAN-Netzwerke werden hier geladen -->
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-success" onclick="saveWiFiSettings()" aria-label="WLAN-Einstellungen speichern und verbinden">
+                    <i class="fas fa-save" aria-hidden="true"></i> Speichern & Verbinden
+                </button>
+                <button class="btn btn-danger" onclick="resetWiFi()" aria-label="WLAN-Einstellungen zurücksetzen">
+                    <i class="fas fa-trash" aria-hidden="true"></i> WLAN-Einstellungen zurücksetzen
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MQTT Tab with better explanations -->
+    <div id="mqtt-tab" class="tab-content" role="tabpanel" aria-labelledby="mqtt-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>MQTT Konfiguration</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Die MQTT-Integration verbindet dein Moodlight mit Home Assistant oder anderen MQTT-fähigen Smart-Home-Systemen.</p>
+                <p>Das Moodlight übermittelt folgende Sensoren:</p>
+                <ul>
+                    <li><strong>Weltlage:</strong> Kategorie und Score der Stimmungsanalyse</li>
+                    <li><strong>Sensoren:</strong> Temperatur, Luftfeuchtigkeit (wenn DHT aktiviert)</li>
+                    <li><strong>System:</strong> Status, Uptime, WiFi-Signalstärke</li>
+                </ul>
+                <p>Du kannst das Licht und die Betriebsmodi über Home Assistant steuern.</p>
+            </div>
+
+            <div class="flex">
+                <label for="mqtt-enabled">MQTT-Integration aktivieren</label>
+                <label class="switch">
+                    <input type="checkbox" id="mqtt-enabled" aria-label="MQTT-Integration aktivieren">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div id="mqtt-settings" class="hidden">
+                <div class="form-group">
+                    <label for="mqtt-server">MQTT Server</label>
+                    <input type="text" id="mqtt-server" name="mqtt-server" placeholder="IP oder Hostname (z.B. 192.168.1.10)" aria-required="true">
+                    <div class="help-text">Die IP-Adresse oder der Hostname deines MQTT-Brokers (z.B. Home Assistant)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqtt-user">MQTT Benutzer</label>
+                    <input type="text" id="mqtt-user" name="mqtt-user" placeholder="Benutzername (falls erforderlich)">
+                    <div class="help-text">Der Benutzername für deinen MQTT-Broker (leer lassen, wenn keine Authentifizierung erforderlich)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqtt-pass">MQTT Passwort</label>
+                    <input type="password" id="mqtt-pass" name="mqtt-pass" placeholder="Passwort (falls erforderlich)">
+                    <div class="help-text">Das Passwort für deinen MQTT-Broker (leer lassen, wenn keine Authentifizierung erforderlich)</div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-success" onclick="saveMQTTSettings()" aria-label="MQTT-Einstellungen speichern">
+                    <i class="fas fa-save" aria-hidden="true"></i> Speichern
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Tab with improved descriptions -->
+    <div id="api-tab" class="tab-content" role="tabpanel" aria-labelledby="api-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>API Konfiguration</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Hier kannst du die URL deiner Sentiment API einstellen und die Häufigkeit der Abfragen und die Anzahl der Headlines pro Feed festlegen.</p>
+                <p>Die Standard-API analysiert Nachrichtenüberschriften und berechnet einen Stimmungswert zwischen -1.0 (negativ) und +1.0 (positiv).</p>
+            </div>
+
+            <div class="form-group">
+                <label for="api-url">Sentiment API URL</label>
+                <input type="text" id="api-url" name="api-url" placeholder="https://..." aria-describedby="default-api-url">
+                <div class="help-text" id="default-api-url">Standard: http://analyse.godsapp.de/api/news/total_sentiment</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-col form-group">
+                    <label for="mood-interval">Sentiment Update Intervall (Sekunden)</label>
+                    <input type="number" id="mood-interval" name="mood-interval" min="60" max="7200" aria-describedby="mood-interval-help">
+                    <div class="help-text" id="mood-interval-help">Wie oft soll die Sentiment-Analyse aktualisiert werden? (60-7200 Sekunden)</div>
+                </div>
+                
+                <div class="form-col form-group">
+                    <label for="headlines-per-source">Headlines pro Quelle</label>
+                    <input type="number" id="headlines-per-source" name="headlines-per-source" min="1" max="10" aria-describedby="headlines-per-source-help">
+                    <div class="help-text" id="headlines-per-source-help">Anzahl der Schlagzeilen, die pro Quelle analysiert werden sollen (1-10)</div>
+                </div>
+            </div>
+            
+            <div class="card-header">
+                <h2>DHT Konfiguration</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Wenn du einen DHT Temperatur- und Feuchtigkeitssensor verwendest, kannst du ihn hier aktivieren und das Update-Intervall festlegen.</p>
+            </div>
+            <div class="flex">
+                <label for="dht-enabled">DHT Sensor vorhanden</label>
+                <label class="switch">
+                    <input type="checkbox" id="dht-enabled" aria-label="DHT Sensor aktivieren/deaktivieren">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label for="dht-interval">DHT Update Intervall (Sekunden)</label>
+                <input type="number" id="dht-interval" name="dht-interval" min="10" max="3600" aria-describedby="dht-interval-help">
+                <div class="help-text" id="dht-interval-help">Wie oft sollen Temperatur und Luftfeuchtigkeit aktualisiert werden? (10-3600 Sekunden)</div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn btn-success" onclick="saveAPISettings()" aria-label="API-Einstellungen speichern">
+                    <i class="fas fa-save" aria-hidden="true"></i> Speichern
+                </button>
+                <button class="btn btn-warning" onclick="testAPI()" aria-label="API-Verbindung testen">
+                    <span id="test-spinner"></span><i class="fas fa-vial" aria-hidden="true"></i> API testen
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RSS-Feeds Tab -->
+    <div id="feeds-tab" class="tab-content" role="tabpanel" aria-labelledby="feeds-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>RSS-Feed Verwaltung</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Hier kannst du die RSS-Feeds verwalten, die für die Sentiment-Analyse verwendet werden. Die Feeds werden regelmäßig abgerufen und deren Überschriften analysiert.</p>
+                <p>Du kannst einzelne Feeds aktivieren oder deaktivieren und neue Feeds hinzufügen.</p>
+            </div>
+            
+            <h3>Aktuelle Feeds</h3>
+            <div id="feeds-list" class="feeds-container" aria-live="polite">
+                <!-- Feeds werden hier dynamisch eingefügt -->
+            </div>
+            
+            <div class="feed-form">
+                <div class="feed-form-title">Neuen Feed hinzufügen</div>
+                
+                <div class="form-group">
+                    <label for="feed-name">Feed Name</label>
+                    <input type="text" id="feed-name" placeholder="z.B. Tagesschau" aria-required="true">
+                    <div class="help-text">Ein beschreibender Name für die Quelle</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="feed-url">Feed URL</label>
+                    <input type="text" id="feed-url" placeholder="https://www.beispiel.de/rss" aria-required="true">
+                    <div class="help-text">Die vollständige URL des RSS-Feeds</div>
+                </div>
+                
+                <div class="buttons">
+                    <button class="btn" onclick="addFeed()" aria-label="Neuen Feed hinzufügen">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Feed hinzufügen
+                    </button>
+                </div>
+            </div>
+            
+            <div class="buttons" style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="saveFeeds()" aria-label="Alle Feed-Änderungen speichern">
+                    <i class="fas fa-save" aria-hidden="true"></i> Alle Änderungen speichern
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Farben Tab -->
+    <div id="colors-tab" class="tab-content" role="tabpanel" aria-labelledby="colors-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>Stimmungsfarben konfigurieren</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Hier kannst du die Farben für die verschiedenen Stimmungsniveaus anpassen. Die Farben repräsentieren die unterschiedlichen Stimmungslagen der Weltlage-Analyse.</p>
+                <p>Wähle für jede Stimmungskategorie eine passende Farbe aus dem Farbwähler.</p>
+            </div>
+            
+            <div id="color-settings" class="color-settings" aria-label="Farbeinstellungen für Stimmungskategorien">
+                <!-- Will be dynamically populated by JavaScript -->
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-success" onclick="saveColorSettings()" aria-label="Farbeinstellungen speichern">
+                    <i class="fas fa-save" aria-hidden="true"></i> Speichern
+                </button>
+                <button class="btn" onclick="resetDefaultColors()" aria-label="Auf Standardfarben zurücksetzen">
+                    <i class="fas fa-undo" aria-hidden="true"></i> Standardfarben
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Unter dem System Info Abschnitt in setup.html -->
+    <div id="export-tab" class="tab-content" role="tabpanel" aria-labelledby="export-tab">
+    <div class="section">
+        <h3>Daten Import/Export</h3>
+        <div class="info-card">
+            <div class="info-card-icon">
+                <i class="fas fa-download" aria-hidden="true"></i>
+            </div>
+            <div class="info-card-content">
+                <div class="info-card-title">Daten exportieren</div>
+                <div class="info-card-text">
+                    Laden Sie Ihre Sentiment-Daten und Einstellungen herunter, um Backups zu erstellen.
+                </div>
+                <div style="margin-top: 10px;">
+                    <a href="file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/api/export/stats" class="btn btn-sm" target="_blank">
+                        <i class="fas fa-file-csv" aria-hidden="true"></i> Statistikdaten exportieren
+                    </a>
+                    <a href="file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/api/export/settings" class="btn btn-sm" target="_blank">
+                        <i class="fas fa-file-code" aria-hidden="true"></i> Einstellungen exportieren
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-card" style="margin-top: 15px;">
+            <div class="info-card-icon">
+                <i class="fas fa-upload" aria-hidden="true"></i>
+            </div>
+            <div class="info-card-content">
+                <div class="info-card-title">Daten importieren</div>
+                <div class="info-card-text">
+                    Importieren Sie zuvor exportierte Daten, um Ihren Moodlight wiederherzustellen.
+                </div>
+                
+                <div style="margin-top: 10px;">
+                    <form id="stats-upload-form" action="/api/import/stats" method="POST" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="stats-file">CSV-Statistikdatei</label>
+                            <div class="custom-file">
+                                <input type="file" name="stats-file" id="stats-file" class="custom-file-input" accept=".csv">
+                                <label for="stats-file" class="custom-file-label" id="stats-file-label">Statistikdatei wählen</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            <i class="fas fa-file-import" aria-hidden="true"></i> Statistikdaten importieren
+                        </button>
+                    </form>
+                    
+                    <form id="settings-upload-form" action="/api/import/settings" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+                        <div class="form-group">
+                            <label for="settings-file">JSON-Einstellungsdatei</label>
+                            <div class="custom-file">
+                                <input type="file" name="settings-file" id="settings-file" class="custom-file-input" accept=".json">
+                                <label for="settings-file" class="custom-file-label" id="settings-file-label">Einstellungsdatei wählen</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            <i class="fas fa-file-import" aria-hidden="true"></i> Einstellungen importieren
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <!-- Update Tab -->
+    <div id="ui-update-tab" class="tab-content" role="tabpanel" aria-labelledby="ui-update-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>UI Dateien aktualisieren</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Hier kannst du die Weboberfläche des Moodlights aktualisieren. Lade eine TGZ-Datei mit dem Format "UI-X.X-AuraOS.tgz" hoch, die alle HTML, CSS und JavaScript Dateien enthält.</p>
+            </div>
+            
+            <div class="section">
+                <form method="POST" action="/ui-upload" enctype="multipart/form-data" id="ui-upload-form">
+                    <div class="form-group">
+                        <label for="ui-file">UI TGZ-Datei</label>
+                        <div class="custom-file">
+                            <input type="file" name="ui-file" id="ui-file" class="custom-file-input" accept=".tgz" 
+                                onchange="document.getElementById('ui-file-label').textContent=this.files[0]?this.files[0].name:'UI-Datei wählen'">
+                            <label for="ui-file" class="custom-file-label" id="ui-file-label">UI-Datei wählen</label>
+                        </div>
+                        <div class="help-text">Format: UI-X.X-AuraOS.tgz (z.B. UI-5.1-AuraOS.tgz)</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success" id="ui-upload-btn" aria-label="UI-Datei hochladen und installieren">
+                        <i class="fas fa-upload" aria-hidden="true"></i> Upload & Installieren
+                    </button>
+                </form>
+                
+                <div class="progress-container" id="upload-progress-container">
+                    <div class="upload-progress">
+                        <div class="upload-progress-bar" id="upload-progress-bar">0%</div>
+                    </div>
+                    <div class="help-text" id="upload-status">Uploading...</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Aktuelle UI-Version</h3>
+                <div class="alert alert-info">Die aktuelle Version der Weboberfläche ist <span id="current-ui-version">—</span></div>
+            </div>
+            
+            <div class="section">
+                <div class="alert alert-warning">
+                    <strong>Wichtig:</strong> 
+                    <ul>
+                        <li>Die Datei muss eine .tgz Datei sein</li>
+                        <li>Der Upload kann mehrere Minuten dauern</li>
+                        <li>Nach dem Update wird die Seite automatisch neu geladen</li>
+                        <li>Bei Problemen wird ein Backup der alten UI erstellt</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Firmware aktualisieren</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Hier kannst du die Firmware des Moodlights aktualisieren. Lade eine kompilierte Firmware-Datei (.bin) hoch.</p>
+            </div>
+            
+            <div class="section">
+                <form method="POST" action="/update" enctype="multipart/form-data" id="firmware-upload-form">
+                    <div class="form-group">
+                        <label for="firmware">Firmware-Datei</label>
+                        <div class="custom-file">
+                            <input type="file" name="update" id="firmware" class="custom-file-input" accept=".bin" onchange="document.getElementById('firmware-label').textContent=this.files[0]?this.files[0].name:'Firmware wählen'">
+                            <label for="firmware" class="custom-file-label" id="firmware-label">Firmware wählen</label>
+                        </div>
+                        <div class="help-text">Format: Firmware-X.X-AuraOS.bin (z.B. Firmware-2.1-AuraOS.bin)</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-danger" id="firmware-upload-btn" aria-label="Firmware aktualisieren">
+                        <i class="fas fa-upload" aria-hidden="true"></i> Firmware aktualisieren
+                    </button>
+                </form>
+                
+                <div class="progress-container" id="firmware-progress-container">
+                    <div class="upload-progress">
+                        <div class="upload-progress-bar" id="firmware-progress-bar">0%</div>
+                    </div>
+                    <div class="help-text" id="firmware-status">Uploading...</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="alert alert-info">Die aktuelle Version der Firmware ist <span id="current-firmware-version">—</span></div>
+            </div>
+            
+            <div class="section">
+                <div class="alert alert-warning">
+                    <strong>Achtung:</strong> 
+                    <ul>
+                        <li>Die Firmware-Aktualisierung ist ein kritischer Prozess. Stelle sicher, dass du die richtige Datei verwendest!</li>
+                        <li>Unterbreche den Upload nicht - das Gerät könnte unbrauchbar werden.</li>
+                        <li>Das Gerät wird nach erfolgreichem Update neu gestartet.</li>
+                        <li>Bei Fehlern kann ein Recovery über die serielle Schnittstelle notwendig sein.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hardware Tab -->
+    <div id="hardware-tab" class="tab-content" role="tabpanel" aria-labelledby="hardware-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>Hardware Konfiguration</h2>
+            </div>
+            <div class="alert alert-warning">
+                <p>Änderungen an diesen Einstellungen erfordern einen Neustart!</p>
+                <p>Diese Einstellungen beeinflussen die physische Konfiguration des Moodlights. Stelle sicher, dass du die richtigen Pin-Nummern für deine Hardware verwendest.</p>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-col form-group">
+                    <label for="led-pin">LED Pin</label>
+                    <input type="number" id="led-pin" name="led-pin" min="0" max="39" aria-describedby="led-pin-help">
+                    <div class="help-text" id="led-pin-help">GPIO-Pin, an dem die NeoPixel LEDs angeschlossen sind</div>
+                </div>
+                
+                <div class="form-col form-group">
+                    <label for="dht-pin">DHT Sensor Pin</label>
+                    <input type="number" id="dht-pin" name="dht-pin" min="0" max="39" aria-describedby="dht-pin-help">
+                    <div class="help-text" id="dht-pin-help">GPIO-Pin, an dem der DHT11/DHT22 Sensor angeschlossen ist</div>
+                </div>
+                
+                <div class="form-col form-group">
+                    <label for="num-leds">Anzahl LEDs</label>
+                    <input type="number" id="num-leds" name="num-leds" min="1" max="300" aria-describedby="num-leds-help">
+                    <div class="help-text" id="num-leds-help">Anzahl der NeoPixel LEDs in der Kette</div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-success" onclick="saveHardwareSettings()" aria-label="Hardware-Einstellungen speichern und Gerät neustarten">
+                    <i class="fas fa-save" aria-hidden="true"></i> Speichern & Neustarten
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Tab -->
+    <div id="about-tab" class="tab-content" role="tabpanel" aria-labelledby="about-tab">
+        <div class="card">
+            <div class="card-header">
+                <h2>Über Moodlight</h2>
+            </div>
+            <div class="alert alert-info">
+                <p>Moodlight ist ein KI-gestütztes Stimmungslicht, das die aktuelle Weltlage anhand von Nachrichtenüberschriftenanalysen visualisiert. Das Licht ändert seine Farbe basierend auf dem Sentiment-Score der aktuellen Nachrichten.</p>
+            </div>
+            <div class="form-group">
+                <label>UI Version</label>
+                <div id="software-version" class="stat-value">-</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Firmware Version</label>
+                <div id="firmware-version" class="stat-value">-</div>
+            </div>
+            
+            <div class="form-group">
+                <label>ESP Chip</label>
+                <div id="esp-chip" class="stat-value">-</div>
+            </div>
+            
+            <div class="form-group">
+                <label>MAC-Adresse</label>
+                <div id="mac-address" class="stat-value">-</div>
+            </div>
+            
+            <div class="form-group">
+                <label>Speichernutzung</label>
+                <div id="storage-info">
+                    <div class="progress-container">
+                        <div class="upload-progress">
+                            <div class="upload-progress-bar" id="storage-progress-bar" style="width: 0%">0%</div>
+                        </div>
+                    </div>
+                    <div class="storage-details">
+                        <div><span id="storage-used">0</span> von <span id="storage-total">0</span> verwendet (<span id="storage-percent">0</span>%)</div>
+                        <div><span id="storage-free">0</span> frei</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Stimmungsdaten</label>
+                <div id="stats-info">
+                    <div><span id="stats-records">0</span> Datenpunkte, <span id="stats-size">0</span></div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn" onclick="showAllSettings()" aria-label="Alle gespeicherten Einstellungen anzeigen">
+                    <i class="fas fa-list" aria-hidden="true"></i> Alle Einstellungen anzeigen
+                </button>
+                <button class="btn btn-danger" onclick="if(confirm('Wirklich alle Einstellungen zurücksetzen?')) resetAllSettings()" aria-label="Alle Einstellungen auf Werkseinstellungen zurücksetzen">
+                    <i class="fas fa-trash" aria-hidden="true"></i> Alle Einstellungen zurücksetzen
+                </button>
+                <button class="btn" onclick="window.location.href='file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/restart'" aria-label="Gerät neustarten">
+                    <i class="fas fa-power-off" aria-hidden="true"></i> Gerät neustarten
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/js/script.js"></script>
+    <script src="file:///Users/simonluthe/Documents/PlatformIO/Projects/moodlight/data/js/setup.js"></script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Moodlight Systemdiagnose">
+    <title>Moodlight Systemdiagnose</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/mood.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="/favicon.png">
+</head>
+<body>
+    <div class="header">
+        <div class="title">Moodlight Systemdiagnose <span class="version" id="version">v1.0</span></div>
+        <div class="header-controls">
+            <a href="/" class="btn btn-sm" aria-label="Zurück zur Hauptseite">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Zurück
+            </a>
+            <button id="theme-btn" class="btn btn-sm" onclick="toggleDarkMode()" aria-label="Zwischen Hell- und Dunkelmodus wechseln">☼</button>
+        </div>
+    </div>
+    
+    <div class="dashboard-container">
+        <div class="dashboard-item full-width">
+            <div class="chart-header">
+                <div class="chart-header-info">
+                    <h2>Systemmetriken</h2>
+                    <div class="chart-subtitle" id="system-status-text" aria-live="polite">Lädt...</div>
+                </div>
+                <div>
+                    <button class="btn" onclick="runFullDiagnostics()" aria-label="Vollständige Diagnose ausführen">
+                        <i class="fas fa-stethoscope" aria-hidden="true"></i> Vollständige Diagnose
+                    </button>
+                    <button class="btn" onclick="loadMetrics()" aria-label="Metriken aktualisieren">
+                        <i class="fas fa-sync-alt" aria-hidden="true"></i> Aktualisieren
+                    </button>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="metrics-chart" aria-label="Systemmetriken" role="img"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-memory" aria-hidden="true"></i></div>
+            <div class="stat-label">Freier Speicher</div>
+            <div class="stat-value" id="free-heap" aria-live="polite">--</div>
+            <div class="stat-label">Fragmentierung</div>
+            <div class="stat-value" id="heap-frag" aria-live="polite">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-microchip" aria-hidden="true"></i></div>
+            <div class="stat-label">CPU Temperatur</div>
+            <div class="stat-value" id="cpu-temp" aria-live="polite">--</div>
+            <div class="stat-label">Laufzeit</div>
+            <div class="stat-value" id="uptime" aria-live="polite">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-hdd" aria-hidden="true"></i></div>
+            <div class="stat-label">Dateisystem</div>
+            <div class="stat-value" id="fs-usage" aria-live="polite">--</div>
+            <div class="stat-label">Speicherplatz</div>
+            <div class="stat-value" id="fs-free" aria-live="polite">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-wifi" aria-hidden="true"></i></div>
+            <div class="stat-label">WiFi Signal</div>
+            <div class="stat-value" id="wifi-signal" aria-live="polite">--</div>
+            <div class="stat-label">Status</div>
+            <div class="stat-value" id="wifi-status" aria-live="polite">--</div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="dashboard-item">
+            <div class="chart-header">
+                <h2>Log-Ausgabe</h2>
+                <div class="chart-subtitle">Letzte Systemmeldungen</div>
+            </div>
+            <div class="logs" id="system-log" aria-live="polite">Lädt...</div>
+        </div>
+        <div class="dashboard-item">
+            <div class="chart-header">
+                <h2>Diagnose-Aktionen</h2>
+                <div class="chart-subtitle">Systemwartung</div>
+            </div>
+            <div class="buttons" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+                <button class="btn" onclick="runArchiveProcess()" aria-label="Archivierungsprozess starten">
+                    <i class="fas fa-archive" aria-hidden="true"></i> Datenarchivierung starten
+                </button>
+                <button class="btn" onclick="cleanupFiles()" aria-label="Temporäre Dateien bereinigen">
+                    <i class="fas fa-broom" aria-hidden="true"></i> Temporäre Dateien bereinigen
+                </button>
+                <button class="btn btn-danger" onclick="if(confirm('Wirklich alle Einstellungen zurücksetzen?')) resetAllSettings()" aria-label="Alle Einstellungen auf Werkseinstellungen zurücksetzen">
+                    <i class="fas fa-trash" aria-hidden="true"></i> Auf Werkseinstellungen zurücksetzen
+                </button>
+                <button class="btn btn-warning" onclick="if(confirm('Neustart bestätigen?')) restartDevice()" aria-label="Gerät neustarten">
+                    <i class="fas fa-power-off" aria-hidden="true"></i> Gerät neustarten
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Metrics anzeigen
+        
+        let metricsChart = null;
+        
+        function loadMetrics() {
+            fetch('/api/system/metrics')
+            .then(response => response.json())
+            .then(data => {
+                // Statuskarten aktualisieren
+                document.getElementById('free-heap').textContent = formatBytes(data.heap);
+                
+                const fragPercent = (1 - (data.maxBlock / data.heap)) * 100;
+                document.getElementById('heap-frag').textContent = fragPercent.toFixed(1) + '%';
+                
+                document.getElementById('cpu-temp').textContent = data.temperature.toFixed(1) + '°C';
+                document.getElementById('uptime').textContent = formatTime(data.uptime);
+                
+                const fsPercent = data.fsPercent;
+                document.getElementById('fs-usage').textContent = fsPercent.toFixed(1) + '%';
+                document.getElementById('fs-free').textContent = formatBytes(data.fsTotal - data.fsUsed);
+                
+                if (data.wifiConnected) {
+                    document.getElementById('wifi-signal').textContent = data.rssi + ' dBm';
+                    document.getElementById('wifi-status').textContent = 'Verbunden';
+                    document.getElementById('wifi-status').className = 'stat-value positive';
+                } else {
+                    document.getElementById('wifi-signal').textContent = 'N/A';
+                    document.getElementById('wifi-status').textContent = 'Getrennt';
+                    document.getElementById('wifi-status').className = 'stat-value negative';
+                }
+                
+                // Systembewertung
+                let statusText = "System OK";
+                let statusClass = "positive";
+                
+                if (fragPercent > 70 || data.fsPercent > 90 || data.heap < 20000 || data.temperature > 65) {
+                    statusText = "Systemprobleme erkannt";
+                    statusClass = "negative";
+                } else if (fragPercent > 50 || data.fsPercent > 75 || data.heap < 40000 || data.temperature > 55) {
+                    statusText = "Systeme im Normalbereich mit Warnungen";
+                    statusClass = "warning";
+                }
+                
+                document.getElementById('system-status-text').textContent = statusText;
+                document.getElementById('system-status-text').className = 'chart-subtitle ' + statusClass;
+                
+                // Chart aktualisieren
+                updateMetricsChart(data);
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Metriken:', error);
+                document.getElementById('system-status-text').textContent = 'Fehler beim Laden der Metriken';
+                document.getElementById('system-status-text').className = 'chart-subtitle negative';
+            });
+            
+            // Log aktualisieren
+            fetch('/logs')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('system-log').innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der Logs:', error);
+            });
+        }
+        
+        function updateMetricsChart(data) {
+            const ctx = document.getElementById('metrics-chart').getContext('2d');
+            
+            // Vorhandenes Chart zerstören, falls vorhanden
+            if (metricsChart) {
+                metricsChart.destroy();
+                metricsChart = null;
+            }
+            
+            // Vereinfacht: Balkenchart statt Linienchart mit Zeitachse
+            // Dies vermeidet die Probleme mit dem Moment.js-Adapter
+            metricsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Aktueller Status'],
+                    datasets: [
+                        {
+                            label: 'Heap-Speicher (KB)',
+                            data: [data.heap / 1024], // KB
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: '#3498db',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'WiFi-Signal (dBm)',
+                            data: [data.wifiConnected ? Math.abs(data.rssi) : 0], // Absoluter Wert für bessere Visualisierung
+                            backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                            borderColor: '#2ecc71',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'CPU-Temperatur (°C)',
+                            data: [data.temperature],
+                            backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                            borderColor: '#e74c3c',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Wert'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw;
+                                    
+                                    // Format nach Datentyp
+                                    if (label.includes('Heap')) {
+                                        return label + ': ' + value.toFixed(1) + ' KB';
+                                    } else if (label.includes('WiFi')) {
+                                        return label + ': -' + value.toFixed(0) + ' dBm';
+                                    } else if (label.includes('Temperatur')) {
+                                        return label + ': ' + value.toFixed(1) + '°C';
+                                    }
+                                    return label + ': ' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function runFullDiagnostics() {
+            if (!confirm('Vollständige Systemdiagnose starten? Dies kann einige Sekunden dauern.')) {
+                return;
+            }
+            
+            // Diagnose-Endpunkt aufrufen
+            fetch('/api/system/diagnose')
+                .then(response => response.json())
+                .then(data => {
+                    alert('Diagnose abgeschlossen. Ergebnisse wurden ins Log geschrieben.');
+                    loadMetrics(); // Refresh mit neuen Daten
+                })
+                .catch(error => {
+                    console.error('Fehler bei Diagnose:', error);
+                    alert('Fehler bei der Diagnose: ' + error.message);
+                });
+        }
+        
+        function cleanupFiles() {
+            if (!confirm('Temporäre Dateien bereinigen?')) {
+                return;
+            }
+            
+            fetch('/api/system/cleanup')
+                .then(response => response.json())
+                .then(data => {
+                    alert('Bereinigung abgeschlossen: ' + data.message);
+                    loadMetrics();
+                })
+                .catch(error => {
+                    console.error('Fehler bei Bereinigung:', error);
+                    alert('Fehler: ' + error.message);
+                });
+        }
+        
+        function runArchiveProcess() {
+            if (!confirm('Archivierungsprozess starten? Daten älter als 90 Tage werden in separate Dateien verschoben.')) {
+                return;
+            }
+            
+            fetch('/api/archives/process')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('Archivierung erfolgreich abgeschlossen.');
+                        loadMetrics();
+                    } else {
+                        alert('Fehler bei der Archivierung: ' + (result.error || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler beim Archivierungsprozess:', error);
+                    alert('Fehler bei der Archivierung: ' + error.message);
+                });
+        }
+        
+        function resetAllSettings() {
+            fetch('/factoryreset', {
+                method: 'POST'
+            })
+            .then(response => response.text())
+            .then(result => {
+                if (result === 'OK') {
+                    alert('Alle Einstellungen wurden zurückgesetzt. Gerät wird neu gestartet...');
+                } else {
+                    alert('Fehler beim Zurücksetzen der Einstellungen: ' + result);
+                }
+            })
+            .catch(error => {
+                console.error('Error resetting settings:', error);
+                alert('Fehler beim Zurücksetzen: ' + error.message);
+            });
+        }
+        
+        function restartDevice() {
+            window.location.href = '/restart';
+        }
+        
+        // Hilfsfunktionen
+        function formatBytes(bytes) {
+            if (bytes < 1024) {
+                return bytes + ' B';
+            } else if (bytes < 1024 * 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            } else {
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+        }
+        
+        function formatTime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            seconds %= 86400;
+            const hours = Math.floor(seconds / 3600);
+            seconds %= 3600;
+            const minutes = Math.floor(seconds / 60);
+            seconds %= 60;
+            
+            if (days > 0) {
+                return days + 'd ' + hours + 'h ' + minutes + 'm';
+            } else {
+                return hours + 'h ' + minutes + 'm ' + seconds + 's';
+            }
+        }
+        
+        // Initialisierung
+        document.addEventListener('DOMContentLoaded', function() {
+            // Dark mode aus localStorage
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark');
+                const themeBtn = document.getElementById('theme-btn');
+                if (themeBtn) themeBtn.innerHTML = '☀️';
+            }
+            
+            // Initiale Daten laden
+            loadMetrics();
+            
+            // Automatisches Nachladen alle 30 Sekunden
+            setInterval(loadMetrics, 30000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+.clang_complete
+.gcc-flags.json
+
+# Build artifacts
+*.o
+*.bin
+*.elf
+*.map
+
+# IDE files
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Secrets and sensitive data
+secrets.h
+config_local.h
+wifi_credentials.h
+
+# Logs
+*.log
+debug.txt
+
+# Backup files
+backup/
+*.backup
+
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
