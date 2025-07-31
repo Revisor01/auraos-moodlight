@@ -312,10 +312,12 @@
         }
 
         .footer {
-            background: var(--background);
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
             padding: 60px 0 30px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--primary-color);
             text-align: center;
+            margin-top: 80px;
         }
 
         .footer-links {
@@ -327,13 +329,13 @@
         }
 
         .footer-links a {
-            color: var(--text-secondary);
+            color: #bdc3c7;
             text-decoration: none;
             transition: color 0.3s ease;
         }
 
         .footer-links a:hover {
-            color: var(--primary-color);
+            color: #ecf0f1;
         }
 
         .social-links {
@@ -395,11 +397,25 @@
                 Visualisiert die Weltlage durch KI-gestützte Sentiment-Analyse und dynamische LED-Beleuchtung
             </p>
             
+            <!-- Current Sentiment Display -->
+            <div class="sentiment-display" style="margin: 30px 0;">
+                <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 25px; display: inline-block; border: 1px solid rgba(255,255,255,0.2);">
+                    <div style="font-size: 1.1rem; margin-bottom: 10px; opacity: 0.9;">Aktuelle Weltlage</div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div class="sentiment-indicator" id="hero-sentiment-indicator" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-color); border: 3px solid rgba(255,255,255,0.3);"></div>
+                        <div>
+                            <div class="sentiment-value" id="hero-sentiment-value" style="font-size: 2rem; font-weight: bold; margin-bottom: 5px;">0.0</div>
+                            <div class="sentiment-label" id="hero-sentiment-label" style="font-size: 0.9rem; opacity: 0.8;">Neutral</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="cta-buttons">
-                <a href="#demo" class="btn btn-primary">
-                    Live Demo
+                <a href="#screenshots" class="btn btn-primary">
+                    Ansichten
                 </a>
-                <a href="https://github.com/username/auraos-moodlight" class="btn btn-secondary">
+                <a href="https://github.com/Revisor01/auraos-moodlight" class="btn btn-secondary">
                     GitHub Repository
                 </a>
             </div>
@@ -483,100 +499,63 @@
         </div>
     </section>
 
-    <!-- Demo Section -->
-    <section class="section demo-section" id="demo">
-        <div class="container">
-            <h2 class="section-title">Stimmungsskala</h2>
-            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: var(--text-secondary);">
-                Interaktive Darstellung der 5-stufigen Farbskala für verschiedene Sentiment-Werte
-            </p>
-            
-            <div class="mood-visualizer">
-                <div class="mood-color mood-negative" data-sentiment="-1.0">
-                    Sehr<br>Negativ<br>(-1.0)
-                </div>
-                <div class="mood-color mood-somewhat-negative" data-sentiment="-0.5">
-                    Negativ<br>(-0.5)
-                </div>
-                <div class="mood-color mood-neutral" data-sentiment="0.0">
-                    Neutral<br>(0.0)
-                </div>
-                <div class="mood-color mood-positive" data-sentiment="0.5">
-                    Positiv<br>(0.5)
-                </div>
-                <div class="mood-color mood-very-positive" data-sentiment="1.0">
-                    Sehr<br>Positiv<br>(1.0)
-                </div>
-            </div>
-            
-            <p style="text-align: center; margin-top: 30px; color: var(--text-secondary);">
-                <strong>Aktueller Sentiment-Wert:</strong> <span id="current-sentiment">0.0</span>
-            </p>
-        </div>
-    </section>
 
-    <!-- Statistics Section -->
-    <section class="section" style="background: var(--surface);">
+    <!-- Screenshots Section -->
+    <section class="section" id="screenshots" style="background: var(--surface);">
         <div class="container">
-            <h2 class="section-title">Live-Statistiken</h2>
+            <h2 class="section-title">AuraOS Ansichten</h2>
             <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: var(--text-secondary);">
-                Aktuelle Weltlage-Analyse basierend auf kontinuierlicher Sentiment-Auswertung
+                Benutzeroberfläche und Funktionen des intelligenten Stimmungslichts
             </p>
             
-            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-top: 40px;">
-                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
-                    <div class="stat-value" id="current-sentiment-display" style="font-size: 3rem; font-weight: bold; color: var(--primary-color); margin-bottom: 10px;">
-                        0.0
+            <div class="screenshots-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-top: 40px;">
+                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
+                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
+                        Dashboard Screenshot
                     </div>
-                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
-                        Aktueller Sentiment-Wert
-                    </div>
-                    <div class="stat-trend" id="sentiment-trend" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
-                        Wird geladen...
-                    </div>
-                </div>
-                
-                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
-                    <div class="stat-value" id="daily-average" style="font-size: 3rem; font-weight: bold; color: var(--secondary-color); margin-bottom: 10px;">
-                        -
-                    </div>
-                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
-                        24h-Durchschnitt
-                    </div>
-                    <div class="stat-description" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
-                        Letzten 24 Stunden
+                    <div style="padding: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Dashboard</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.5;">
+                            Hauptübersicht mit aktueller Stimmungslage, Systemstatus und Sensor-Werten. Zeigt LED-Status und Verbindungsqualität.
+                        </p>
                     </div>
                 </div>
                 
-                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
-                    <div class="stat-value" id="data-points" style="font-size: 3rem; font-weight: bold; color: var(--accent-color); margin-bottom: 10px;">
-                        -
+                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
+                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
+                        Konfiguration Screenshot
                     </div>
-                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
-                        Analysierte Artikel
-                    </div>
-                    <div class="stat-description" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
-                        Heute verarbeitet
+                    <div style="padding: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Konfiguration</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.5;">
+                            Einstellungen für WiFi, MQTT, Hardware-Parameter und API-Konfiguration. Intuitive Benutzerführung.
+                        </p>
                     </div>
                 </div>
                 
-                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
-                    <div class="stat-value" id="last-update" style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary); margin-bottom: 10px;">
-                        -
+                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
+                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
+                        Statistik Screenshot
                     </div>
-                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
-                        Letztes Update
-                    </div>
-                    <div class="stat-description" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
-                        Automatische Aktualisierung
+                    <div style="padding: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Statistiken</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.5;">
+                            Detaillierte Charts und Trends der Sentiment-Daten. Historische Analyse und Durchschnittswerte.
+                        </p>
                     </div>
                 </div>
-            </div>
-            
-            <div style="text-align: center; margin-top: 40px;">
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">
-                    Die Daten werden alle 30 Minuten automatisch aktualisiert und spiegeln die aktuelle Weltlage wider.
-                </p>
+                
+                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
+                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
+                        Diagnose Screenshot
+                    </div>
+                    <div style="padding: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Diagnose</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.5;">
+                            Systemüberwachung, Speicher-Status, Netzwerk-Analyse und Fehlerbehandlung für optimale Performance.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -586,36 +565,41 @@
         <div class="container">
             <h2 class="section-title">Technologie-Stack</h2>
             
-            <div class="tech-stack">
-                <div class="tech-item">
-                    <div class="tech-icon">ESP32</div>
-                    <strong>ESP32</strong>
-                    <span>Arduino Framework</span>
+            <div class="tech-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 40px;">
+                <div class="tech-card" style="background: var(--surface); padding: 25px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center; transition: all 0.3s ease;">
+                    <div class="tech-icon" style="font-size: 2.5rem; margin-bottom: 15px; color: var(--primary-color);">ESP32</div>
+                    <h3 style="margin-bottom: 8px; color: var(--text-primary);">ESP32 Mikrocontroller</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Arduino Framework, WiFi & Bluetooth integriert</p>
                 </div>
-                <div class="tech-item">
-                    <div class="tech-icon">LED</div>
-                    <strong>NeoPixel</strong>
-                    <span>WS2812B LEDs</span>
+                
+                <div class="tech-card" style="background: var(--surface); padding: 25px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center; transition: all 0.3s ease;">
+                    <div class="tech-icon" style="font-size: 2.5rem; margin-bottom: 15px; color: var(--secondary-color);">LED</div>
+                    <h3 style="margin-bottom: 8px; color: var(--text-primary);">NeoPixel LEDs</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">WS2812B/WS2813 adressierbare RGB-LEDs</p>
                 </div>
-                <div class="tech-item">
-                    <div class="tech-icon">MQTT</div>
-                    <strong>MQTT</strong>
-                    <span>Home Assistant</span>
+                
+                <div class="tech-card" style="background: var(--surface); padding: 25px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center; transition: all 0.3s ease;">
+                    <div class="tech-icon" style="font-size: 2.5rem; margin-bottom: 15px; color: var(--accent-color);">MQTT</div>
+                    <h3 style="margin-bottom: 8px; color: var(--text-primary);">MQTT Integration</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Home Assistant Auto-Discovery</p>
                 </div>
-                <div class="tech-item">
-                    <div class="tech-icon">DHT</div>
-                    <strong>DHT22</strong>
-                    <span>Temperatur/Luftfeuchte</span>
+                
+                <div class="tech-card" style="background: var(--surface); padding: 25px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center; transition: all 0.3s ease;">
+                    <div class="tech-icon" style="font-size: 2.5rem; margin-bottom: 15px; color: var(--primary-color);">DHT</div>
+                    <h3 style="margin-bottom: 8px; color: var(--text-primary);">DHT22 Sensor</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Temperatur & Luftfeuchtigkeit</p>
                 </div>
-                <div class="tech-item">
-                    <div class="tech-icon">API</div>
-                    <strong>AI API</strong>
-                    <span>Sentiment-Analyse</span>
+                
+                <div class="tech-card" style="background: var(--surface); padding: 25px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center; transition: all 0.3s ease;">
+                    <div class="tech-icon" style="font-size: 2.5rem; margin-bottom: 15px; color: var(--secondary-color);">AI</div>
+                    <h3 style="margin-bottom: 8px; color: var(--text-primary);">AI Sentiment API</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Automatische Nachrichten-Analyse</p>
                 </div>
-                <div class="tech-item">
-                    <div class="tech-icon">PIO</div>
-                    <strong>PlatformIO</strong>
-                    <span>Build System</span>
+                
+                <div class="tech-card" style="background: var(--surface); padding: 25px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center; transition: all 0.3s ease;">
+                    <div class="tech-icon" style="font-size: 2.5rem; margin-bottom: 15px; color: var(--accent-color);">PIO</div>
+                    <h3 style="margin-bottom: 8px; color: var(--text-primary);">PlatformIO</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Modernes Build-System & Libraries</p>
                 </div>
             </div>
         </div>
@@ -625,21 +609,21 @@
     <footer class="footer">
         <div class="container">
             <div class="footer-links">
-                <a href="https://github.com/username/auraos-moodlight">GitHub</a>
-                <a href="https://github.com/username/auraos-moodlight/wiki">Dokumentation</a>
-                <a href="https://github.com/username/auraos-moodlight/releases">Releases</a>
-                <a href="https://github.com/username/auraos-moodlight/issues">Issues</a>
-                <a href="https://github.com/username/auraos-moodlight/discussions">Community</a>
+                <a href="https://github.com/Revisor01/auraos-moodlight">GitHub</a>
+                <a href="https://github.com/Revisor01/auraos-moodlight/wiki">Dokumentation</a>
+                <a href="https://github.com/Revisor01/auraos-moodlight/releases">Releases</a>
+                <a href="https://github.com/Revisor01/auraos-moodlight/issues">Issues</a>
+                <a href="https://github.com/Revisor01/auraos-moodlight/discussions">Community</a>
             </div>
             
             <div class="social-links">
-                <a href="https://github.com/username" title="GitHub">
+                <a href="https://github.com/Revisor01" title="GitHub">
                     <span style="font-size: 1.5rem;">GH</span>
                 </a>
-                <a href="https://twitter.com/username" title="Twitter">
+                <a href="https://twitter.com/Revisor01" title="Twitter">
                     <span style="font-size: 1.5rem;">TW</span>
                 </a>
-                <a href="https://linkedin.com/in/username" title="LinkedIn">
+                <a href="https://linkedin.com/in/revisor01" title="LinkedIn">
                     <span style="font-size: 1.5rem;">LI</span>
                 </a>
             </div>
@@ -711,43 +695,30 @@
             const sentiment = await fetchRealSentiment();
             const sentimentValue = parseFloat(sentiment);
             
-            // Update displays
-            document.getElementById('current-sentiment').textContent = sentiment;
-            document.getElementById('current-sentiment-display').textContent = sentiment;
+            // Update hero display
+            const heroSentimentValue = document.getElementById('hero-sentiment-value');
+            const heroSentimentLabel = document.getElementById('hero-sentiment-label');
+            const heroSentimentIndicator = document.getElementById('hero-sentiment-indicator');
+            
+            if (heroSentimentValue) {
+                heroSentimentValue.textContent = sentiment;
+                
+                // Update label based on sentiment
+                if (sentimentValue <= -0.6) {
+                    heroSentimentLabel.textContent = 'Sehr negativ';
+                } else if (sentimentValue <= -0.2) {
+                    heroSentimentLabel.textContent = 'Negativ';
+                } else if (sentimentValue <= 0.2) {
+                    heroSentimentLabel.textContent = 'Neutral';
+                } else if (sentimentValue <= 0.6) {
+                    heroSentimentLabel.textContent = 'Positiv';
+                } else {
+                    heroSentimentLabel.textContent = 'Sehr positiv';
+                }
+            }
             
             // Update theme based on sentiment
             updateTheme(sentimentValue);
-            
-            // Update mood colors
-            document.querySelectorAll('.mood-color').forEach(color => {
-                const colorSentiment = parseFloat(color.dataset.sentiment);
-                
-                if (Math.abs(colorSentiment - sentimentValue) < 0.3) {
-                    color.style.borderColor = 'var(--primary-color)';
-                    color.style.transform = 'scale(1.1)';
-                } else {
-                    color.style.borderColor = 'transparent';
-                    color.style.transform = 'scale(1)';
-                }
-            });
-
-            // Update trend indicator
-            const trendElement = document.getElementById('sentiment-trend');
-            if (sentimentValue > 0.3) {
-                trendElement.textContent = '↗ Positive Entwicklung';
-                trendElement.style.color = '#28a745';
-            } else if (sentimentValue < -0.3) {
-                trendElement.textContent = '↘ Negative Entwicklung';
-                trendElement.style.color = '#dc3545';
-            } else {
-                trendElement.textContent = '→ Stabile Lage';
-                trendElement.style.color = '#6c757d';
-            }
-
-            // Update other stats (simulated for demo)
-            document.getElementById('daily-average').textContent = (sentimentValue * 0.8).toFixed(1);
-            document.getElementById('data-points').textContent = Math.floor(Math.random() * 500 + 1200);
-            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
         }
 
         function updateTheme(sentiment) {
