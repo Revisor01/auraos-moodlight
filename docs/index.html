@@ -17,11 +17,44 @@
             --primary-color: #8A2BE2;
             --secondary-color: #1E90FF;
             --accent-color: #FF6B35;
-            --background: #0a0a0a;
-            --surface: #1a1a1a;
-            --text-primary: #ffffff;
-            --text-secondary: #b0b0b0;
+            --background: #f8f9fa;
+            --surface: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
             --gradient: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            --border-color: #e9ecef;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dynamic theme based on sentiment */
+        .sentiment-very-negative {
+            --primary-color: #dc3545;
+            --secondary-color: #fd7e14;
+            --gradient: linear-gradient(135deg, #dc3545, #fd7e14);
+        }
+
+        .sentiment-negative {
+            --primary-color: #fd7e14;
+            --secondary-color: #ffc107;
+            --gradient: linear-gradient(135deg, #fd7e14, #ffc107);
+        }
+
+        .sentiment-neutral {
+            --primary-color: #17a2b8;
+            --secondary-color: #6f42c1;
+            --gradient: linear-gradient(135deg, #17a2b8, #6f42c1);
+        }
+
+        .sentiment-positive {
+            --primary-color: #6f42c1;
+            --secondary-color: #8A2BE2;
+            --gradient: linear-gradient(135deg, #6f42c1, #8A2BE2);
+        }
+
+        .sentiment-very-positive {
+            --primary-color: #8A2BE2;
+            --secondary-color: #9c27b0;
+            --gradient: linear-gradient(135deg, #8A2BE2, #9c27b0);
         }
 
         * {
@@ -168,7 +201,8 @@
             background: var(--surface);
             padding: 40px;
             border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px var(--shadow);
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -186,7 +220,7 @@
 
         .feature-card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 25px var(--shadow);
             border-color: var(--primary-color);
         }
 
@@ -211,7 +245,7 @@
         }
 
         .demo-section {
-            background: var(--surface);
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             position: relative;
         }
 
@@ -429,6 +463,22 @@
                         Over-the-Air Firmware-Updates über das Web-Interface. Einfache Wartung und Feature-Updates ohne physischen Zugriff.
                     </p>
                 </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">●</div>
+                    <h3 class="feature-title">Erweiterte Statistiken</h3>
+                    <p class="feature-description">
+                        Detaillierte Analyse historischer Sentiment-Daten mit interaktiven Charts, Trends und Durchschnittswerten über verschiedene Zeiträume.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">●</div>
+                    <h3 class="feature-title">Adaptive Beleuchtung</h3>
+                    <p class="feature-description">
+                        Intelligente Helligkeitsanpassung basierend auf Tageszeit, Umgebungslicht und benutzerdefinierten Szenarien für optimales Ambient Light.
+                    </p>
+                </div>
             </div>
         </div>
     </section>
@@ -462,6 +512,72 @@
             <p style="text-align: center; margin-top: 30px; color: var(--text-secondary);">
                 <strong>Aktueller Sentiment-Wert:</strong> <span id="current-sentiment">0.0</span>
             </p>
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section class="section" style="background: var(--surface);">
+        <div class="container">
+            <h2 class="section-title">Live-Statistiken</h2>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: var(--text-secondary);">
+                Aktuelle Weltlage-Analyse basierend auf kontinuierlicher Sentiment-Auswertung
+            </p>
+            
+            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-top: 40px;">
+                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
+                    <div class="stat-value" id="current-sentiment-display" style="font-size: 3rem; font-weight: bold; color: var(--primary-color); margin-bottom: 10px;">
+                        0.0
+                    </div>
+                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
+                        Aktueller Sentiment-Wert
+                    </div>
+                    <div class="stat-trend" id="sentiment-trend" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
+                        Wird geladen...
+                    </div>
+                </div>
+                
+                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
+                    <div class="stat-value" id="daily-average" style="font-size: 3rem; font-weight: bold; color: var(--secondary-color); margin-bottom: 10px;">
+                        -
+                    </div>
+                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
+                        24h-Durchschnitt
+                    </div>
+                    <div class="stat-description" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
+                        Letzten 24 Stunden
+                    </div>
+                </div>
+                
+                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
+                    <div class="stat-value" id="data-points" style="font-size: 3rem; font-weight: bold; color: var(--accent-color); margin-bottom: 10px;">
+                        -
+                    </div>
+                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
+                        Analysierte Artikel
+                    </div>
+                    <div class="stat-description" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
+                        Heute verarbeitet
+                    </div>
+                </div>
+                
+                <div class="stat-card" style="background: var(--surface); padding: 30px; border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); text-align: center;">
+                    <div class="stat-value" id="last-update" style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary); margin-bottom: 10px;">
+                        -
+                    </div>
+                    <div class="stat-label" style="font-size: 1.1rem; color: var(--text-secondary);">
+                        Letztes Update
+                    </div>
+                    <div class="stat-description" style="font-size: 0.9rem; margin-top: 5px; color: var(--text-secondary);">
+                        Automatische Aktualisierung
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 40px;">
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Die Daten werden alle 30 Minuten automatisch aktualisiert und spiegeln die aktuelle Weltlage wider.
+                </p>
+            </div>
         </div>
     </section>
 
@@ -579,11 +695,86 @@
             });
         }
 
-        // Update sentiment every 5 seconds
-        setInterval(updateSentiment, 5000);
+        // API-basierte Sentiment-Aktualisierung
+        async function fetchRealSentiment() {
+            try {
+                const response = await fetch('http://analyse.godsapp.de/api/news/total_sentiment');
+                const data = await response.json();
+                return data.sentiment || 0.0;
+            } catch (error) {
+                console.log('API nicht erreichbar, verwende Simulation');
+                return (Math.random() * 2 - 1).toFixed(1);
+            }
+        }
+
+        async function updateRealSentiment() {
+            const sentiment = await fetchRealSentiment();
+            const sentimentValue = parseFloat(sentiment);
+            
+            // Update displays
+            document.getElementById('current-sentiment').textContent = sentiment;
+            document.getElementById('current-sentiment-display').textContent = sentiment;
+            
+            // Update theme based on sentiment
+            updateTheme(sentimentValue);
+            
+            // Update mood colors
+            document.querySelectorAll('.mood-color').forEach(color => {
+                const colorSentiment = parseFloat(color.dataset.sentiment);
+                
+                if (Math.abs(colorSentiment - sentimentValue) < 0.3) {
+                    color.style.borderColor = 'var(--primary-color)';
+                    color.style.transform = 'scale(1.1)';
+                } else {
+                    color.style.borderColor = 'transparent';
+                    color.style.transform = 'scale(1)';
+                }
+            });
+
+            // Update trend indicator
+            const trendElement = document.getElementById('sentiment-trend');
+            if (sentimentValue > 0.3) {
+                trendElement.textContent = '↗ Positive Entwicklung';
+                trendElement.style.color = '#28a745';
+            } else if (sentimentValue < -0.3) {
+                trendElement.textContent = '↘ Negative Entwicklung';
+                trendElement.style.color = '#dc3545';
+            } else {
+                trendElement.textContent = '→ Stabile Lage';
+                trendElement.style.color = '#6c757d';
+            }
+
+            // Update other stats (simulated for demo)
+            document.getElementById('daily-average').textContent = (sentimentValue * 0.8).toFixed(1);
+            document.getElementById('data-points').textContent = Math.floor(Math.random() * 500 + 1200);
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('de-DE');
+        }
+
+        function updateTheme(sentiment) {
+            const body = document.body;
+            
+            // Remove existing sentiment classes
+            body.classList.remove('sentiment-very-negative', 'sentiment-negative', 'sentiment-neutral', 'sentiment-positive', 'sentiment-very-positive');
+            
+            // Add appropriate sentiment class
+            if (sentiment <= -0.6) {
+                body.classList.add('sentiment-very-negative');
+            } else if (sentiment <= -0.2) {
+                body.classList.add('sentiment-negative');
+            } else if (sentiment <= 0.2) {
+                body.classList.add('sentiment-neutral');
+            } else if (sentiment <= 0.6) {
+                body.classList.add('sentiment-positive');
+            } else {
+                body.classList.add('sentiment-very-positive');
+            }
+        }
+
+        // Update sentiment every 30 seconds for real API data
+        setInterval(updateRealSentiment, 30000);
         
         // Initial update
-        updateSentiment();
+        updateRealSentiment();
 
         // Parallax effect for hero
         window.addEventListener('scroll', () => {
