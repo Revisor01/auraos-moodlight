@@ -55,20 +55,9 @@
                     <span class="tooltip-text">Filtert Datenpunkte, bei denen der gleiche Wert mehrfach hintereinander auftritt, was auf fehlende Aktualisierungen hindeuten könnte.</span>
                 </div>
             </div>
-            
-            <div class="filter-control" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-                <div>
-                    <button class="btn" onclick="showDataTable()" aria-label="Datenpunkte verwalten">
-                        <i class="fas fa-table" aria-hidden="true"></i> Datenpunkte verwalten
-                    </button>
-                </div>
-                <div>
-                    <button class="btn btn-danger" onclick="resetAllData()" aria-label="Alle Daten zurücksetzen">
-                        <i class="fas fa-trash" aria-hidden="true"></i> Alle Daten zurücksetzen
-                    </button>
-                </div>
-            </div>
-            
+
+            <!-- v9.0: Data management removed - data managed in backend -->
+
             <div class="tab-content active" id="all-tab" role="tabpanel" aria-labelledby="all-tab">
                 <div class="chart-container">
                     <canvas id="all-chart" aria-label="Stimmungsverlauf über gesamten Zeitraum" role="img"></canvas>
@@ -220,55 +209,17 @@
         </div>
     </div>
     
+    <!-- v9.0: CSV Export/Repair/Storage removed - data managed in backend -->
+
     <div class="info-card">
         <div class="info-card-icon">
-            <i class="fas fa-download" aria-hidden="true"></i>
+            <i class="fas fa-cloud" aria-hidden="true"></i>
         </div>
         <div class="info-card-content">
-            <div class="info-card-title">Daten exportieren</div>
+            <div class="info-card-title">Backend-Statistiken</div>
             <div class="info-card-text">
-                Laden Sie die CSV-Statistikdaten für Backups oder externe Analyse herunter.
-                <div style="margin-top: 10px;">
-                    <a href="/api/export/stats" class="btn btn-sm" target="_blank">
-                        <i class="fas fa-file-csv" aria-hidden="true"></i> Statistikdaten herunterladen
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="info-card" style="margin-top: 15px;">
-        <div class="info-card-icon">
-            <i class="fas fa-tools" aria-hidden="true"></i>
-        </div>
-        <div class="info-card-content">
-            <div class="info-card-title">Datenwartung</div>
-            <div class="info-card-text">
-                Werkzeuge zur Reparatur und Wartung der Statistikdaten.
-                <div style="margin-top: 10px;">
-                    <button onclick="repairStatsCSV()" class="btn btn-sm btn-warning">
-                        <i class="fas fa-wrench" aria-hidden="true"></i> CSV-Datei reparieren
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="storage-info-card">
-        <div class="storage-info-title">Datenspeicher</div>
-        <div class="storage-progress">
-            <div class="upload-progress">
-                <div class="upload-progress-bar" id="mood-storage-bar" style="width: 0%">0%</div>
-            </div>
-        </div>
-        <div class="storage-details">
-            <div class="storage-stat">
-                <div class="storage-stat-label">Datenpunkte</div>
-                <div class="storage-stat-value" id="mood-records">0</div>
-            </div>
-            <div class="storage-stat">
-                <div class="storage-stat-label">Speicher</div>
-                <div class="storage-stat-value" id="mood-storage">0</div>
+                Alle Statistikdaten werden zentral im Backend gespeichert und verwaltet.
+                Das Moodlight lädt die Daten bei Bedarf vom Server.
             </div>
         </div>
     </div>
