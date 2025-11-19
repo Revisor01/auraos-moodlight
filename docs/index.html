@@ -11,7 +11,12 @@
     <meta property="og:title" content="AuraOS - Intelligent Mood Light">
     <meta property="og:description" content="Visualisiert die Weltlage durch dynamische LED-Beleuchtung basierend auf Sentiment-Analyse">
     <meta property="og:type" content="website">
-    
+
+    <!-- Chart.js for Statistics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
+
     <style>
         :root {
             --primary-color: #8A2BE2;
@@ -385,6 +390,174 @@
             40% { transform: translateX(-50%) translateY(-10px); }
             60% { transform: translateX(-50%) translateY(-5px); }
         }
+
+        /* Statistics Section Styles */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px var(--shadow);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px var(--shadow);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .trend-indicator {
+            font-size: 0.9rem;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .trend-up {
+            background: rgba(46, 204, 113, 0.1);
+            color: #2ecc71;
+        }
+
+        .trend-down {
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+        }
+
+        .trend-neutral {
+            background: rgba(149, 165, 166, 0.1);
+            color: #95a5a6;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+
+        .chart-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .chart-tab {
+            padding: 10px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 25px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .chart-tab.active {
+            background: var(--gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        .chart-tab:hover:not(.active) {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .analysis-card {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px var(--shadow);
+        }
+
+        .analysis-card h3 {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .analysis-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.05), rgba(30, 144, 255, 0.05));
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .summary-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .summary-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -494,6 +667,97 @@
                     <p class="feature-description">
                         Intelligente Helligkeitsanpassung basierend auf Tageszeit, Umgebungslicht und benutzerdefinierten Szenarien für optimales Ambient Light.
                     </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistics & Trends Section -->
+    <section class="section" id="statistics" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+        <div class="container">
+            <h2 class="section-title">Statistiken & Trends</h2>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: var(--text-secondary);">
+                Live-Daten der weltweiten Sentiment-Analyse in Echtzeit
+            </p>
+
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-label">Durchschnitt</div>
+                    <div class="stat-value" id="stat-avg">--</div>
+                    <div class="trend-indicator trend-neutral" id="stat-avg-trend">Lädt...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📉</div>
+                    <div class="stat-label">Minimum</div>
+                    <div class="stat-value" id="stat-min" style="color: #e74c3c;">--</div>
+                    <div class="stat-label" id="stat-min-date" style="margin-top: 10px; font-size: 0.8rem;">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-label">Maximum</div>
+                    <div class="stat-value" id="stat-max" style="color: #2ecc71;">--</div>
+                    <div class="stat-label" id="stat-max-date" style="margin-top: 10px; font-size: 0.8rem;">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔢</div>
+                    <div class="stat-label">Messungen</div>
+                    <div class="stat-value" id="stat-count">--</div>
+                    <div class="stat-label" style="margin-top: 10px; font-size: 0.8rem;">Letzte 7 Tage</div>
+                </div>
+            </div>
+
+            <!-- Main Chart with Tabs -->
+            <div style="margin-top: 60px; background: var(--surface); padding: 40px; border-radius: 20px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow);">
+                <h3 style="margin-bottom: 20px; color: var(--text-primary);">Stimmungsverlauf</h3>
+                <div class="chart-tabs">
+                    <div class="chart-tab active" data-period="all" onclick="switchChartPeriod('all')">Gesamter Zeitraum</div>
+                    <div class="chart-tab" data-period="week" onclick="switchChartPeriod('week')">Letzte Woche</div>
+                    <div class="chart-tab" data-period="day" onclick="switchChartPeriod('day')">Letzter Tag</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="main-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="summary-card">
+                <h3>Zusammenfassung der Weltlage</h3>
+                <div class="summary-text" id="summary-text">
+                    Daten werden geladen...
+                </div>
+            </div>
+
+            <!-- Analysis Charts Grid -->
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <h3>Stündliche Analyse</h3>
+                    <div class="analysis-subtitle">Durchschnittswerte nach Tageszeit</div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="hourly-chart"></canvas>
+                    </div>
+                </div>
+                <div class="analysis-card">
+                    <h3>Wochentag-Analyse</h3>
+                    <div class="analysis-subtitle">Durchschnittliche Stimmung nach Wochentag</div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="weekday-chart"></canvas>
+                    </div>
+                </div>
+                <div class="analysis-card">
+                    <h3>Stimmungsverteilung</h3>
+                    <div class="analysis-subtitle">Histogramm der Stimmungswerte</div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="distribution-chart"></canvas>
+                    </div>
+                </div>
+                <div class="analysis-card">
+                    <h3>Trendanalyse</h3>
+                    <div class="analysis-subtitle">Langfristige Entwicklung</div>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="trend-chart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -682,9 +946,9 @@
         // API-basierte Sentiment-Aktualisierung
         async function fetchRealSentiment() {
             try {
-                const response = await fetch('http://analyse.godsapp.de/api/news/total_sentiment');
+                const response = await fetch('https://analyse.godsapp.de/api/news/total_sentiment');
                 const data = await response.json();
-                return data.sentiment || 0.0;
+                return data.total_sentiment || 0.0;
             } catch (error) {
                 console.log('API nicht erreichbar, verwende Simulation');
                 return (Math.random() * 2 - 1).toFixed(1);
@@ -753,6 +1017,494 @@
             const hero = document.querySelector('.hero');
             const rate = scrolled * -0.5;
             hero.style.transform = `translateY(${rate}px)`;
+        });
+
+        // ===== STATISTICS & CHARTS =====
+        const API_BASE = 'https://analyse.godsapp.de';
+        let allHistoryData = [];
+        let charts = {};
+        let currentPeriod = 'all';
+
+        // Load all statistics data
+        async function loadStatistics() {
+            try {
+                // Load history data (last 7 days)
+                const historyResponse = await fetch(`${API_BASE}/api/moodlight/history?hours=168`);
+                const historyData = await historyResponse.json();
+
+                if (historyData.status === 'success' && historyData.history) {
+                    allHistoryData = historyData.history;
+                    processStatistics();
+                    createAllCharts();
+                }
+
+                // Load trend data
+                const trendResponse = await fetch(`${API_BASE}/api/moodlight/trend`);
+                const trendData = await trendResponse.json();
+
+                if (trendData.status === 'success') {
+                    updateTrendIndicator(trendData);
+                }
+
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        // Process statistics from history data
+        function processStatistics() {
+            if (!allHistoryData || allHistoryData.length === 0) return;
+
+            const values = allHistoryData.map(item => item.sentiment_score);
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+            // Find min/max dates
+            const minItem = allHistoryData.find(item => item.sentiment_score === min);
+            const maxItem = allHistoryData.find(item => item.sentiment_score === max);
+
+            // Update stat cards
+            document.getElementById('stat-avg').textContent = avg.toFixed(2);
+            document.getElementById('stat-min').textContent = min.toFixed(2);
+            document.getElementById('stat-max').textContent = max.toFixed(2);
+            document.getElementById('stat-count').textContent = allHistoryData.length.toLocaleString();
+
+            if (minItem) {
+                const minDate = new Date(minItem.timestamp).toLocaleDateString('de-DE', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                });
+                document.getElementById('stat-min-date').textContent = minDate;
+            }
+
+            if (maxItem) {
+                const maxDate = new Date(maxItem.timestamp).toLocaleDateString('de-DE', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                });
+                document.getElementById('stat-max-date').textContent = maxDate;
+            }
+
+            // Generate summary
+            generateSummary({ avg, min, max, count: allHistoryData.length });
+        }
+
+        // Update trend indicator
+        function updateTrendIndicator(trendData) {
+            const trendElement = document.getElementById('stat-avg-trend');
+            if (!trendElement || !trendData.trend) return;
+
+            const direction = trendData.trend.direction;
+            const change = trendData.trend.change;
+
+            trendElement.classList.remove('trend-up', 'trend-down', 'trend-neutral');
+
+            if (direction === 'up') {
+                trendElement.classList.add('trend-up');
+                trendElement.innerHTML = `↗ Steigend (+${Math.abs(change).toFixed(2)})`;
+            } else if (direction === 'down') {
+                trendElement.classList.add('trend-down');
+                trendElement.innerHTML = `↘ Fallend (${change.toFixed(2)})`;
+            } else {
+                trendElement.classList.add('trend-neutral');
+                trendElement.innerHTML = '→ Stabil';
+            }
+        }
+
+        // Generate summary text
+        function generateSummary(stats) {
+            const summaryElement = document.getElementById('summary-text');
+            if (!summaryElement) return;
+
+            let mood;
+            if (stats.avg > 0.5) mood = "äußerst positiv";
+            else if (stats.avg > 0.3) mood = "sehr positiv";
+            else if (stats.avg > 0.1) mood = "positiv";
+            else if (stats.avg > -0.1) mood = "neutral";
+            else if (stats.avg > -0.3) mood = "negativ";
+            else if (stats.avg > -0.5) mood = "sehr negativ";
+            else mood = "äußerst negativ";
+
+            const summary = `
+                Basierend auf ${stats.count} Messungen der letzten 7 Tage
+                ist die allgemeine Stimmung der Weltlage <strong>${mood}</strong> mit einem Durchschnittswert von <strong>${stats.avg.toFixed(2)}</strong>.
+                Die Werte schwanken zwischen ${stats.min.toFixed(2)} und ${stats.max.toFixed(2)}.
+            `;
+
+            summaryElement.innerHTML = summary.replace(/\s+/g, ' ').trim();
+        }
+
+        // Create all charts
+        function createAllCharts() {
+            createMainChart();
+            createHourlyChart();
+            createWeekdayChart();
+            createDistributionChart();
+            createTrendChart();
+        }
+
+        // Switch chart period
+        function switchChartPeriod(period) {
+            currentPeriod = period;
+
+            // Update tab styling
+            document.querySelectorAll('.chart-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.getAttribute('data-period') === period) {
+                    tab.classList.add('active');
+                }
+            });
+
+            // Recreate main chart
+            if (charts.main) {
+                charts.main.destroy();
+            }
+            createMainChart();
+        }
+
+        // Create main sentiment chart
+        function createMainChart() {
+            const canvas = document.getElementById('main-chart');
+            if (!canvas) return;
+
+            let data = [...allHistoryData];
+
+            // Filter by period
+            const now = new Date();
+            if (currentPeriod === 'week') {
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                data = data.filter(item => new Date(item.timestamp) >= weekAgo);
+            } else if (currentPeriod === 'day') {
+                const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                data = data.filter(item => new Date(item.timestamp) >= dayAgo);
+            }
+
+            // Limit data points for performance
+            if (data.length > 500) {
+                const step = Math.ceil(data.length / 500);
+                data = data.filter((_, i) => i % step === 0);
+            }
+
+            const ctx = canvas.getContext('2d');
+            charts.main = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(item => {
+                        const date = new Date(item.timestamp);
+                        if (currentPeriod === 'day') {
+                            return moment(date).format('HH:mm');
+                        }
+                        return moment(date).format('DD.MM HH:mm');
+                    }),
+                    datasets: [{
+                        label: 'Stimmungswert',
+                        data: data.map(item => item.sentiment_score),
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: currentPeriod === 'day' ? 2 : 1,
+                        pointHoverRadius: 6,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: context => `Wert: ${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 12 },
+                            grid: { display: false }
+                        },
+                        y: {
+                            grid: { drawBorder: false },
+                            suggestedMin: -1,
+                            suggestedMax: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create hourly analysis chart
+        function createHourlyChart() {
+            const canvas = document.getElementById('hourly-chart');
+            if (!canvas) return;
+
+            // Calculate hourly averages
+            const hourlyData = {};
+            allHistoryData.forEach(item => {
+                const hour = new Date(item.timestamp).getHours();
+                if (!hourlyData[hour]) hourlyData[hour] = { sum: 0, count: 0 };
+                hourlyData[hour].sum += item.sentiment_score;
+                hourlyData[hour].count += 1;
+            });
+
+            const hourlyAverages = Array.from({ length: 24 }, (_, i) => {
+                return hourlyData[i] ? hourlyData[i].sum / hourlyData[i].count : 0;
+            });
+
+            const ctx = canvas.getContext('2d');
+            charts.hourly = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`),
+                    datasets: [{
+                        label: 'Durchschnitt',
+                        data: hourlyAverages,
+                        backgroundColor: hourlyAverages.map(v => getColorForValue(v, 0.7)),
+                        borderColor: hourlyAverages.map(v => getColorForValue(v, 1)),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: context => `Durchschnitt: ${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { drawBorder: false },
+                            suggestedMin: -1,
+                            suggestedMax: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create weekday analysis chart
+        function createWeekdayChart() {
+            const canvas = document.getElementById('weekday-chart');
+            if (!canvas) return;
+
+            // Calculate weekday averages
+            const weekdayData = {};
+            allHistoryData.forEach(item => {
+                const weekday = new Date(item.timestamp).getDay();
+                if (!weekdayData[weekday]) weekdayData[weekday] = { sum: 0, count: 0 };
+                weekdayData[weekday].sum += item.sentiment_score;
+                weekdayData[weekday].count += 1;
+            });
+
+            const weekdayNames = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+            const weekdayAverages = Array.from({ length: 7 }, (_, i) => {
+                return weekdayData[i] ? weekdayData[i].sum / weekdayData[i].count : 0;
+            });
+
+            const ctx = canvas.getContext('2d');
+            charts.weekday = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: weekdayNames,
+                    datasets: [{
+                        label: 'Durchschnitt',
+                        data: weekdayAverages,
+                        backgroundColor: weekdayAverages.map(v => getColorForValue(v, 0.7)),
+                        borderColor: weekdayAverages.map(v => getColorForValue(v, 1)),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: context => `Durchschnitt: ${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { drawBorder: false },
+                            suggestedMin: -1,
+                            suggestedMax: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create distribution chart
+        function createDistributionChart() {
+            const canvas = document.getElementById('distribution-chart');
+            if (!canvas) return;
+
+            const buckets = [
+                { range: [-1, -0.7], label: 'Sehr negativ', color: 'rgba(192, 57, 43, 0.8)' },
+                { range: [-0.7, -0.4], label: 'Negativ', color: 'rgba(231, 76, 60, 0.8)' },
+                { range: [-0.4, -0.1], label: 'Leicht negativ', color: 'rgba(243, 156, 18, 0.8)' },
+                { range: [-0.1, 0.1], label: 'Neutral', color: 'rgba(149, 165, 166, 0.8)' },
+                { range: [0.1, 0.4], label: 'Leicht positiv', color: 'rgba(46, 204, 113, 0.7)' },
+                { range: [0.4, 0.7], label: 'Positiv', color: 'rgba(39, 174, 96, 0.8)' },
+                { range: [0.7, 1.1], label: 'Sehr positiv', color: 'rgba(33, 150, 83, 0.9)' }
+            ];
+
+            const bucketCounts = buckets.map(bucket => ({
+                ...bucket,
+                count: allHistoryData.filter(item =>
+                    item.sentiment_score >= bucket.range[0] &&
+                    item.sentiment_score < bucket.range[1]
+                ).length
+            }));
+
+            const ctx = canvas.getContext('2d');
+            charts.distribution = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: bucketCounts.map(b => b.label),
+                    datasets: [{
+                        label: 'Anzahl',
+                        data: bucketCounts.map(b => b.count),
+                        backgroundColor: bucketCounts.map(b => b.color),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: context => {
+                                    const pct = (context.raw / allHistoryData.length * 100).toFixed(1);
+                                    return `Anzahl: ${context.raw} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { drawBorder: false } }
+                    }
+                }
+            });
+        }
+
+        // Create trend chart with trend line
+        function createTrendChart() {
+            const canvas = document.getElementById('trend-chart');
+            if (!canvas) return;
+
+            // Calculate daily averages
+            const dailyData = {};
+            allHistoryData.forEach(item => {
+                const day = moment(item.timestamp).format('YYYY-MM-DD');
+                if (!dailyData[day]) {
+                    dailyData[day] = { sum: 0, count: 0, date: new Date(item.timestamp) };
+                }
+                dailyData[day].sum += item.sentiment_score;
+                dailyData[day].count += 1;
+            });
+
+            const dailyAverages = Object.keys(dailyData).map(day => ({
+                day: day,
+                displayDay: moment(day).format('DD.MM'),
+                value: dailyData[day].sum / dailyData[day].count,
+                date: dailyData[day].date
+            })).sort((a, b) => a.date - b.date);
+
+            // Calculate trend line
+            const xValues = dailyAverages.map((_, i) => i);
+            const yValues = dailyAverages.map(d => d.value);
+            const n = xValues.length;
+            const sumX = xValues.reduce((a, b) => a + b, 0);
+            const sumY = yValues.reduce((a, b) => a + b, 0);
+            const sumXY = xValues.reduce((a, b, i) => a + b * yValues[i], 0);
+            const sumXX = xValues.reduce((a, b) => a + b * b, 0);
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            const trendLine = xValues.map(x => slope * x + intercept);
+
+            const ctx = canvas.getContext('2d');
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dailyAverages.map(d => d.displayDay),
+                    datasets: [
+                        {
+                            label: 'Täglicher Durchschnitt',
+                            data: dailyAverages.map(d => d.value),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Trend',
+                            data: trendLine,
+                            borderColor: '#e74c3c',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: context => `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { drawBorder: false },
+                            suggestedMin: -1,
+                            suggestedMax: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Helper function to get color based on sentiment value
+        function getColorForValue(value, alpha = 0.7) {
+            if (value > 0.5) return `rgba(39, 174, 96, ${alpha})`;
+            if (value > 0.2) return `rgba(46, 204, 113, ${alpha})`;
+            if (value > 0) return `rgba(52, 152, 219, ${alpha})`;
+            if (value > -0.3) return `rgba(243, 156, 18, ${alpha})`;
+            if (value > -0.5) return `rgba(231, 76, 60, ${alpha})`;
+            return `rgba(192, 57, 43, ${alpha})`;
+        }
+
+        // Initialize statistics on page load
+        window.addEventListener('load', () => {
+            loadStatistics();
+            // Refresh statistics every 5 minutes
+            setInterval(loadStatistics, 300000);
         });
     </script>
 </body>
