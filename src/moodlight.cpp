@@ -2947,95 +2947,7 @@ server.on("/api/export/settings", HTTP_GET, []() {
     debug(F("Einstellungen wurden exportiert"));
 });
 
-// CSV-Import
-server.on("/api/import/stats", HTTP_POST, []() {
-    server.send(200, "text/plain", "CSV-Upload gestartet");
-}, []() {
-    HTTPUpload& upload = server.upload();
-    static File uploadFile;
     
-    if (upload.status == UPLOAD_FILE_START) {
-        debug("CSV-Import: " + upload.filename);
-        
-        // Backup der aktuellen Datei erstellen
-        if (LittleFS.exists("/data/stats.csv")) {
-            if (!fileOps.copyFile("/data/stats.csv", "/data/stats.csv.bak")) {
-                debug(F("Konnte kein Backup der Statistikdatei erstellen"));
-            }
-        }
-        
-        // Neue Datei öffnen
-        uploadFile = LittleFS.open("/data/stats_import.csv", "w");
-        if (!uploadFile) {
-            debug(F("Fehler beim Erstellen der temporären Importdatei"));
-            return;
-        }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        if (uploadFile) {
-            size_t written = uploadFile.write(upload.buf, upload.currentSize);
-            if (written != upload.currentSize) {
-                debug(F("Fehler beim Schreiben der Importdatei"));
-            }
-        }
-    } else if (upload.status == UPLOAD_FILE_END) {
-        if (uploadFile) {
-            uploadFile.close();
-            debug(F("CSV-Import entfernt in v9.0 - Statistiken vom Backend verwaltet"));
-
-            // v9.0: CSV import removed - statistics managed in backend
-            /* OLD CODE:
-            if (validateAndImportCSV("/data/stats_import.csv")) {
-                debug(F("CSV-Datei erfolgreich importiert"));
-            } else {
-                debug(F("Fehler beim Importieren der CSV-Datei, stelle Backup wieder her"));
-                if (LittleFS.exists("/data/stats.csv.bak")) {
-                    LittleFS.remove("/data/stats.csv");
-                    fileOps.copyFile("/data/stats.csv.bak", "/data/stats.csv");
-                }
-            }
-            
-            // Temporäre Dateien löschen
-            LittleFS.remove("/data/stats_import.csv");
-            LittleFS.remove("/data/stats.csv.bak");
-        }
-    }
-});
-
-// Einstellungs-Import
-server.on("/api/import/settings", HTTP_POST, []() {
-    server.send(200, "text/plain", "Einstellungs-Upload gestartet");
-}, []() {
-    HTTPUpload& upload = server.upload();
-    static String jsonContent;
-    
-    if (upload.status == UPLOAD_FILE_START) {
-        debug("Einstellungs-Import: " + upload.filename);
-        jsonContent = "";
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        // Datei im Speicher sammeln
-        for (size_t i = 0; i < upload.currentSize; i++) {
-            jsonContent += (char)upload.buf[i];
-        }
-    } else if (upload.status == UPLOAD_FILE_END) {
-        debug(F("Einstellungs-Import abgeschlossen, validiere Daten..."));
-        
-        // Einstellungen validieren und importieren
-        if (validateAndImportSettings(jsonContent)) {
-            debug(F("Einstellungen erfolgreich importiert"));
-            
-            // Einstellungen speichern
-            saveSettings();
-            settingsNeedSaving = false;
-            
-            // Reboot planen
-            rebootNeeded = true;
-            rebootTime = millis() + REBOOT_DELAY;
-        } else {
-            debug(F("Fehler beim Importieren der Einstellungen"));
-        }
-    }
-});
-      
     // Neue API-Endpunkte für Einstellungen
 server.on("/api/settings/api", HTTP_GET, []() {
     JsonDocument doc;
@@ -5043,12 +4955,7 @@ void setup() {
     if (memMonitor.begin(60000)) { // Berichte alle 60 Sekunden
         debug(F("Memory-Monitor gestartet"));
     }
-    
-    // CSV-Puffer initialisieren für Statistikdaten
-    if (statsBuffer.begin()) {
-        debug(F("CSV-Puffer für Statistiken initialisiert"));
-    }
-    
+
     // Netzwerkdiagnostik initialisieren
     if (netDiag.begin(3600000)) { // Vollständige Analyse stündlich
         debug(F("Netzwerkdiagnostik initialisiert"));
