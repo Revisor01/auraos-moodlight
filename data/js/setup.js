@@ -21,9 +21,11 @@ function pageInit() {
             }
             
             // Lädt tab-spezifische Daten
-            if (tabId === 'feeds') {
-                loadFeeds();
-            } else if (tabId === 'api') {
+            // REMOVED v9.0: RSS feeds tab
+            // if (tabId === 'feeds') {
+            //     loadFeeds();
+            // } else
+            if (tabId === 'api') {
                 loadApiSettings();
             } else if (tabId === 'colors') {
                 loadColorSettings();
@@ -924,6 +926,19 @@ function toggleMqttSettings(enabled) {
     }
 }
 
+// ===== REMOVED IN v9.0: RSS Feed Functions =====
+// RSS feeds are now managed entirely in the backend (app.py)
+// The following functions have been disabled:
+// - loadFeeds()
+// - renderFeeds()
+// - addFeed()
+// - toggleFeed()
+// - deleteFeed()
+// - saveFeeds()
+//
+// If you need to re-enable RSS configuration, switch back to v8.6
+
+/*
 function loadFeeds() {
     fetch('/api/feeds')
     .then(r => r.json())
@@ -1026,6 +1041,8 @@ function saveFeeds() {
         alert('Verbindungsfehler beim Speichern');
     });
 }
+*/
+// ===== END OF REMOVED RSS FUNCTIONS =====
 
 function exportStatistics() {
     // Ladeindikator anzeigen
