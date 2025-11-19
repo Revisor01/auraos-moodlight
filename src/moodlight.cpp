@@ -315,7 +315,8 @@ void handleStaticFile(String path) {
 WatchdogManager watchdog;
 MemoryMonitor memMonitor;
 SafeFileOps fileOps;
-CSVBuffer statsBuffer("/data/stats.csv");
+// v9.0: CSVBuffer removed - stats from backend
+// CSVBuffer statsBuffer("/data/stats.csv");
 NetworkDiagnostics netDiag;
 SystemHealthCheck sysHealth;
 TaskManager archiveTask("ArchiveTask", 8192); 
@@ -1101,9 +1102,10 @@ void initFS() {
     //     saveDefaultRssFeeds();
     // }
 
-    if (!LittleFS.exists("/data/stats.csv")) {
-        debug(F("Creating default stats.csv..."));
-    }
+    // REMOVED v9.0: Stats now managed in backend, no local CSV needed
+    // if (!LittleFS.exists("/data/stats.csv")) {
+    //     debug(F("Creating default stats.csv..."));
+    // }
 
     if (!LittleFS.exists("/ui-version.txt")) {
         debug(F("Creating ui-version.txt..."));
@@ -2219,85 +2221,26 @@ server.on("/diagnostics", HTTP_GET, []() {
     });
   }
 
+  // ===== UPDATED IN v9.0: Stats from Backend =====
+  // Stats are now fetched from backend instead of local CSV
   void handleApiStats() {
-    if (!LittleFS.exists("/data/stats.csv")) {
-        server.send(404, "application/json", "{\"error\":\"Keine Statistikdaten vorhanden\"}");
-        return;
+    // Get hours parameter from query string (default: 168 = 7 days)
+    int hours = 168;
+    if (server.hasArg("hours")) {
+        hours = server.arg("hours").toInt();
     }
 
-    // Statt alle Datenpunkte zu zählen, begrenzen wir die Anzahl von vornherein
-    const int MAX_POINTS = 1000; // Stark reduziert von 1000 auf 250
-    
-    File file = LittleFS.open("/data/stats.csv", "r");
-    if (!file) {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Öffnen der Statistikdatei\"}");
-        return;
+    JsonDocument doc;
+    if (fetchBackendStatistics(doc, hours)) {
+        // Forward backend response to client
+        char* jsonBuffer = jsonPool.acquire();
+        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(200, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+        debug(String(F("Stats from backend sent: ")) + len + F(" bytes"));
+    } else {
+        server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
     }
-    
-    // Header überspringen
-    String header = file.readStringUntil('\n');
-    
-    // Stream-basierte Verarbeitung mit kleinen Puffern
-    // Wir erstellen das JSON-Dokument direkt während des Lesens
-    String jsonStart = "{\"data\":[";
-    String jsonEnd = "]}";
-    String jsonResponse = jsonStart;
-    
-    int pointCount = 0;
-    while (file.available() && pointCount < MAX_POINTS) {
-        String line = file.readStringUntil('\n');
-        if (line.length() > 0) {
-            int firstComma = line.indexOf(',');
-            
-            if (firstComma > 0) {
-                // Manuelle JSON-Erstellung statt JsonDocument für bessere Speichereffizienz
-                if (pointCount > 0) {
-                    jsonResponse += ",";
-                }
-                
-                String timestampStr = line.substring(0, firstComma);
-                String sentimentStr = line.substring(firstComma + 1);
-
-                long timestamp = atol(timestampStr.c_str());
-                float sentiment = atof(sentimentStr.c_str());
-                
-                // Kategorie bestimmen
-                String category;
-                if (sentiment >= 0.30) category = "sehr positiv";
-                else if (sentiment >= 0.10) category = "positiv";
-                else if (sentiment >= -0.20) category = "neutral";
-                else if (sentiment >= -0.50) category = "negativ";
-                else category = "sehr negativ";
-
-                // Direktes Zusammenstellen des JSON-Objekts als String
-                jsonResponse += "{\"timestamp\":";
-                jsonResponse += timestamp;
-                jsonResponse += ",\"sentiment\":";
-                jsonResponse += String(sentiment, 2); // 2 Dezimalstellen
-                jsonResponse += ",\"category\":\"";
-                jsonResponse += category;
-                jsonResponse += "\"}";
-                
-                pointCount++;
-            }
-        }
-    }
-    
-    // Anzahl der Datensätze weiterzählen für Metadaten
-    int totalPoints = pointCount;
-    while (file.available()) {
-        file.readStringUntil('\n');
-        totalPoints++;
-    }
-    
-    file.close();
-    
-    // JSON fertigstellen
-    jsonResponse += jsonEnd;
-    
-    // Sende die Antwort direkt ohne ArduinoJSON
-    server.send(200, "application/json", jsonResponse);
-    debug(String(F("Stats-JSON erfolgreich gesendet: ")) + jsonResponse.length() + F(" Bytes, ") + pointCount + F(" von ") + totalPoints + F(" Datenpunkten"));
 }
 
 // ===== REMOVED IN v9.0: RSS Feed Functions =====
@@ -2404,77 +2347,13 @@ void formatString(char *buffer, size_t maxLen, const char *format, ...)
     va_end(args);
 }
 
+// ===== REMOVED IN v9.0: Local CSV Statistics Storage =====
+// Statistics are now fetched from backend instead of stored locally
+// This saves ~2KB Flash and removes file system wear
 void saveSentimentStats(float sentiment) {
-    // Validate sentiment value with strict bounds checking
-    if (isnan(sentiment) || isinf(sentiment) || sentiment < -1.0f || sentiment > 1.0f) {
-        debug(String(F("FEHLER: Ungültiger Sentiment-Wert für CSV: ")) + sentiment);
-        return;
-    }
-    
-    // Get current time with error handling
-    time_t now;
-    if (!time(&now) || now < 1600000000) {  // Timestamp vor 2020 ist ungültig
-        debug(F("FEHLER: Ungültiger Zeitstempel für CSV"));
-        now = millis() / 1000 + 1600000000;  // Fallback-Zeit
-    }
-    
-    // Verwende CSV-Puffer mit zusätzlicher Validierung
-    if (statsBuffer.add(now, sentiment)) {
-        static unsigned long lastBufferLog = 0;
-        if (millis() - lastBufferLog > 60000) { // Log nur einmal pro Minute
-            debug(String(F("Sentiment zum CSV-Puffer hinzugefügt: ")) + sentiment);
-            lastBufferLog = millis();
-        }
-    } else {
-        debug(String(F("Fehler beim Hinzufügen zu CSV-Puffer: ")) + sentiment);
-        
-        // Fallback: Direktes Schreiben in Datei als Notlösung
-        if (!LittleFS.exists("/data")) {
-            if (!LittleFS.mkdir("/data")) {
-                debug(F("Konnte /data-Verzeichnis nicht erstellen"));
-                return;
-            }
-        }
-        
-        // Prüfe, ob Datei existiert und öffne sie entsprechend
-        bool fileExists = LittleFS.exists("/data/stats.csv");
-        
-        // Zuerst einen String erstellen, um den Inhalt zu validieren
-        char lineBuffer[64];
-        snprintf(lineBuffer, sizeof(lineBuffer), "%ld,%.2f\n", (long)now, sentiment);
-        
-        // Überprüfe die Gültigkeit der CSV-Zeile
-        if (strlen(lineBuffer) < 5) {  // Mindestlänge für gültige Zeile
-            debug(F("FEHLER: Generierte CSV-Zeile ist zu kurz"));
-            return;
-        }
-        
-        File file;
-        if (fileExists) {
-            file = LittleFS.open("/data/stats.csv", "a");
-        } else {
-            file = LittleFS.open("/data/stats.csv", "w");
-        }
-        
-        if (!file) {
-            debug(F("FEHLER: Konnte CSV-Datei nicht öffnen"));
-            return;
-        }
-        
-        // Write header for new files
-        if (!fileExists) {
-            file.println("timestamp,sentiment");
-        }
-        
-        // Write data
-        size_t bytesWritten = file.print(lineBuffer);
-        if (bytesWritten != strlen(lineBuffer)) {
-            debug(F("FEHLER: Schreibfehler bei CSV-Zeile"));
-        }
-        file.close();
-        
-        debug(F("Sentiment direkt in CSV-Datei geschrieben (Fallback)"));
-    }
+    // Stub function - no longer saves to CSV
+    // Data is managed centrally in backend PostgreSQL database
+    (void)sentiment; // Suppress unused parameter warning
 }
 
 // ===== REMOVED IN v9.0: RSS Feed HTTP Handlers =====
@@ -2502,6 +2381,9 @@ void handleApiBackendStats() {
     }
 }
 
+// ===== REMOVED IN v9.0: CSV Import/Repair Functions =====
+// Statistics are managed in backend, no local CSV needed
+/*
 // Validiere und importiere CSV-Datei
 bool validateAndImportCSV(const String& filePath) {
     File importFile = LittleFS.open(filePath, "r");
@@ -2679,6 +2561,7 @@ bool validateAndImportSettings(const String& jsonContent) {
     return true;
 }
 
+/* v9.0: CSV repair removed
 bool repairStatsCSV() {
     debug(F("Starte Reparatur der Statistik-CSV-Datei..."));
     
@@ -2839,6 +2722,7 @@ bool repairStatsCSV() {
         return false;
     }
 }
+*/ // End of CSV functions removed in v9.0
 
 // Webserver-Setup anpassen
 void setupWebServer()
@@ -2940,11 +2824,10 @@ server.on("/favicon.ico", HTTP_GET, []() {
 });
 
 server.on("/api/repair/stats", HTTP_GET, []() {
-    bool success = repairStatsCSV();
-    
+    // v9.0: CSV repair removed - stats managed in backend
     JsonDocument doc;
-    doc["success"] = success;
-    doc["message"] = success ? F("CSV-Datei erfolgreich repariert") : F("Konnte CSV-Datei nicht reparieren");
+    doc["success"] = false;
+    doc["message"] = F("CSV-Reparatur entfernt in v9.0 - Statistiken werden vom Backend verwaltet");
     
     char* jsonBuffer = jsonPool.acquire();
     size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
@@ -3085,9 +2968,10 @@ server.on("/api/import/stats", HTTP_POST, []() {
     } else if (upload.status == UPLOAD_FILE_END) {
         if (uploadFile) {
             uploadFile.close();
-            debug(F("CSV-Import abgeschlossen, validiere Datei..."));
-            
-            // CSV-Datei validieren und importieren
+            debug(F("CSV-Import entfernt in v9.0 - Statistiken vom Backend verwaltet"));
+
+            // v9.0: CSV import removed - statistics managed in backend
+            /* OLD CODE:
             if (validateAndImportCSV("/data/stats_import.csv")) {
                 debug(F("CSV-Datei erfolgreich importiert"));
             } else {
@@ -3722,7 +3606,7 @@ server.on("/refresh", HTTP_GET, []() {
         setStatusLED(0);  // Normalmodus
       }
 
-      saveSentimentStats(receivedSentiment);
+      // v9.0: CSV stats removed - data managed in backend
 
     } else {
       debug(String(F("Force-Update fehlgeschlagen")));
@@ -4645,7 +4529,7 @@ void getSentiment()
             setStatusLED(0);
         }
 
-        saveSentimentStats(receivedSentiment);
+        // v9.0: CSV stats removed - data managed in backend
     }
     else
     {
@@ -5120,10 +5004,11 @@ void setup() {
     // Dateisystem initialisieren
     initFS();
 
-    debug(F("Prüfe und repariere CSV-Datei falls nötig..."));
-    if (LittleFS.exists("/data/stats.csv")) {
-        repairStatsCSV();
-    }
+    // v9.0: CSV repair removed - stats managed in backend
+    // debug(F("Prüfe und repariere CSV-Datei falls nötig..."));
+    // if (LittleFS.exists("/data/stats.csv")) {
+    //     repairStatsCSV();
+    // }
 
     // Archivierungstask erstellen (läuft als separate Task)
     bool archiveTaskStarted = archiveTask.begin(archiveTaskFunction);
