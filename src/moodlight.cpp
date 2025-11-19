@@ -1,7 +1,10 @@
 // ========================================================
 // Moodlight mit OpenAI Sentiment Analyse & Home Assistant
 // ========================================================
-// Version: 8.2 - Diagnostics, Import, Export, Webinterface, MQTT-Heartbeat, WiFi Manager und Settings-Portal, Farbauswahl, littleFS Dateisystem, RSSFeed, UI Update, ArduinoJSON 7.4.0 Umstellung, CSV Datei optimiert, JSONBuffer Pool
+// Version: 9.0 - Backend-Optimized Architecture
+// - Removed RSS Feed configuration (hardcoded in backend)
+// - Removed local CSV statistics (fetched from backend)
+// - Uses /api/moodlight/* endpoints with Redis caching
 // Erwartet Sentiment Score von -1.0 bis +1.0 vom Backend
 
 #include <Arduino.h>
@@ -312,7 +315,8 @@ void handleStaticFile(String path) {
 WatchdogManager watchdog;
 MemoryMonitor memMonitor;
 SafeFileOps fileOps;
-CSVBuffer statsBuffer("/data/stats.csv");
+// v9.0: CSVBuffer removed - stats from backend
+// CSVBuffer statsBuffer("/data/stats.csv");
 NetworkDiagnostics netDiag;
 SystemHealthCheck sysHealth;
 TaskManager archiveTask("ArchiveTask", 8192); 
@@ -1019,51 +1023,51 @@ String scanWiFiNetworks()
     return jsonResult;
 }
 
-// Hilfsfunktion zum Hinzufügen eines Feeds
-void addFeed(JsonArray &feeds, const char *name, const char *url)
-{
-    JsonObject feed = feeds.add<JsonObject>();
-    feed["name"] = name;
-    feed["url"] = url;
-    feed["enabled"] = true;
-}
+// ===== REMOVED IN v9.0: RSS Feed Configuration =====
+// RSS feeds are now hardcoded in backend (app.py)
+// No longer needed on device - reduces memory usage and complexity
 
-// Standardwerte für RSS-Feeds speichern
-void saveDefaultRssFeeds()
-{
-    JsonDocument doc;
-    JsonArray feeds = doc["feeds"].to<JsonArray>();
+// ===== NEW IN v9.0: Backend Statistics API =====
+// Fetch statistics from backend instead of generating locally
+// Reduces device load and enables centralized analytics
 
-    // Standardfeeds aus app.py
-    addFeed(feeds, "Zeit", "https://newsfeed.zeit.de/index");
-    addFeed(feeds, "Tagesschau", "https://www.tagesschau.de/xml/rss2");
-    addFeed(feeds, "Sueddeutsche", "https://rss.sueddeutsche.de/rss/Alles");
-    addFeed(feeds, "FAZ", "https://www.faz.net/rss/aktuell/");
-    addFeed(feeds, "Die Welt", "https://www.welt.de/feeds/latest.rss");
-    addFeed(feeds, "Handelsblatt", "https://www.handelsblatt.com/contentexport/feed/schlagzeilen");
-    addFeed(feeds, "n-tv", "https://www.n-tv.de/rss");
-    addFeed(feeds, "Focus", "https://rss.focus.de/fol/XML/rss_folnews.xml");
-    addFeed(feeds, "Stern", "https://www.stern.de/feed/standard/alle-nachrichten/");
-    addFeed(feeds, "Telekom", "https://www.t-online.de/feed.rss");
-    addFeed(feeds, "TAZ", "https://taz.de/!p4608;rss/");
-    addFeed(feeds, "Deutschlandfunk", "https://www.deutschlandfunk.de/nachrichten-100.rss");
-
-    // JSON in Datei speichern
-    if (!LittleFS.exists("/data"))
-    {
-        LittleFS.mkdir("/data");
+bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
+    if (WiFi.status() != WL_CONNECTED) {
+        debug(F("WiFi nicht verbunden - kann keine Backend-Statistiken laden"));
+        return false;
     }
 
-    File file = LittleFS.open("/data/feeds.json", "w");
-    if (!file)
-    {
-        debug(F("Fehler beim Erstellen der RSS-Feed-Datei"));
-        return;
+    String statsUrl = String(DEFAULT_STATS_API_URL) + "?hours=" + String(hours);
+    debug(String(F("Lade Statistiken von Backend: ")) + statsUrl);
+
+    HTTPClient http;
+    http.setReuse(false);
+    http.setTimeout(5000);
+
+    if (!http.begin(wifiClientHTTP, statsUrl)) {
+        debug(F("HTTP Begin fehlgeschlagen für Backend-Statistiken"));
+        return false;
     }
 
-    serializeJson(doc, file);
-    file.close();
-    debug(F("Standard-RSS-Feeds gespeichert"));
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+        WiFiClient* stream = http.getStreamPtr();
+        DeserializationError error = deserializeJson(doc, *stream);
+        http.end();
+
+        if (error) {
+            debug(String(F("JSON Parsing Fehler bei Backend-Statistiken: ")) + error.c_str());
+            return false;
+        }
+
+        debug(F("Backend-Statistiken erfolgreich geladen"));
+        return true;
+    } else {
+        debug(String(F("HTTP Fehler beim Laden der Backend-Statistiken: ")) + httpCode);
+        http.end();
+        return false;
+    }
 }
 
 void initFS() {
@@ -1092,14 +1096,16 @@ void initFS() {
     }
 
     // Create default files if they don't exist
-    if (!LittleFS.exists("/data/feeds.json")) {
-        debug(F("Creating default feeds.json..."));
-        saveDefaultRssFeeds();
-    }
+    // REMOVED v9.0: RSS feeds now managed in backend
+    // if (!LittleFS.exists("/data/feeds.json")) {
+    //     debug(F("Creating default feeds.json..."));
+    //     saveDefaultRssFeeds();
+    // }
 
-    if (!LittleFS.exists("/data/stats.csv")) {
-        debug(F("Creating default stats.csv..."));
-    }
+    // REMOVED v9.0: Stats now managed in backend, no local CSV needed
+    // if (!LittleFS.exists("/data/stats.csv")) {
+    //     debug(F("Creating default stats.csv..."));
+    // }
 
     if (!LittleFS.exists("/ui-version.txt")) {
         debug(F("Creating ui-version.txt..."));
@@ -1577,7 +1583,13 @@ void handleApiStatus() {
 }
 
 // Handle deleting a specific data point - FIXED
+// ===== DISABLED IN v9.0: Local CSV Management =====
+// Data is managed in backend, cannot delete from device
 void handleApiDeleteDataPoint() {
+    server.send(410, "application/json",
+        "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
+    debug(F("Delete datapoint disabled - backend manages data"));
+    /* OLD CODE - CSV-based deletion
     if (!server.hasArg("timestamp")) {
         server.send(400, "application/json", "{\"error\":\"Missing timestamp parameter\"}");
         return;
@@ -1656,10 +1668,15 @@ void handleApiDeleteDataPoint() {
         server.send(404, "application/json", "{\"error\":\"Datenpunkt nicht gefunden\"}");
         debug(F("Datenpunkt nicht gefunden"));
     }
+    */
 }
 
-// Handle resetting all stats data - FIXED
+// ===== DISABLED IN v9.0: Local CSV Management =====
 void handleApiResetAllData() {
+    server.send(410, "application/json",
+        "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
+    debug(F("Reset all data disabled - backend manages data"));
+    /* OLD CODE - CSV-based reset
     debug(F("Versuche alle Statistikdaten zurückzusetzen"));
 
     if (!LittleFS.exists("/data/stats.csv")) {
@@ -1689,6 +1706,7 @@ void handleApiResetAllData() {
         server.send(500, "application/json", "{\"error\":\"Fehler beim Schreiben des Headers\"}");
         debug(F("Fehler beim Schreiben des Headers"));
     }
+    */
 }
 
   // Liste der Archive abrufen
@@ -2215,204 +2233,33 @@ server.on("/diagnostics", HTTP_GET, []() {
     });
   }
 
+  // ===== UPDATED IN v9.0: Stats from Backend =====
+  // Stats are now fetched from backend instead of local CSV
   void handleApiStats() {
-    if (!LittleFS.exists("/data/stats.csv")) {
-        server.send(404, "application/json", "{\"error\":\"Keine Statistikdaten vorhanden\"}");
-        return;
-    }
-
-    // Statt alle Datenpunkte zu zählen, begrenzen wir die Anzahl von vornherein
-    const int MAX_POINTS = 1000; // Stark reduziert von 1000 auf 250
-    
-    File file = LittleFS.open("/data/stats.csv", "r");
-    if (!file) {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Öffnen der Statistikdatei\"}");
-        return;
-    }
-    
-    // Header überspringen
-    String header = file.readStringUntil('\n');
-    
-    // Stream-basierte Verarbeitung mit kleinen Puffern
-    // Wir erstellen das JSON-Dokument direkt während des Lesens
-    String jsonStart = "{\"data\":[";
-    String jsonEnd = "]}";
-    String jsonResponse = jsonStart;
-    
-    int pointCount = 0;
-    while (file.available() && pointCount < MAX_POINTS) {
-        String line = file.readStringUntil('\n');
-        if (line.length() > 0) {
-            int firstComma = line.indexOf(',');
-            
-            if (firstComma > 0) {
-                // Manuelle JSON-Erstellung statt JsonDocument für bessere Speichereffizienz
-                if (pointCount > 0) {
-                    jsonResponse += ",";
-                }
-                
-                String timestampStr = line.substring(0, firstComma);
-                String sentimentStr = line.substring(firstComma + 1);
-
-                long timestamp = atol(timestampStr.c_str());
-                float sentiment = atof(sentimentStr.c_str());
-                
-                // Kategorie bestimmen
-                String category;
-                if (sentiment >= 0.30) category = "sehr positiv";
-                else if (sentiment >= 0.10) category = "positiv";
-                else if (sentiment >= -0.20) category = "neutral";
-                else if (sentiment >= -0.50) category = "negativ";
-                else category = "sehr negativ";
-
-                // Direktes Zusammenstellen des JSON-Objekts als String
-                jsonResponse += "{\"timestamp\":";
-                jsonResponse += timestamp;
-                jsonResponse += ",\"sentiment\":";
-                jsonResponse += String(sentiment, 2); // 2 Dezimalstellen
-                jsonResponse += ",\"category\":\"";
-                jsonResponse += category;
-                jsonResponse += "\"}";
-                
-                pointCount++;
-            }
-        }
-    }
-    
-    // Anzahl der Datensätze weiterzählen für Metadaten
-    int totalPoints = pointCount;
-    while (file.available()) {
-        file.readStringUntil('\n');
-        totalPoints++;
-    }
-    
-    file.close();
-    
-    // JSON fertigstellen
-    jsonResponse += jsonEnd;
-    
-    // Sende die Antwort direkt ohne ArduinoJSON
-    server.send(200, "application/json", jsonResponse);
-    debug(String(F("Stats-JSON erfolgreich gesendet: ")) + jsonResponse.length() + F(" Bytes, ") + pointCount + F(" von ") + totalPoints + F(" Datenpunkten"));
-}
-
-// RSS-Feeds laden
-void loadRssFeeds()
-{
-    if (!LittleFS.exists("/data/feeds.json"))
-    {
-        debug(F("Keine gespeicherten RSS-Feeds gefunden, verwende Standardwerte"));
-        saveDefaultRssFeeds();
-        return;
-    }
-
-    File file = LittleFS.open("/data/feeds.json", "r");
-    if (!file)
-    {
-        debug(F("Fehler beim Öffnen der RSS-Feed-Datei"));
-        return;
+    // Get hours parameter from query string (default: 168 = 7 days)
+    int hours = 168;
+    if (server.hasArg("hours")) {
+        hours = server.arg("hours").toInt();
     }
 
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, file);
-    file.close();
-
-    if (error)
-    {
-        debug(String(F("JSON Parsing Fehler: ")) + error.c_str());
-        return;
-    }
-
-    debug(F("RSS-Feeds erfolgreich geladen"));
-}
-
-bool sendRSSConfigToAPI()
-{
-    if (!LittleFS.exists("/data/feeds.json"))
-    {
-        debug(F("Keine RSS-Feed-Konfiguration zum Senden vorhanden"));
-        return false;
-    }
-
-    File file = LittleFS.open("/data/feeds.json", "r");
-    if (!file)
-    {
-        debug(F("Fehler beim Öffnen der Feed-Datei"));
-        return false;
-    }
-
-    String feedConfig = file.readString();
-    file.close();
-
-    // Stelle sicher, dass die JSON-Daten valide sind
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, feedConfig);
-    if (error)
-    {
-        debug(String(F("Feed-JSON-Parsing-Fehler: ")) + error.c_str());
-        return false;
-    }
-
-    // Nur aktivierte Feeds senden
-    JsonArray feeds = doc["feeds"].to<JsonArray>();
-    JsonDocument filteredDoc;
-    
-    for (JsonObject feed : feeds) {
-        if (feed["enabled"].as<bool>()) {
-            String name = feed["name"].as<String>();
-            String url = feed["url"].as<String>();
-            filteredDoc[name] = url; // Direkt ins Dokument schreiben
-        }
-    }
-
-    // Sende an die API
-    HTTPClient http;
-    http.setReuse(false);
-    http.setUserAgent("MoodlightClient/1.0");
-
-    // Parse die Basis-URL
-    String apiBaseUrl = apiUrl;
-
-    // Wenn die URL einen Pfad hat, extrahiere die Basis
-    int pathStart = apiUrl.indexOf('/', 8); // Nach http(s)://
-    if (pathStart > 0)
-    {
-        apiBaseUrl = apiUrl.substring(0, pathStart);
-    }
-
-    // Feed-Konfigurationsendpunkt
-    String configUrl = apiBaseUrl + "/api/feedconfig";
-
-    debug(String(F("Sende RSS-Konfiguration an: ")) + configUrl);
-
-    if (http.begin(wifiClientHTTP, configUrl))
-    {
-        http.addHeader("Content-Type", "application/json");
-
-        String requestBody;
-        serializeJson(filteredDoc, requestBody);
-
-        int httpCode = http.POST(requestBody);
-
-        if (httpCode == HTTP_CODE_OK)
-        {
-            debug(F("RSS-Konfiguration erfolgreich gesendet"));
-            http.end();
-            return true;
-        }
-        else
-        {
-            debug(String(F("RSS-Konfiguration senden fehlgeschlagen: ")) + httpCode);
-            http.end();
-            return false;
-        }
-    }
-    else
-    {
-        debug(F("HTTP-Begin fehlgeschlagen"));
-        return false;
+    if (fetchBackendStatistics(doc, hours)) {
+        // Forward backend response to client
+        char* jsonBuffer = jsonPool.acquire();
+        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(200, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+        debug(String(F("Stats from backend sent: ")) + len + F(" bytes"));
+    } else {
+        server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
     }
 }
+
+// ===== REMOVED IN v9.0: RSS Feed Functions =====
+// These functions are no longer needed as RSS feeds are managed in the backend
+// - loadRssFeeds()
+// - sendRSSConfigToAPI()
+// Memory saved: ~3KB Flash
 
 // === Map Sentiment Score (-1 bis +1) zu LED Index (0-4) ===
 int mapSentimentToLED(float sentimentScore)
@@ -2512,158 +2359,43 @@ void formatString(char *buffer, size_t maxLen, const char *format, ...)
     va_end(args);
 }
 
+// ===== REMOVED IN v9.0: Local CSV Statistics Storage =====
+// Statistics are now fetched from backend instead of stored locally
+// This saves ~2KB Flash and removes file system wear
 void saveSentimentStats(float sentiment) {
-    // Validate sentiment value with strict bounds checking
-    if (isnan(sentiment) || isinf(sentiment) || sentiment < -1.0f || sentiment > 1.0f) {
-        debug(String(F("FEHLER: Ungültiger Sentiment-Wert für CSV: ")) + sentiment);
-        return;
-    }
-    
-    // Get current time with error handling
-    time_t now;
-    if (!time(&now) || now < 1600000000) {  // Timestamp vor 2020 ist ungültig
-        debug(F("FEHLER: Ungültiger Zeitstempel für CSV"));
-        now = millis() / 1000 + 1600000000;  // Fallback-Zeit
-    }
-    
-    // Verwende CSV-Puffer mit zusätzlicher Validierung
-    if (statsBuffer.add(now, sentiment)) {
-        static unsigned long lastBufferLog = 0;
-        if (millis() - lastBufferLog > 60000) { // Log nur einmal pro Minute
-            debug(String(F("Sentiment zum CSV-Puffer hinzugefügt: ")) + sentiment);
-            lastBufferLog = millis();
-        }
-    } else {
-        debug(String(F("Fehler beim Hinzufügen zu CSV-Puffer: ")) + sentiment);
-        
-        // Fallback: Direktes Schreiben in Datei als Notlösung
-        if (!LittleFS.exists("/data")) {
-            if (!LittleFS.mkdir("/data")) {
-                debug(F("Konnte /data-Verzeichnis nicht erstellen"));
-                return;
-            }
-        }
-        
-        // Prüfe, ob Datei existiert und öffne sie entsprechend
-        bool fileExists = LittleFS.exists("/data/stats.csv");
-        
-        // Zuerst einen String erstellen, um den Inhalt zu validieren
-        char lineBuffer[64];
-        snprintf(lineBuffer, sizeof(lineBuffer), "%ld,%.2f\n", (long)now, sentiment);
-        
-        // Überprüfe die Gültigkeit der CSV-Zeile
-        if (strlen(lineBuffer) < 5) {  // Mindestlänge für gültige Zeile
-            debug(F("FEHLER: Generierte CSV-Zeile ist zu kurz"));
-            return;
-        }
-        
-        File file;
-        if (fileExists) {
-            file = LittleFS.open("/data/stats.csv", "a");
-        } else {
-            file = LittleFS.open("/data/stats.csv", "w");
-        }
-        
-        if (!file) {
-            debug(F("FEHLER: Konnte CSV-Datei nicht öffnen"));
-            return;
-        }
-        
-        // Write header for new files
-        if (!fileExists) {
-            file.println("timestamp,sentiment");
-        }
-        
-        // Write data
-        size_t bytesWritten = file.print(lineBuffer);
-        if (bytesWritten != strlen(lineBuffer)) {
-            debug(F("FEHLER: Schreibfehler bei CSV-Zeile"));
-        }
-        file.close();
-        
-        debug(F("Sentiment direkt in CSV-Datei geschrieben (Fallback)"));
-    }
+    // Stub function - no longer saves to CSV
+    // Data is managed centrally in backend PostgreSQL database
+    (void)sentiment; // Suppress unused parameter warning
 }
 
-// API-Handler für Feeds
-void handleApiGetFeeds()
-{
-    if (!LittleFS.exists("/data/feeds.json"))
-    {
-        saveDefaultRssFeeds();
-    }
+// ===== REMOVED IN v9.0: RSS Feed HTTP Handlers =====
+// - handleApiGetFeeds()
+// - handleApiSaveFeeds()
+// RSS configuration is now managed entirely in the backend
 
-    if (LittleFS.exists("/data/feeds.json"))
-    {
-        File file = LittleFS.open("/data/feeds.json", "r");
-        if (!file)
-        {
-            server.send(500, "application/json", "{\"error\":\"Fehler beim Öffnen der RSS-Feed-Datei\"}");
-            return;
-        }
+// ===== NEW IN v9.0: Backend Statistics Handler =====
+void handleApiBackendStats() {
+    int hours = 168; // Default: 7 days
 
-        String jsonContent = file.readString();
-        file.close();
-        server.send(200, "application/json", jsonContent);
-    }
-    else
-    {
-        server.send(404, "application/json", "{\"error\":\"RSS-Feed-Datei nicht gefunden\"}");
-    }
-}
-
-void handleApiSaveFeeds()
-{
-    String jsonStr = server.arg("plain");
-
-    if (jsonStr.length() == 0)
-    {
-        server.send(400, "application/json", "{\"error\":\"Leere Anfrage\"}");
-        return;
+    if (server.hasArg("hours")) {
+        hours = server.arg("hours").toInt();
+        if (hours < 1) hours = 168;
+        if (hours > 720) hours = 720; // Max 30 days
     }
 
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, jsonStr);
-
-    if (error)
-    {
-        server.send(400, "application/json", "{\"error\":\"JSON Parsing Fehler\"}");
-        return;
+    if (fetchBackendStatistics(doc, hours)) {
+        String response;
+        serializeJson(doc, response);
+        server.send(200, "application/json", response);
+    } else {
+        server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
     }
-
-    if (!LittleFS.exists("/data"))
-    {
-        LittleFS.mkdir("/data");
-    }
-
-    File file = LittleFS.open("/data/feeds.json", "w");
-    if (!file)
-    {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Erstellen der RSS-Feed-Datei\"}");
-        return;
-    }
-
-    serializeJson(doc, file);
-    file.close();
-
-    debug(F("RSS-Feeds gespeichert"));
-
-    // RSS-Feed-Konfiguration direkt an API senden
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        if (sendRSSConfigToAPI())
-        {
-            debug(F("Aktualisierte RSS-Feed-Konfiguration erfolgreich an API gesendet"));
-        }
-        else
-        {
-            debug(F("Aktualisierte RSS-Feed-Konfiguration konnte nicht an API gesendet werden"));
-        }
-    }
-
-    server.send(200, "application/json", "{\"success\":true}");
 }
 
+// ===== REMOVED IN v9.0: CSV Import/Repair Functions =====
+// Statistics are managed in backend, no local CSV needed
+/*
 // Validiere und importiere CSV-Datei
 bool validateAndImportCSV(const String& filePath) {
     File importFile = LittleFS.open(filePath, "r");
@@ -2841,6 +2573,7 @@ bool validateAndImportSettings(const String& jsonContent) {
     return true;
 }
 
+/* v9.0: CSV repair removed
 bool repairStatsCSV() {
     debug(F("Starte Reparatur der Statistik-CSV-Datei..."));
     
@@ -3001,6 +2734,7 @@ bool repairStatsCSV() {
         return false;
     }
 }
+*/ // End of CSV functions removed in v9.0
 
 // Webserver-Setup anpassen
 void setupWebServer()
@@ -3082,8 +2816,10 @@ void setupWebServer()
     // API-Endpunkte für dynamische Daten
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/stats", HTTP_GET, handleApiStats);
-    server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
-    server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
+    server.on("/api/backend/stats", HTTP_GET, handleApiBackendStats); // NEW v9.0: Backend stats
+    // REMOVED v9.0: RSS feeds now managed in backend
+    // server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
+    // server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
 
     server.on("/api/storage", HTTP_GET, handleApiStorageInfo);
 setupArchiveEndpoints();
@@ -3100,11 +2836,10 @@ server.on("/favicon.ico", HTTP_GET, []() {
 });
 
 server.on("/api/repair/stats", HTTP_GET, []() {
-    bool success = repairStatsCSV();
-    
+    // v9.0: CSV repair removed - stats managed in backend
     JsonDocument doc;
-    doc["success"] = success;
-    doc["message"] = success ? F("CSV-Datei erfolgreich repariert") : F("Konnte CSV-Datei nicht reparieren");
+    doc["success"] = false;
+    doc["message"] = F("CSV-Reparatur entfernt in v9.0 - Statistiken werden vom Backend verwaltet");
     
     char* jsonBuffer = jsonPool.acquire();
     size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
@@ -3245,9 +2980,10 @@ server.on("/api/import/stats", HTTP_POST, []() {
     } else if (upload.status == UPLOAD_FILE_END) {
         if (uploadFile) {
             uploadFile.close();
-            debug(F("CSV-Import abgeschlossen, validiere Datei..."));
-            
-            // CSV-Datei validieren und importieren
+            debug(F("CSV-Import entfernt in v9.0 - Statistiken vom Backend verwaltet"));
+
+            // v9.0: CSV import removed - statistics managed in backend
+            /* OLD CODE:
             if (validateAndImportCSV("/data/stats_import.csv")) {
                 debug(F("CSV-Datei erfolgreich importiert"));
             } else {
@@ -3630,23 +3366,23 @@ server.on("/testapi", HTTP_POST, []() {
         DeserializationError testError = deserializeJson(testDoc, *stream);
 
         if (!testError) {
-            if (testDoc["total_sentiment"].is<float>()) {
-                float sentimentValue = testDoc["total_sentiment"].as<float>();
+            if (testDoc["sentiment"].is<float>()) {
+                float sentimentValue = testDoc["sentiment"].as<float>();
                 debug(String(F("API Test erfolgreich! Sentiment: ")) + String(sentimentValue, 2));
-                
+
                 JsonDocument resultDoc;
                 resultDoc["success"] = true;
                 resultDoc["sentiment"] = sentimentValue;
-                
+
                 String resultJson;
                 serializeJson(resultDoc, resultJson);
                 http.end();
                 server.send(200, "application/json", resultJson);
                 return;
             } else {
-                debug(F("API Test: JSON enthält keinen gültigen 'total_sentiment' Wert"));
+                debug(F("API Test: JSON enthält keinen gültigen 'sentiment' Wert"));
                 http.end();
-                server.send(200, "application/json", "{\"success\":false,\"message\":\"JSON enthält keinen gültigen 'total_sentiment' Wert\"}");
+                server.send(200, "application/json", "{\"success\":false,\"message\":\"JSON enthält keinen gültigen 'sentiment' Wert\"}");
                 return;
             }
         } else {
@@ -3856,14 +3592,14 @@ server.on("/refresh", HTTP_GET, []() {
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, *stream);
         if (!error) {
-            if (doc["total_sentiment"].is<float>()) {
-                receivedSentiment = doc["total_sentiment"].as<float>();
+            if (doc["sentiment"].is<float>()) {
+                receivedSentiment = doc["sentiment"].as<float>();
                 success = true;
                 debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
                 lastMoodUpdate = millis();
                 initialAnalysisDone = true;
             } else {
-                debug(F("Fehler: 'total_sentiment' fehlt/falsch in JSON."));
+                debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
             }
         } else {
             debug(String(F("JSON Parsing Fehler: ")) + error.c_str());
@@ -3882,7 +3618,7 @@ server.on("/refresh", HTTP_GET, []() {
         setStatusLED(0);  // Normalmodus
       }
 
-      saveSentimentStats(receivedSentiment);
+      // v9.0: CSV stats removed - data managed in backend
 
     } else {
       debug(String(F("Force-Update fehlgeschlagen")));
@@ -4397,14 +4133,14 @@ void onRefreshButtonPressed(HAButton *sender)
             JsonDocument doc;
             DeserializationError error = deserializeJson(doc, *stream);
             if (!error) {
-                if (doc["total_sentiment"].is<float>()) {
-                    receivedSentiment = doc["total_sentiment"].as<float>();
+                if (doc["sentiment"].is<float>()) {
+                    receivedSentiment = doc["sentiment"].as<float>();
                     success = true;
                     debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
                     lastMoodUpdate = millis();
                     initialAnalysisDone = true;
                 } else {
-                    debug(F("Fehler: 'total_sentiment' fehlt/falsch in JSON."));
+                    debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
                 }
             }
             else
@@ -4786,9 +4522,9 @@ void getSentiment()
     lastMoodUpdate = currentMillis;
     initialAnalysisDone = true;
 
-    if (success && doc["total_sentiment"].is<float>())
+    if (success && doc["sentiment"].is<float>())
     {
-        float receivedSentiment = doc["total_sentiment"].as<float>();
+        float receivedSentiment = doc["sentiment"].as<float>();
         debug(String(F("Sentiment empfangen: ")) + String(receivedSentiment, 2));
 
         // Process valid sentiment value
@@ -4805,7 +4541,7 @@ void getSentiment()
             setStatusLED(0);
         }
 
-        saveSentimentStats(receivedSentiment);
+        // v9.0: CSV stats removed - data managed in backend
     }
     else
     {
@@ -5280,10 +5016,11 @@ void setup() {
     // Dateisystem initialisieren
     initFS();
 
-    debug(F("Prüfe und repariere CSV-Datei falls nötig..."));
-    if (LittleFS.exists("/data/stats.csv")) {
-        repairStatsCSV();
-    }
+    // v9.0: CSV repair removed - stats managed in backend
+    // debug(F("Prüfe und repariere CSV-Datei falls nötig..."));
+    // if (LittleFS.exists("/data/stats.csv")) {
+    //     repairStatsCSV();
+    // }
 
     // Archivierungstask erstellen (läuft als separate Task)
     bool archiveTaskStarted = archiveTask.begin(archiveTaskFunction);
@@ -5382,12 +5119,8 @@ void setup() {
                 debug(F("mDNS start fehlgeschlagen"));
             }
 
-            // RSS-Feed-Konfiguration an API senden
-            if (sendRSSConfigToAPI()) {
-                debug(F("RSS-Feed-Konfiguration erfolgreich an API gesendet"));
-            } else {
-                debug(F("RSS-Feed-Konfiguration konnte nicht an API gesendet werden"));
-            }
+            // REMOVED v9.0: RSS configuration now managed in backend
+            // No need to send feed config on startup
 
             // MQTT einrichten für Home Assistant Integration
             if (mqttEnabled && !mqttServer.isEmpty()) {
