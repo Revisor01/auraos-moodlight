@@ -3630,23 +3630,23 @@ server.on("/testapi", HTTP_POST, []() {
         DeserializationError testError = deserializeJson(testDoc, *stream);
 
         if (!testError) {
-            if (testDoc["total_sentiment"].is<float>()) {
-                float sentimentValue = testDoc["total_sentiment"].as<float>();
+            if (testDoc["sentiment"].is<float>()) {
+                float sentimentValue = testDoc["sentiment"].as<float>();
                 debug(String(F("API Test erfolgreich! Sentiment: ")) + String(sentimentValue, 2));
-                
+
                 JsonDocument resultDoc;
                 resultDoc["success"] = true;
                 resultDoc["sentiment"] = sentimentValue;
-                
+
                 String resultJson;
                 serializeJson(resultDoc, resultJson);
                 http.end();
                 server.send(200, "application/json", resultJson);
                 return;
             } else {
-                debug(F("API Test: JSON enthält keinen gültigen 'total_sentiment' Wert"));
+                debug(F("API Test: JSON enthält keinen gültigen 'sentiment' Wert"));
                 http.end();
-                server.send(200, "application/json", "{\"success\":false,\"message\":\"JSON enthält keinen gültigen 'total_sentiment' Wert\"}");
+                server.send(200, "application/json", "{\"success\":false,\"message\":\"JSON enthält keinen gültigen 'sentiment' Wert\"}");
                 return;
             }
         } else {
@@ -3856,14 +3856,14 @@ server.on("/refresh", HTTP_GET, []() {
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, *stream);
         if (!error) {
-            if (doc["total_sentiment"].is<float>()) {
-                receivedSentiment = doc["total_sentiment"].as<float>();
+            if (doc["sentiment"].is<float>()) {
+                receivedSentiment = doc["sentiment"].as<float>();
                 success = true;
                 debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
                 lastMoodUpdate = millis();
                 initialAnalysisDone = true;
             } else {
-                debug(F("Fehler: 'total_sentiment' fehlt/falsch in JSON."));
+                debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
             }
         } else {
             debug(String(F("JSON Parsing Fehler: ")) + error.c_str());
@@ -4397,14 +4397,14 @@ void onRefreshButtonPressed(HAButton *sender)
             JsonDocument doc;
             DeserializationError error = deserializeJson(doc, *stream);
             if (!error) {
-                if (doc["total_sentiment"].is<float>()) {
-                    receivedSentiment = doc["total_sentiment"].as<float>();
+                if (doc["sentiment"].is<float>()) {
+                    receivedSentiment = doc["sentiment"].as<float>();
                     success = true;
                     debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
                     lastMoodUpdate = millis();
                     initialAnalysisDone = true;
                 } else {
-                    debug(F("Fehler: 'total_sentiment' fehlt/falsch in JSON."));
+                    debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
                 }
             }
             else
@@ -4786,9 +4786,9 @@ void getSentiment()
     lastMoodUpdate = currentMillis;
     initialAnalysisDone = true;
 
-    if (success && doc["total_sentiment"].is<float>())
+    if (success && doc["sentiment"].is<float>())
     {
-        float receivedSentiment = doc["total_sentiment"].as<float>();
+        float receivedSentiment = doc["sentiment"].as<float>();
         debug(String(F("Sentiment empfangen: ")) + String(receivedSentiment, 2));
 
         // Process valid sentiment value
