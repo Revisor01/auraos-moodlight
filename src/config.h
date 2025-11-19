@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Versionierung
-#define MOODLIGHT_VERSION "8.6"
+#define MOODLIGHT_VERSION "9.0"
 #define MOODLIGHT_NAME "AuraOS"
 #define MOODLIGHT_FULL_VERSION MOODLIGHT_VERSION " - " MOODLIGHT_NAME
 
@@ -22,6 +22,8 @@
 #define DEFAULT_MOOD_UPDATE_INTERVAL 1800000 // 30 Minuten
 #define DEFAULT_DHT_READ_INTERVAL 300000     // 5 Minuten
 
-#define DEFAULT_NEWS_API_URL "http://analyse.godsapp.de/api/news/total_sentiment"
+// API Endpoints (v9.0: Optimized cached endpoints)
+#define DEFAULT_NEWS_API_URL "https://analyse.godsapp.de/api/moodlight/current"
+#define DEFAULT_STATS_API_URL "https://analyse.godsapp.de/api/moodlight/history"
 
 #endif // CONFIG_H
