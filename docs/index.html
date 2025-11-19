@@ -1032,8 +1032,10 @@
                 const historyResponse = await fetch(`${API_BASE}/api/moodlight/history?hours=168`);
                 const historyData = await historyResponse.json();
 
-                if (historyData.status === 'success' && historyData.history) {
-                    allHistoryData = historyData.history;
+                console.log('History data:', historyData); // Debug
+
+                if (historyData.status === 'success' && historyData.data) {
+                    allHistoryData = historyData.data;
                     processStatistics();
                     createAllCharts();
                 }
@@ -1041,6 +1043,8 @@
                 // Load trend data
                 const trendResponse = await fetch(`${API_BASE}/api/moodlight/trend`);
                 const trendData = await trendResponse.json();
+
+                console.log('Trend data:', trendData); // Debug
 
                 if (trendData.status === 'success') {
                     updateTrendIndicator(trendData);
@@ -1093,15 +1097,15 @@
             const trendElement = document.getElementById('stat-avg-trend');
             if (!trendElement || !trendData.trend) return;
 
-            const direction = trendData.trend.direction;
-            const change = trendData.trend.change;
+            const trendString = trendData.trend; // "verbessernd", "verschlechternd", "stabil"
+            const change = trendData.change_24h || 0;
 
             trendElement.classList.remove('trend-up', 'trend-down', 'trend-neutral');
 
-            if (direction === 'up') {
+            if (trendString === 'verbessernd' || change > 0.05) {
                 trendElement.classList.add('trend-up');
                 trendElement.innerHTML = `↗ Steigend (+${Math.abs(change).toFixed(2)})`;
-            } else if (direction === 'down') {
+            } else if (trendString === 'verschlechternd' || change < -0.05) {
                 trendElement.classList.add('trend-down');
                 trendElement.innerHTML = `↘ Fallend (${change.toFixed(2)})`;
             } else {
