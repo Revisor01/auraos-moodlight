@@ -1,7 +1,10 @@
 // ========================================================
 // Moodlight mit OpenAI Sentiment Analyse & Home Assistant
 // ========================================================
-// Version: 8.2 - Diagnostics, Import, Export, Webinterface, MQTT-Heartbeat, WiFi Manager und Settings-Portal, Farbauswahl, littleFS Dateisystem, RSSFeed, UI Update, ArduinoJSON 7.4.0 Umstellung, CSV Datei optimiert, JSONBuffer Pool
+// Version: 9.0 - Backend-Optimized Architecture
+// - Removed RSS Feed configuration (hardcoded in backend)
+// - Removed local CSV statistics (fetched from backend)
+// - Uses /api/moodlight/* endpoints with Redis caching
 // Erwartet Sentiment Score von -1.0 bis +1.0 vom Backend
 
 #include <Arduino.h>
@@ -1019,52 +1022,9 @@ String scanWiFiNetworks()
     return jsonResult;
 }
 
-// Hilfsfunktion zum Hinzufügen eines Feeds
-void addFeed(JsonArray &feeds, const char *name, const char *url)
-{
-    JsonObject feed = feeds.add<JsonObject>();
-    feed["name"] = name;
-    feed["url"] = url;
-    feed["enabled"] = true;
-}
-
-// Standardwerte für RSS-Feeds speichern
-void saveDefaultRssFeeds()
-{
-    JsonDocument doc;
-    JsonArray feeds = doc["feeds"].to<JsonArray>();
-
-    // Standardfeeds aus app.py
-    addFeed(feeds, "Zeit", "https://newsfeed.zeit.de/index");
-    addFeed(feeds, "Tagesschau", "https://www.tagesschau.de/xml/rss2");
-    addFeed(feeds, "Sueddeutsche", "https://rss.sueddeutsche.de/rss/Alles");
-    addFeed(feeds, "FAZ", "https://www.faz.net/rss/aktuell/");
-    addFeed(feeds, "Die Welt", "https://www.welt.de/feeds/latest.rss");
-    addFeed(feeds, "Handelsblatt", "https://www.handelsblatt.com/contentexport/feed/schlagzeilen");
-    addFeed(feeds, "n-tv", "https://www.n-tv.de/rss");
-    addFeed(feeds, "Focus", "https://rss.focus.de/fol/XML/rss_folnews.xml");
-    addFeed(feeds, "Stern", "https://www.stern.de/feed/standard/alle-nachrichten/");
-    addFeed(feeds, "Telekom", "https://www.t-online.de/feed.rss");
-    addFeed(feeds, "TAZ", "https://taz.de/!p4608;rss/");
-    addFeed(feeds, "Deutschlandfunk", "https://www.deutschlandfunk.de/nachrichten-100.rss");
-
-    // JSON in Datei speichern
-    if (!LittleFS.exists("/data"))
-    {
-        LittleFS.mkdir("/data");
-    }
-
-    File file = LittleFS.open("/data/feeds.json", "w");
-    if (!file)
-    {
-        debug(F("Fehler beim Erstellen der RSS-Feed-Datei"));
-        return;
-    }
-
-    serializeJson(doc, file);
-    file.close();
-    debug(F("Standard-RSS-Feeds gespeichert"));
-}
+// ===== REMOVED IN v9.0: RSS Feed Configuration =====
+// RSS feeds are now hardcoded in backend (app.py)
+// No longer needed on device - reduces memory usage and complexity
 
 void initFS() {
     if (!LittleFS.begin()) {
@@ -1092,10 +1052,11 @@ void initFS() {
     }
 
     // Create default files if they don't exist
-    if (!LittleFS.exists("/data/feeds.json")) {
-        debug(F("Creating default feeds.json..."));
-        saveDefaultRssFeeds();
-    }
+    // REMOVED v9.0: RSS feeds now managed in backend
+    // if (!LittleFS.exists("/data/feeds.json")) {
+    //     debug(F("Creating default feeds.json..."));
+    //     saveDefaultRssFeeds();
+    // }
 
     if (!LittleFS.exists("/data/stats.csv")) {
         debug(F("Creating default stats.csv..."));
@@ -2296,123 +2257,11 @@ server.on("/diagnostics", HTTP_GET, []() {
     debug(String(F("Stats-JSON erfolgreich gesendet: ")) + jsonResponse.length() + F(" Bytes, ") + pointCount + F(" von ") + totalPoints + F(" Datenpunkten"));
 }
 
-// RSS-Feeds laden
-void loadRssFeeds()
-{
-    if (!LittleFS.exists("/data/feeds.json"))
-    {
-        debug(F("Keine gespeicherten RSS-Feeds gefunden, verwende Standardwerte"));
-        saveDefaultRssFeeds();
-        return;
-    }
-
-    File file = LittleFS.open("/data/feeds.json", "r");
-    if (!file)
-    {
-        debug(F("Fehler beim Öffnen der RSS-Feed-Datei"));
-        return;
-    }
-
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, file);
-    file.close();
-
-    if (error)
-    {
-        debug(String(F("JSON Parsing Fehler: ")) + error.c_str());
-        return;
-    }
-
-    debug(F("RSS-Feeds erfolgreich geladen"));
-}
-
-bool sendRSSConfigToAPI()
-{
-    if (!LittleFS.exists("/data/feeds.json"))
-    {
-        debug(F("Keine RSS-Feed-Konfiguration zum Senden vorhanden"));
-        return false;
-    }
-
-    File file = LittleFS.open("/data/feeds.json", "r");
-    if (!file)
-    {
-        debug(F("Fehler beim Öffnen der Feed-Datei"));
-        return false;
-    }
-
-    String feedConfig = file.readString();
-    file.close();
-
-    // Stelle sicher, dass die JSON-Daten valide sind
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, feedConfig);
-    if (error)
-    {
-        debug(String(F("Feed-JSON-Parsing-Fehler: ")) + error.c_str());
-        return false;
-    }
-
-    // Nur aktivierte Feeds senden
-    JsonArray feeds = doc["feeds"].to<JsonArray>();
-    JsonDocument filteredDoc;
-    
-    for (JsonObject feed : feeds) {
-        if (feed["enabled"].as<bool>()) {
-            String name = feed["name"].as<String>();
-            String url = feed["url"].as<String>();
-            filteredDoc[name] = url; // Direkt ins Dokument schreiben
-        }
-    }
-
-    // Sende an die API
-    HTTPClient http;
-    http.setReuse(false);
-    http.setUserAgent("MoodlightClient/1.0");
-
-    // Parse die Basis-URL
-    String apiBaseUrl = apiUrl;
-
-    // Wenn die URL einen Pfad hat, extrahiere die Basis
-    int pathStart = apiUrl.indexOf('/', 8); // Nach http(s)://
-    if (pathStart > 0)
-    {
-        apiBaseUrl = apiUrl.substring(0, pathStart);
-    }
-
-    // Feed-Konfigurationsendpunkt
-    String configUrl = apiBaseUrl + "/api/feedconfig";
-
-    debug(String(F("Sende RSS-Konfiguration an: ")) + configUrl);
-
-    if (http.begin(wifiClientHTTP, configUrl))
-    {
-        http.addHeader("Content-Type", "application/json");
-
-        String requestBody;
-        serializeJson(filteredDoc, requestBody);
-
-        int httpCode = http.POST(requestBody);
-
-        if (httpCode == HTTP_CODE_OK)
-        {
-            debug(F("RSS-Konfiguration erfolgreich gesendet"));
-            http.end();
-            return true;
-        }
-        else
-        {
-            debug(String(F("RSS-Konfiguration senden fehlgeschlagen: ")) + httpCode);
-            http.end();
-            return false;
-        }
-    }
-    else
-    {
-        debug(F("HTTP-Begin fehlgeschlagen"));
-        return false;
-    }
-}
+// ===== REMOVED IN v9.0: RSS Feed Functions =====
+// These functions are no longer needed as RSS feeds are managed in the backend
+// - loadRssFeeds()
+// - sendRSSConfigToAPI()
+// Memory saved: ~3KB Flash
 
 // === Map Sentiment Score (-1 bis +1) zu LED Index (0-4) ===
 int mapSentimentToLED(float sentimentScore)
@@ -2585,84 +2434,10 @@ void saveSentimentStats(float sentiment) {
     }
 }
 
-// API-Handler für Feeds
-void handleApiGetFeeds()
-{
-    if (!LittleFS.exists("/data/feeds.json"))
-    {
-        saveDefaultRssFeeds();
-    }
-
-    if (LittleFS.exists("/data/feeds.json"))
-    {
-        File file = LittleFS.open("/data/feeds.json", "r");
-        if (!file)
-        {
-            server.send(500, "application/json", "{\"error\":\"Fehler beim Öffnen der RSS-Feed-Datei\"}");
-            return;
-        }
-
-        String jsonContent = file.readString();
-        file.close();
-        server.send(200, "application/json", jsonContent);
-    }
-    else
-    {
-        server.send(404, "application/json", "{\"error\":\"RSS-Feed-Datei nicht gefunden\"}");
-    }
-}
-
-void handleApiSaveFeeds()
-{
-    String jsonStr = server.arg("plain");
-
-    if (jsonStr.length() == 0)
-    {
-        server.send(400, "application/json", "{\"error\":\"Leere Anfrage\"}");
-        return;
-    }
-
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, jsonStr);
-
-    if (error)
-    {
-        server.send(400, "application/json", "{\"error\":\"JSON Parsing Fehler\"}");
-        return;
-    }
-
-    if (!LittleFS.exists("/data"))
-    {
-        LittleFS.mkdir("/data");
-    }
-
-    File file = LittleFS.open("/data/feeds.json", "w");
-    if (!file)
-    {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Erstellen der RSS-Feed-Datei\"}");
-        return;
-    }
-
-    serializeJson(doc, file);
-    file.close();
-
-    debug(F("RSS-Feeds gespeichert"));
-
-    // RSS-Feed-Konfiguration direkt an API senden
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        if (sendRSSConfigToAPI())
-        {
-            debug(F("Aktualisierte RSS-Feed-Konfiguration erfolgreich an API gesendet"));
-        }
-        else
-        {
-            debug(F("Aktualisierte RSS-Feed-Konfiguration konnte nicht an API gesendet werden"));
-        }
-    }
-
-    server.send(200, "application/json", "{\"success\":true}");
-}
+// ===== REMOVED IN v9.0: RSS Feed HTTP Handlers =====
+// - handleApiGetFeeds()
+// - handleApiSaveFeeds()
+// RSS configuration is now managed entirely in the backend
 
 // Validiere und importiere CSV-Datei
 bool validateAndImportCSV(const String& filePath) {
@@ -3082,8 +2857,9 @@ void setupWebServer()
     // API-Endpunkte für dynamische Daten
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/stats", HTTP_GET, handleApiStats);
-    server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
-    server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
+    // REMOVED v9.0: RSS feeds now managed in backend
+    // server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
+    // server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
 
     server.on("/api/storage", HTTP_GET, handleApiStorageInfo);
 setupArchiveEndpoints();
@@ -5382,12 +5158,8 @@ void setup() {
                 debug(F("mDNS start fehlgeschlagen"));
             }
 
-            // RSS-Feed-Konfiguration an API senden
-            if (sendRSSConfigToAPI()) {
-                debug(F("RSS-Feed-Konfiguration erfolgreich an API gesendet"));
-            } else {
-                debug(F("RSS-Feed-Konfiguration konnte nicht an API gesendet werden"));
-            }
+            // REMOVED v9.0: RSS configuration now managed in backend
+            // No need to send feed config on startup
 
             // MQTT einrichten für Home Assistant Integration
             if (mqttEnabled && !mqttServer.isEmpty()) {
