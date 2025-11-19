@@ -33,9 +33,7 @@
             <a href="#" class="tab-link" data-tab="api" role="tab" aria-selected="false" aria-controls="api-tab">
                 <i class="fas fa-cogs" aria-hidden="true"></i> Einstellungen
             </a>
-            <a href="#" class="tab-link" data-tab="feeds" role="tab" aria-selected="false" aria-controls="feeds-tab">
-                <i class="fas fa-rss" aria-hidden="true"></i> RSS-Feeds
-            </a>
+            <!-- REMOVED v9.0: RSS feeds now managed in backend -->
             <a href="#" class="tab-link" data-tab="colors" role="tab" aria-selected="false" aria-controls="colors-tab">
                 <i class="fas fa-palette" aria-hidden="true"></i> Farben
             </a>
@@ -211,53 +209,9 @@
             </div>
         </div>
     </div>
-    
-    <!-- RSS-Feeds Tab -->
-    <div id="feeds-tab" class="tab-content" role="tabpanel" aria-labelledby="feeds-tab">
-        <div class="card">
-            <div class="card-header">
-                <h2>RSS-Feed Verwaltung</h2>
-            </div>
-            <div class="alert alert-info">
-                <p>Hier kannst du die RSS-Feeds verwalten, die für die Sentiment-Analyse verwendet werden. Die Feeds werden regelmäßig abgerufen und deren Überschriften analysiert.</p>
-                <p>Du kannst einzelne Feeds aktivieren oder deaktivieren und neue Feeds hinzufügen.</p>
-            </div>
-            
-            <h3>Aktuelle Feeds</h3>
-            <div id="feeds-list" class="feeds-container" aria-live="polite">
-                <!-- Feeds werden hier dynamisch eingefügt -->
-            </div>
-            
-            <div class="feed-form">
-                <div class="feed-form-title">Neuen Feed hinzufügen</div>
-                
-                <div class="form-group">
-                    <label for="feed-name">Feed Name</label>
-                    <input type="text" id="feed-name" placeholder="z.B. Tagesschau" aria-required="true">
-                    <div class="help-text">Ein beschreibender Name für die Quelle</div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="feed-url">Feed URL</label>
-                    <input type="text" id="feed-url" placeholder="https://www.beispiel.de/rss" aria-required="true">
-                    <div class="help-text">Die vollständige URL des RSS-Feeds</div>
-                </div>
-                
-                <div class="buttons">
-                    <button class="btn" onclick="addFeed()" aria-label="Neuen Feed hinzufügen">
-                        <i class="fas fa-plus" aria-hidden="true"></i> Feed hinzufügen
-                    </button>
-                </div>
-            </div>
-            
-            <div class="buttons" style="margin-top: 20px;">
-                <button class="btn btn-success" onclick="saveFeeds()" aria-label="Alle Feed-Änderungen speichern">
-                    <i class="fas fa-save" aria-hidden="true"></i> Alle Änderungen speichern
-                </button>
-            </div>
-        </div>
-    </div>
-    
+
+    <!-- REMOVED v9.0: RSS-Feeds Tab - now managed in backend -->
+
     <!-- Farben Tab -->
     <div id="colors-tab" class="tab-content" role="tabpanel" aria-labelledby="colors-tab">
         <div class="card">
