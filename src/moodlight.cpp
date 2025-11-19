@@ -1583,7 +1583,13 @@ void handleApiStatus() {
 }
 
 // Handle deleting a specific data point - FIXED
+// ===== DISABLED IN v9.0: Local CSV Management =====
+// Data is managed in backend, cannot delete from device
 void handleApiDeleteDataPoint() {
+    server.send(410, "application/json",
+        "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
+    debug(F("Delete datapoint disabled - backend manages data"));
+    /* OLD CODE - CSV-based deletion
     if (!server.hasArg("timestamp")) {
         server.send(400, "application/json", "{\"error\":\"Missing timestamp parameter\"}");
         return;
@@ -1662,10 +1668,15 @@ void handleApiDeleteDataPoint() {
         server.send(404, "application/json", "{\"error\":\"Datenpunkt nicht gefunden\"}");
         debug(F("Datenpunkt nicht gefunden"));
     }
+    */
 }
 
-// Handle resetting all stats data - FIXED
+// ===== DISABLED IN v9.0: Local CSV Management =====
 void handleApiResetAllData() {
+    server.send(410, "application/json",
+        "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
+    debug(F("Reset all data disabled - backend manages data"));
+    /* OLD CODE - CSV-based reset
     debug(F("Versuche alle Statistikdaten zurückzusetzen"));
 
     if (!LittleFS.exists("/data/stats.csv")) {
@@ -1695,6 +1706,7 @@ void handleApiResetAllData() {
         server.send(500, "application/json", "{\"error\":\"Fehler beim Schreiben des Headers\"}");
         debug(F("Fehler beim Schreiben des Headers"));
     }
+    */
 }
 
   // Liste der Archive abrufen
