@@ -1026,6 +1026,49 @@ String scanWiFiNetworks()
 // RSS feeds are now hardcoded in backend (app.py)
 // No longer needed on device - reduces memory usage and complexity
 
+// ===== NEW IN v9.0: Backend Statistics API =====
+// Fetch statistics from backend instead of generating locally
+// Reduces device load and enables centralized analytics
+
+bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
+    if (WiFi.status() != WL_CONNECTED) {
+        debug(F("WiFi nicht verbunden - kann keine Backend-Statistiken laden"));
+        return false;
+    }
+
+    String statsUrl = String(DEFAULT_STATS_API_URL) + "?hours=" + String(hours);
+    debug(String(F("Lade Statistiken von Backend: ")) + statsUrl);
+
+    HTTPClient http;
+    http.setReuse(false);
+    http.setTimeout(5000);
+
+    if (!http.begin(wifiClientHTTP, statsUrl)) {
+        debug(F("HTTP Begin fehlgeschlagen für Backend-Statistiken"));
+        return false;
+    }
+
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+        WiFiClient* stream = http.getStreamPtr();
+        DeserializationError error = deserializeJson(doc, *stream);
+        http.end();
+
+        if (error) {
+            debug(String(F("JSON Parsing Fehler bei Backend-Statistiken: ")) + error.c_str());
+            return false;
+        }
+
+        debug(F("Backend-Statistiken erfolgreich geladen"));
+        return true;
+    } else {
+        debug(String(F("HTTP Fehler beim Laden der Backend-Statistiken: ")) + httpCode);
+        http.end();
+        return false;
+    }
+}
+
 void initFS() {
     if (!LittleFS.begin()) {
         debug(F("LittleFS Mount Failed, attempting format..."));
@@ -2439,6 +2482,26 @@ void saveSentimentStats(float sentiment) {
 // - handleApiSaveFeeds()
 // RSS configuration is now managed entirely in the backend
 
+// ===== NEW IN v9.0: Backend Statistics Handler =====
+void handleApiBackendStats() {
+    int hours = 168; // Default: 7 days
+
+    if (server.hasArg("hours")) {
+        hours = server.arg("hours").toInt();
+        if (hours < 1) hours = 168;
+        if (hours > 720) hours = 720; // Max 30 days
+    }
+
+    JsonDocument doc;
+    if (fetchBackendStatistics(doc, hours)) {
+        String response;
+        serializeJson(doc, response);
+        server.send(200, "application/json", response);
+    } else {
+        server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
+    }
+}
+
 // Validiere und importiere CSV-Datei
 bool validateAndImportCSV(const String& filePath) {
     File importFile = LittleFS.open(filePath, "r");
@@ -2857,6 +2920,7 @@ void setupWebServer()
     // API-Endpunkte für dynamische Daten
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/stats", HTTP_GET, handleApiStats);
+    server.on("/api/backend/stats", HTTP_GET, handleApiBackendStats); // NEW v9.0: Backend stats
     // REMOVED v9.0: RSS feeds now managed in backend
     // server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
     // server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
