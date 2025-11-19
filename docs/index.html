@@ -17,6 +17,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
 
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         :root {
             --primary-color: #8A2BE2;
@@ -683,25 +686,25 @@
             <!-- Statistics Cards -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon">📊</div>
+                    <div class="stat-icon"><i class="fas fa-balance-scale"></i></div>
                     <div class="stat-label">Durchschnitt</div>
                     <div class="stat-value" id="stat-avg">--</div>
                     <div class="trend-indicator trend-neutral" id="stat-avg-trend">Lädt...</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📉</div>
+                    <div class="stat-icon"><i class="fas fa-arrow-down"></i></div>
                     <div class="stat-label">Minimum</div>
                     <div class="stat-value" id="stat-min" style="color: #e74c3c;">--</div>
                     <div class="stat-label" id="stat-min-date" style="margin-top: 10px; font-size: 0.8rem;">--</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📈</div>
+                    <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
                     <div class="stat-label">Maximum</div>
                     <div class="stat-value" id="stat-max" style="color: #2ecc71;">--</div>
                     <div class="stat-label" id="stat-max-date" style="margin-top: 10px; font-size: 0.8rem;">--</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">🔢</div>
+                    <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
                     <div class="stat-label">Messungen</div>
                     <div class="stat-value" id="stat-count">--</div>
                     <div class="stat-label" style="margin-top: 10px; font-size: 0.8rem;">Letzte 7 Tage</div>
@@ -774,9 +777,7 @@
             
             <div class="screenshots-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-top: 40px;">
                 <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
-                        Dashboard Screenshot
-                    </div>
+                    <img src="main.png" alt="Dashboard Screenshot" style="width: 100%; height: auto; display: block;">
                     <div style="padding: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--text-primary);">Dashboard</h3>
                         <p style="color: var(--text-secondary); line-height: 1.5;">
@@ -784,39 +785,33 @@
                         </p>
                     </div>
                 </div>
-                
+
                 <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
-                        Konfiguration Screenshot
-                    </div>
+                    <img src="farben.png" alt="Farbkonfiguration Screenshot" style="width: 100%; height: auto; display: block;">
                     <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Konfiguration</h3>
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Farbkonfiguration</h3>
                         <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Einstellungen für WiFi, MQTT, Hardware-Parameter und API-Konfiguration. Intuitive Benutzerführung.
+                            Intuitive Farbauswahl für jede Sentiment-Kategorie. Anpassbare RGB-Werte für vollständige Personalisierung.
                         </p>
                     </div>
                 </div>
-                
+
                 <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
-                        Statistik Screenshot
+                    <img src="wlan.png" alt="WLAN Konfiguration Screenshot" style="width: 100%; height: auto; display: block;">
+                    <div style="padding: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">WLAN-Konfiguration</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.5;">
+                            Einfache Netzwerk-Einrichtung mit SSID-Scanner und automatischer Verbindungsverwaltung.
+                        </p>
                     </div>
+                </div>
+
+                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
+                    <img src="statistik1.png" alt="Statistik Screenshot" style="width: 100%; height: auto; display: block;">
                     <div style="padding: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--text-primary);">Statistiken</h3>
                         <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Detaillierte Charts und Trends der Sentiment-Daten. Historische Analyse und Durchschnittswerte.
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <div class="screenshot-placeholder" style="width: 100%; height: 250px; background: linear-gradient(135deg, #f1f3f4 0%, #e0e0e0 100%); display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
-                        Diagnose Screenshot
-                    </div>
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Diagnose</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Systemüberwachung, Speicher-Status, Netzwerk-Analyse und Fehlerbehandlung für optimale Performance.
+                            Detaillierte Charts und Trends der Sentiment-Daten. Historische Analyse und Durchschnittswerte über verschiedene Zeiträume.
                         </p>
                     </div>
                 </div>
