@@ -3149,7 +3149,8 @@ server.on("/api/settings/api", HTTP_GET, []() {
         debug(String(F("DHT Enabled geändert zu: ")) + (dhtEnabled ? "ja" : "nein"));
       }
     }
-    if (doc["headlinesPerSource"].is<float>()) {
+    // v9.0: headlinesPerSource ist optional (wird im Backend verwaltet)
+    if (doc.containsKey("headlinesPerSource") && doc["headlinesPerSource"].is<float>()) {
       int newHeadlines = doc["headlinesPerSource"].as<int>();
       newHeadlines = constrain(newHeadlines, 1, 10);
       if (newHeadlines != headlines_per_source) {
@@ -3253,7 +3254,8 @@ server.on("/testapi", HTTP_POST, []() {
 
     // Werte aus JSON extrahieren
     String testApiUrl = doc["apiUrl"].as<String>();
-    int testHeadlines = doc["headlinesPerSource"].as<int>();
+    // v9.0: headlinesPerSource ist optional
+    int testHeadlines = doc.containsKey("headlinesPerSource") ? doc["headlinesPerSource"].as<int>() : 1;
 
     // API testen
     HTTPClient http;
@@ -3261,11 +3263,15 @@ server.on("/testapi", HTTP_POST, []() {
     http.setUserAgent("MoodlightClient/1.0");
 
     debug(String(F("Teste API URL: ")) + testApiUrl);
+    // v9.0: Bei neuer API keine headlines_per_source Parameter mehr anhängen
     String testUrl = testApiUrl;
-    if (testUrl.indexOf('?') >= 0) {
-      testUrl += "&headlines_per_source=" + String(testHeadlines);
-    } else {
-      testUrl += "?headlines_per_source=" + String(testHeadlines);
+    // Nur für alte API-Endpunkte den Parameter anhängen
+    if (testUrl.indexOf("/api/news/") >= 0 && testHeadlines > 0) {
+      if (testUrl.indexOf('?') >= 0) {
+        testUrl += "&headlines_per_source=" + String(testHeadlines);
+      } else {
+        testUrl += "?headlines_per_source=" + String(testHeadlines);
+      }
     }
 
     if (http.begin(wifiClientHTTP, testUrl)) {
