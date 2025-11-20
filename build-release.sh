@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION=$(grep 'MOODLIGHT_VERSION' src/config.h | cut -d'"' -f2)
+VERSION=$(grep '^#define MOODLIGHT_VERSION' src/config.h | cut -d'"' -f2)
 if [ -z "$VERSION" ]; then
     if [ -z "$1" ]; then
         echo "Fehler: Version nicht gefunden"
