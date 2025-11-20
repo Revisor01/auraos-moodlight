@@ -3150,7 +3150,7 @@ server.on("/api/settings/api", HTTP_GET, []() {
       }
     }
     // v9.0: headlinesPerSource ist optional (wird im Backend verwaltet)
-    if (doc.containsKey("headlinesPerSource") && doc["headlinesPerSource"].is<float>()) {
+    if (doc["headlinesPerSource"].is<float>()) {
       int newHeadlines = doc["headlinesPerSource"].as<int>();
       newHeadlines = constrain(newHeadlines, 1, 10);
       if (newHeadlines != headlines_per_source) {
@@ -3255,7 +3255,7 @@ server.on("/testapi", HTTP_POST, []() {
     // Werte aus JSON extrahieren
     String testApiUrl = doc["apiUrl"].as<String>();
     // v9.0: headlinesPerSource ist optional
-    int testHeadlines = doc.containsKey("headlinesPerSource") ? doc["headlinesPerSource"].as<int>() : 1;
+    int testHeadlines = doc["headlinesPerSource"].is<int>() ? doc["headlinesPerSource"].as<int>() : 1;
 
     // API testen
     HTTPClient http;
