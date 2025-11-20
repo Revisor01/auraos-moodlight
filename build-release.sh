@@ -59,8 +59,8 @@ fi
 
 # Firmware kopieren
 echo "[4/5] Kopiere Firmware..."
-cp .pio/build/esp32dev/firmware.bin "${RELEASE_DIR}/firmware-v${VERSION}.bin"
-echo "   -> Firmware: $(ls -lh ${RELEASE_DIR}/firmware-v${VERSION}.bin | awk '{print $5}')"
+cp .pio/build/esp32dev/firmware.bin "${RELEASE_DIR}/Firmware-${VERSION}-AuraOS.bin"
+echo "   -> Firmware: $(ls -lh ${RELEASE_DIR}/Firmware-${VERSION}-AuraOS.bin | awk '{print $5}')"
 
 # Checksums erstellen
 echo "[5/5] Erstelle Checksums..."
@@ -75,7 +75,7 @@ cat > "${RELEASE_DIR}/README.md" << 'EOF'
 ## Dateien
 
 - `UI-VERSION-AuraOS.tgz` - Web-Interface Update
-- `firmware-vVERSION.bin` - Firmware Binary
+- `Firmware-VERSION-AuraOS.bin` - Firmware Binary
 - `checksums.txt` - SHA256 Checksums
 
 ## Installation (OTA)
@@ -86,8 +86,10 @@ cat > "${RELEASE_DIR}/README.md" << 'EOF'
 - Upload & warten
 
 ### 2. Firmware Update (DANACH!)
-- Firmware Update Sektion → Wähle `firmware-vVERSION.bin`
+- Firmware Update Sektion → Wähle `Firmware-VERSION-AuraOS.bin`
 - Upload → Gerät startet neu
+
+**WICHTIG:** Firmware muss `Firmware-X.X-AuraOS.bin` heißen!
 
 ## Checksums verifizieren
 
