@@ -1043,7 +1043,7 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
     HTTPClient http;
     http.setReuse(false);
     http.setUserAgent("MoodlightClient/1.0");
-    http.setTimeout(10000);  // Längeres Timeout für Statistiken
+    http.setTimeout(15000);  // Längeres Timeout für Statistiken
 
     if (!http.begin(wifiClientHTTP, statsUrl)) {
         debug(F("HTTP Begin fehlgeschlagen für Backend-Statistiken"));
@@ -1054,12 +1054,17 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
     debug(String(F("Backend-Statistiken HTTP Code: ")) + String(httpCode));
 
     if (httpCode == HTTP_CODE_OK) {
-        WiFiClient* stream = http.getStreamPtr();
-        DeserializationError error = deserializeJson(doc, *stream);
+        String payload = http.getString();
         http.end();
+
+        debug(String(F("Backend Payload Größe: ")) + String(payload.length()) + F(" bytes"));
+
+        // Parse JSON from string
+        DeserializationError error = deserializeJson(doc, payload);
 
         if (error) {
             debug(String(F("JSON Parsing Fehler bei Backend-Statistiken: ")) + error.c_str());
+            debug(String(F("Payload Preview: ")) + payload.substring(0, 100));
             return false;
         }
 
@@ -1070,7 +1075,7 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
         // Bei 404 oder anderen Fehlern die Antwort ausgeben für besseres Debugging
         if (httpCode > 0) {
             String payload = http.getString();
-            if (payload.length() > 0 && payload.length() < 200) {
+            if (payload.length() > 0 && payload.length() < 500) {
                 debug(String(F("Backend Antwort: ")) + payload);
             }
         }
@@ -2251,6 +2256,7 @@ server.on("/diagnostics", HTTP_GET, []() {
         hours = server.arg("hours").toInt();
     }
 
+    // Großes JsonDocument für Backend-Daten (bis zu 48 Datenpunkte * ~150 bytes)
     JsonDocument doc;
     if (fetchBackendStatistics(doc, hours)) {
         // Forward backend response to client
@@ -2260,6 +2266,7 @@ server.on("/diagnostics", HTTP_GET, []() {
         jsonPool.release(jsonBuffer);
         debug(String(F("Stats from backend sent: ")) + len + F(" bytes"));
     } else {
+        debug(F("Backend statistics fetch failed, sending 503"));
         server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
     }
 }
