@@ -1,9 +1,9 @@
 #!/bin/bash
-# AuraOS Moodlight - Release Build Script
+# AuraOS Moodlight - Release Build Script (Monorepo)
 
 set -e
 
-VERSION=$(grep '^#define MOODLIGHT_VERSION' src/config.h | cut -d'"' -f2)
+VERSION=$(grep '^#define MOODLIGHT_VERSION' firmware/src/config.h | cut -d'"' -f2)
 if [ -z "$VERSION" ]; then
     if [ -z "$1" ]; then
         echo "Fehler: Version nicht gefunden"
@@ -28,7 +28,7 @@ mkdir -p "$RELEASE_DIR"
 
 # UI-Package erstellen
 echo "[2/5] Erstelle UI-Package..."
-cd data
+cd firmware/data
 tar -czf "UI-${VERSION}-AuraOS.tgz" \
     setup.html \
     mood.html \
@@ -39,27 +39,29 @@ tar -czf "UI-${VERSION}-AuraOS.tgz" \
     --exclude="*.tmp.*" \
     --exclude="*.tgz" 2>/dev/null || true
 
-mv "UI-${VERSION}-AuraOS.tgz" "../${RELEASE_DIR}/"
-cd ..
+mv "UI-${VERSION}-AuraOS.tgz" "../../${RELEASE_DIR}/"
+cd ../..
 echo "   -> UI-Package: $(ls -lh ${RELEASE_DIR}/UI-${VERSION}-AuraOS.tgz | awk '{print $5}')"
 
 # Firmware kompilieren
 echo "[3/5] Kompiliere Firmware..."
 if command -v pio &> /dev/null; then
+    cd firmware
     pio run -s 2>&1 | grep -E "(SUCCESS|error|Error)" || true
+    cd ..
 else
     echo "   -> PlatformIO nicht gefunden, überspringe Build"
     echo "   -> Verwende existierende firmware.bin"
 fi
 
-if [ ! -f ".pio/build/esp32dev/firmware.bin" ]; then
+if [ ! -f "firmware/.pio/build/esp32dev/firmware.bin" ]; then
     echo "   Fehler: Firmware nicht gefunden!"
     exit 1
 fi
 
 # Firmware kopieren
 echo "[4/5] Kopiere Firmware..."
-cp .pio/build/esp32dev/firmware.bin "${RELEASE_DIR}/Firmware-${VERSION}-AuraOS.bin"
+cp firmware/.pio/build/esp32dev/firmware.bin "${RELEASE_DIR}/Firmware-${VERSION}-AuraOS.bin"
 echo "   -> Firmware: $(ls -lh ${RELEASE_DIR}/Firmware-${VERSION}-AuraOS.bin | awk '{print $5}')"
 
 # Checksums erstellen
@@ -69,7 +71,7 @@ shasum -a 256 *.bin *.tgz > checksums.txt
 cd ../..
 
 # README erstellen
-cat > "${RELEASE_DIR}/README.md" << 'EOF'
+cat > "${RELEASE_DIR}/README.md" << 'INNEREOF'
 # AuraOS Moodlight vVERSION
 
 ## Dateien
@@ -96,7 +98,7 @@ cat > "${RELEASE_DIR}/README.md" << 'EOF'
 ```bash
 shasum -a 256 -c checksums.txt
 ```
-EOF
+INNEREOF
 
 # VERSION im README ersetzen
 sed -i '' "s/VERSION/${VERSION}/g" "${RELEASE_DIR}/README.md" 2>/dev/null || \

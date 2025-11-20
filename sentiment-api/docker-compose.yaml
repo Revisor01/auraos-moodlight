@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # ===== News Sentiment Analyzer (Main App) =====
+  news-analyzer:
+    build: .
+    container_name: moodlight-analyzer
+    ports:
+      - "6237:6237"
+    environment:
+      - FLASK_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATABASE_URL=postgresql://moodlight:${POSTGRES_PASSWORD}@postgres:5432/moodlight
+      - REDIS_URL=redis://redis:6379/0
+      - DEFAULT_HEADLINES_PER_SOURCE=1
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./:/app
+    networks:
+      - moodlight-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+
+  # ===== PostgreSQL Database =====
+  postgres:
+    image: postgres:16-alpine
+    container_name: moodlight-postgres
+    environment:
+      POSTGRES_DB: moodlight
+      POSTGRES_USER: moodlight
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # Ports nur intern im Docker-Netzwerk
+    expose:
+      - "5432"
+    networks:
+      - moodlight-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moodlight"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===== Redis Cache =====
+  redis:
+    image: redis:7-alpine
+    container_name: moodlight-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+    # Ports nur intern im Docker-Netzwerk
+    expose:
+      - "6379"
+    networks:
+      - moodlight-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ===== Adminer (Database Web UI) =====
+  adminer:
+    image: adminer:latest
+    container_name: moodlight-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: nette
+    networks:
+      - moodlight-net
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
+  # ===== Optional: Redis Commander (Redis Web UI) =====
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: moodlight-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - moodlight-net
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+networks:
+  moodlight-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
