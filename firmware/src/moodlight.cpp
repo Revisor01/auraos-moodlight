@@ -97,7 +97,7 @@ String floatToString(float value, int decimalPlaces)
 
 // === ArduinoHA Setup ===
 WiFiClient wifiClientHA;
-WiFiClient wifiClientHTTP; // Globale Instanz für HTTPClient
+WiFiClientSecure wifiClientHTTP; // HTTPS Client für Backend API
 byte mac[6];
 HADevice device; // Wird in setupHA initialisiert
 HAMqtt mqtt(wifiClientHA, device);
@@ -4962,6 +4962,9 @@ void setup() {
 
     // Bluetooth deaktivieren um Speicher zu sparen
     btStop();
+
+    // WiFiClientSecure für HTTPS ohne Zertifikat-Prüfung
+    wifiClientHTTP.setInsecure();
 
     // WiFi-Energiesparfunktionen deaktivieren für bessere Konnektivität
     WiFi.persistent(false);  // Verhindert Flash-Verschleiß durch häufiges Speichern
