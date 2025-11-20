@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, jsonify, request
 import feedparser
 import logging
 from collections import Counter
@@ -310,7 +310,14 @@ def get_headlines_per_source(route_default: int) -> int:
 
 @app.route('/')
 def index():
-  return render_template('index.html')
+  return jsonify({
+    "service": "AuraOS Moodlight API v9.0",
+    "status": "running",
+    "endpoints": {
+      "current": "/api/moodlight/current",
+      "history": "/api/moodlight/history?hours=168"
+    }
+  })
 
 @app.route('/api/dashboard')
 def get_dashboard_data():
