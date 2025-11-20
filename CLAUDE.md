@@ -68,3 +68,33 @@ This is an ESP32-based smart moodlight project called "AuraOS" that analyzes wor
 - German language interface and comments throughout codebase
 - Comprehensive error handling and system recovery mechanisms
 - Modular design with separation of concerns between utility classes and main application
+
+## Backend API Server
+
+The sentiment analysis backend is located in `sentiment-api/` directory:
+
+**Production Deployment:**
+- Server: `ssh root@server.godsapp.de`
+- Location: `/opt/auraos-moodlight/sentiment-api/`
+- URL: `http://analyse.godsapp.de`
+
+**Deployment Workflow:**
+1. Make changes locally in `sentiment-api/` directory
+2. Commit and push to GitHub: `git add . && git commit -m "message" && git push`
+3. SSH to server: `ssh root@server.godsapp.de`
+4. Navigate to project: `cd /opt/auraos-moodlight/sentiment-api/`
+5. Pull changes: `git pull`
+6. Rebuild and restart: `docker-compose build && docker-compose up -d`
+7. Check logs: `docker-compose logs -f news-analyzer`
+
+**Backend Stack:**
+- Flask API with OpenAI GPT-4o-mini for sentiment analysis
+- PostgreSQL for persistent storage
+- Redis for caching (5 min TTL)
+- Docker Compose orchestration
+- Background worker for automatic sentiment updates (30 min interval)
+
+**API Endpoints:**
+- `/` - Service info (JSON)
+- `/api/moodlight/current` - Current sentiment data
+- `/api/moodlight/history?hours=168` - Historical data (default: last 7 days)
