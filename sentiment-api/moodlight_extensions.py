@@ -143,12 +143,14 @@ def register_moodlight_endpoints(app):
         Sentiment-Historie abrufen
 
         Query-Parameter:
+            hours: Anzahl Stunden zurück (einfacher Modus)
             from: ISO8601 timestamp (default: -24h)
             to: ISO8601 timestamp (default: now)
             limit: Max. Anzahl Einträge (default: 1000)
         """
         try:
             # Parameter parsen
+            hours_param = request.args.get('hours', type=int)
             from_param = request.args.get('from')
             to_param = request.args.get('to')
             limit = request.args.get('limit', 1000, type=int)
@@ -157,17 +159,22 @@ def register_moodlight_endpoints(app):
             from_time = None
             to_time = None
 
-            if from_param:
-                try:
-                    from_time = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
-                except ValueError:
-                    return jsonify({"error": "Ungültiges 'from' Format (ISO8601 erwartet)"}), 400
+            # Wenn 'hours' Parameter vorhanden, berechne from_time
+            if hours_param:
+                from_time = datetime.utcnow() - timedelta(hours=hours_param)
+                to_time = datetime.utcnow()
+            else:
+                if from_param:
+                    try:
+                        from_time = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
+                    except ValueError:
+                        return jsonify({"error": "Ungültiges 'from' Format (ISO8601 erwartet)"}), 400
 
-            if to_param:
-                try:
-                    to_time = datetime.fromisoformat(to_param.replace('Z', '+00:00'))
-                except ValueError:
-                    return jsonify({"error": "Ungültiges 'to' Format (ISO8601 erwartet)"}), 400
+                if to_param:
+                    try:
+                        to_time = datetime.fromisoformat(to_param.replace('Z', '+00:00'))
+                    except ValueError:
+                        return jsonify({"error": "Ungültiges 'to' Format (ISO8601 erwartet)"}), 400
 
             # Daten aus DB holen
             db = get_database()
@@ -179,14 +186,13 @@ def register_moodlight_endpoints(app):
                     entry['timestamp'] = entry['timestamp'].isoformat()
 
             return jsonify({
-                "status": "success",
                 "count": len(history),
                 "data": history
             })
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/history: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     # ===== TREND ENDPOINT =====
     @app.route('/api/moodlight/trend', methods=['GET'])
