@@ -2831,7 +2831,8 @@ void setupWebServer()
     // server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
 
     server.on("/api/storage", HTTP_GET, handleApiStorageInfo);
-setupArchiveEndpoints();
+    // v9.0: Archive endpoints disabled - data managed in backend
+    // setupArchiveEndpoints();
 
     // Additional common files
 server.on("/favicon.ico", HTTP_GET, []() {

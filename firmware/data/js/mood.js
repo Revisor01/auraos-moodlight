@@ -73,28 +73,28 @@ function loadData() {
         try {
             // Versuche, den Text als JSON zu parsen
             const result = JSON.parse(text);
-            
+
             if (result.error) {
                 // Server-Fehlermeldung anzeigen
-                document.getElementById('loading-message').textContent = 
+                document.getElementById('loading-message').textContent =
                 `Server-Fehler: ${result.error}`;
                 console.error('Server-Fehler:', result.error);
                 return null;
             }
-            
+
             if (result && result.data && Array.isArray(result.data)) {
                 processRawData(result.data);
-                
+
                 // Informativere Nachricht mit Begrenzungsinfo, wenn vorhanden
                 let message = `Daten geladen: ${result.data.length} Datenpunkte`;
-                if (result.total > result.showing) {
-                    message += ` (von insgesamt ${result.total})`;
+                if (result.count && result.count > result.data.length) {
+                    message += ` (von insgesamt ${result.count})`;
                 }
-                
+
                 document.getElementById('loading-message').textContent = message;
                 return result;
             } else {
-                document.getElementById('loading-message').textContent = 
+                document.getElementById('loading-message').textContent =
                 'Keine Daten verfügbar oder falsches Format';
                 return null;
             }
@@ -125,15 +125,22 @@ function processRawData(data) {
         console.error("Keine Daten zum Verarbeiten");
         return;
     }
-    
-    // Daten vorbereiten
-    allData = data.map(item => ({
-        timestamp: new Date(item.timestamp * 1000),
-        value: item.sentiment,
-        category: item.category, // This is now coming from the server's computed value
-        original_index: item.timestamp
-    })).sort((a, b) => a.timestamp - b.timestamp);
-    
+
+    // Daten vorbereiten - Backend gibt ISO timestamp und sentiment_score
+    allData = data.map(item => {
+        // Parse ISO timestamp to Date object
+        const timestamp = new Date(item.timestamp);
+        // Backend sendet sentiment_score, nicht sentiment
+        const value = item.sentiment_score !== undefined ? item.sentiment_score : item.sentiment;
+
+        return {
+            timestamp: timestamp,
+            value: value,
+            category: item.category, // Kommt bereits vom Server
+            original_index: Math.floor(timestamp.getTime() / 1000) // Unix timestamp für ID
+        };
+    }).sort((a, b) => a.timestamp - b.timestamp);
+
     // Daten verarbeiten
     processData(null, false);
 }
@@ -1011,67 +1018,18 @@ function renderDataTable() {
     tableBody.innerHTML = tableRows;
 }
 
-// Delete a specific data point
+// v9.0: Delete and Reset removed - data managed in backend
+// Data management is now handled by the backend server
 function deleteDataPoint(timestamp) {
-    if (!confirm('Diesen Datenpunkt wirklich löschen?')) {
-        return;
-    }
-    
-    fetch(`/api/stats/delete?timestamp=${timestamp}`)
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            // Reload data and update table
-            loadData().then(() => {
-                // After data is loaded, update the table
-                renderDataTable();
-            });
-        } else {
-            alert('Fehler beim Löschen: ' + (result.error || 'Unbekannter Fehler'));
-        }
-    })
-    .catch(error => {
-        console.error('Error deleting data point:', error);
-        alert('Fehler beim Löschen: ' + error.message);
-    });
+    alert('Datenverwaltung erfolgt jetzt im Backend. Bitte wenden Sie sich an den Server-Administrator.');
 }
 
-// Reset all data
 function resetAllData() {
-    if (!confirm('ACHTUNG: Wirklich ALLE Daten zurücksetzen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
-        return;
-    }
-    
-    if (!confirm('Sind Sie ABSOLUT SICHER? Alle Daten werden unwiderruflich gelöscht!')) {
-        return;
-    }
-    
-    fetch('/api/stats/reset')
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            alert('Alle Daten wurden erfolgreich zurückgesetzt.');
-            
-            // Close modal if open
-            const modal = document.getElementById('data-table-modal');
-            if (modal) {
-                closeDataModal();
-            }
-            
-            // Reload data
-            loadData();
-        } else {
-            alert('Fehler beim Zurücksetzen: ' + (result.error || 'Unbekannter Fehler'));
-        }
-    })
-    .catch(error => {
-        console.error('Error resetting data:', error);
-        alert('Fehler beim Zurücksetzen: ' + error.message);
-    });
+    alert('Datenverwaltung erfolgt jetzt im Backend. Bitte wenden Sie sich an den Server-Administrator.');
 }
 
-// Storage und Archiv-Verwaltung
-let showingArchives = false;
+// v9.0: Storage und Archiv-Verwaltung entfernt - Daten im Backend
+// Storage info is no longer relevant as data is managed in backend
 
 function formatFileSize(bytes) {
     if (bytes < 1024) {
@@ -1084,350 +1042,32 @@ function formatFileSize(bytes) {
 }
 
 function loadStorageInfo() {
-    fetch('/api/storage')
-    .then(response => response.json())
-    .then(data => {
-        // About page storage info
-        const storageBar = document.getElementById('storage-progress-bar');
-        const storageUsed = document.getElementById('storage-used');
-        const storageTotal = document.getElementById('storage-total');
-        const storageFree = document.getElementById('storage-free');
-        const storagePercent = document.getElementById('storage-percent');
-        const statsRecords = document.getElementById('stats-records');
-        const statsSize = document.getElementById('stats-size');
-        
-        if (storageBar) {
-            storageBar.style.width = data.percentUsed.toFixed(1) + '%';
-            storageBar.textContent = data.percentUsed.toFixed(1) + '%';
-        }
-        
-        if (storageUsed) storageUsed.textContent = formatFileSize(data.used);
-        if (storageTotal) storageTotal.textContent = formatFileSize(data.total);
-        if (storageFree) storageFree.textContent = formatFileSize(data.free);
-        if (storagePercent) storagePercent.textContent = data.percentUsed.toFixed(1);
-        if (statsRecords) statsRecords.textContent = data.recordCount.toLocaleString();
-        if (statsSize) statsSize.textContent = formatFileSize(data.statsSize || 0);
-        
-        // Mood dashboard storage info
-        const moodStorageBar = document.getElementById('mood-storage-bar');
-        const moodRecords = document.getElementById('mood-records');
-        const moodStorage = document.getElementById('mood-storage');
-        
-        if (moodStorageBar) {
-            moodStorageBar.style.width = data.percentUsed.toFixed(1) + '%';
-            moodStorageBar.textContent = data.percentUsed.toFixed(1) + '%';
-        }
-        
-        if (moodRecords) moodRecords.textContent = data.recordCount.toLocaleString();
-        if (moodStorage) moodStorage.textContent = formatFileSize(data.statsSize || 0);
-    })
-    .catch(error => {
-        console.error('Fehler beim Laden der Speicherinformationen:', error);
-    });
+    // v9.0: Storage info removed - data managed in backend
+    console.log('Storage info is no longer tracked locally - data managed in backend');
 }
 
+// v9.0: Archive functions removed - data managed in backend
 function loadArchivesList() {
-    fetch('/api/archives')
-    .then(response => response.json())
-    .then(data => {
-        const archivesList = document.getElementById('archives-list');
-        if (!archivesList) return;
-        
-        if (!data.archives || data.archives.length === 0) {
-            archivesList.innerHTML = '<tr><td colspan="4" class="center">Keine Archive vorhanden</td></tr>';
-            return;
-        }
-        
-        // Archive nach Name sortieren (basierend auf Datum)
-        data.archives.sort((a, b) => b.name.localeCompare(a.name));
-        
-        let tableRows = '';
-        data.archives.forEach(archive => {
-            const period = archive.period || 'Unbekannt';
-            const records = archive.records.toLocaleString();
-            const size = formatFileSize(archive.size);
-            const encodedName = encodeURIComponent(archive.name);
-            
-            tableRows += `
-                    <tr>
-                        <td>${period}</td>
-                        <td>${records}</td>
-                        <td>${size}</td>
-                        <td>
-                            <button class="btn btn-sm" onclick="viewArchive('${encodedName}')">Ansehen</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteArchive('${encodedName}')">Löschen</button>
-                        </td>
-                    </tr>
-                `;
-        });
-        
-        archivesList.innerHTML = tableRows;
-    })
-    .catch(error => {
-        console.error('Fehler beim Laden der Archive:', error);
-    });
+    console.log('Archive management removed - data managed in backend');
 }
 
+// v9.0: All archive functions removed - data managed in backend
 function viewArchive(archiveName) {
-    // Ladestatus anzeigen
-    document.getElementById('loading-message').textContent = 'Lade Archivdaten...';
-    
-    fetch(`/api/archives/data?name=${archiveName}`)
-    .then(response => response.json())
-    .then(result => {
-        if (result && result.data && Array.isArray(result.data)) {
-            // Archivdaten verarbeiten wie aktuelle Daten
-            processArchiveData(result.data, archiveName);
-            document.getElementById('loading-message').textContent = 
-            `Archiv geladen: ${result.data.length} Datenpunkte`;
-        } else {
-            document.getElementById('loading-message').textContent = 
-            'Keine Daten im Archiv oder falsches Format';
-        }
-    })
-    .catch(error => {
-        console.error('Fehler beim Laden der Archivdaten:', error);
-        document.getElementById('loading-message').textContent = 
-        'Fehler beim Laden der Archivdaten: ' + error.message;
-    });
-}
-
-function processArchiveData(data, archiveName) {
-    // Temporäre Datenvisualisierung erstellen
-    const archiveData = data.map(item => ({
-        timestamp: new Date(item.timestamp * 1000),
-        value: item.sentiment,
-        category: item.category,
-        original_index: item.timestamp,
-        isArchive: true
-    })).sort((a, b) => a.timestamp - b.timestamp);
-    
-    // Temporären Tab erstellen für Archivanzeige
-    const tabsContainer = document.getElementById('main-chart-tabs');
-    const tabContentContainer = document.querySelector('.tab-content.active').parentNode;
-    
-    // Prüfen ob Archive-Tab bereits existiert
-    const existingTab = document.querySelector(`li[data-tab="archive"]`);
-    if (existingTab) {
-        // Vorhandenen Tab und Inhalt entfernen
-        existingTab.remove();
-        document.getElementById('archive-tab').remove();
-    }
-    
-    // Neuen Tab erstellen
-    const newTab = document.createElement('li');
-    newTab.setAttribute('data-tab', 'archive');
-    newTab.textContent = 'Archiv';
-    newTab.classList.add('active');
-    
-    // Tab-Klassen aktualisieren
-    document.querySelectorAll('.nav-tabs li').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    tabsContainer.appendChild(newTab);
-    
-    // Tab-Inhalt erstellen
-    const tabContent = document.createElement('div');
-    tabContent.className = 'tab-content active';
-    tabContent.id = 'archive-tab';
-    
-    const chartContainer = document.createElement('div');
-    chartContainer.className = 'chart-container';
-    
-    const canvas = document.createElement('canvas');
-    canvas.id = 'archive-chart';
-    
-    chartContainer.appendChild(canvas);
-    tabContent.appendChild(chartContainer);
-    tabContentContainer.appendChild(tabContent);
-    
-    // Archivtitel hinzufügen
-    const periodMatch = archiveName.match(/stats_(\d{4})_(\d{2})\.csv/);
-    let periodText = 'Unbekannter Zeitraum';
-    if (periodMatch) {
-        const year = periodMatch[1];
-        const month = periodMatch[2];
-        const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
-            'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-        periodText = `${monthNames[parseInt(month)-1]} ${year}`;
-    }
-    
-    const archiveTitle = document.createElement('div');
-    archiveTitle.className = 'archive-title';
-    archiveTitle.textContent = `Archiv: ${periodText}`;
-    tabContent.insertBefore(archiveTitle, chartContainer);
-    
-    // Event-Listener für den neuen Tab hinzufügen
-    newTab.addEventListener('click', function() {
-        document.querySelectorAll('.nav-tabs li').forEach(t => {
-            t.classList.remove('active');
-        });
-        this.classList.add('active');
-        
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        
-        document.getElementById('archive-tab').classList.add('active');
-    });
-    
-    // Chart erstellen
-    createArchiveChart(archiveData);
-}
-
-function createArchiveChart(data) {
-    const ctx = document.getElementById('archive-chart').getContext('2d');
-    
-    // Chart ähnlich zu den Hauptcharts erstellen
-    const chartData = {
-        labels: data.map(d => moment(d.timestamp).format('DD.MM HH:mm')),
-        datasets: [{
-            label: 'Stimmungswert',
-            data: data.map(d => d.value),
-            borderColor: '#9b59b6',
-            backgroundColor: 'rgba(155, 89, 182, 0.1)',
-            borderWidth: 2,
-            pointRadius: 1,
-            pointHoverRadius: 6,
-            tension: 0.2,
-            fill: true
-        }]
-    };
-    
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            title: { display: false },
-            legend: { display: false },
-            tooltip: { 
-                mode: 'index', 
-                intersect: false, 
-                callbacks: { 
-                    label: context => `Wert: ${context.parsed.y.toFixed(2)}` 
-                } 
-            }
-        },
-        scales: {
-            x: {
-                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 },
-                grid: { display: false }
-            },
-            y: {
-                grid: { drawBorder: false },
-                suggestedMin: -1,
-                suggestedMax: 1
-            }
-        }
-    };
-    
-    if (charts['archive']) {
-        charts['archive'].destroy();
-    }
-    
-    charts['archive'] = new Chart(ctx, {
-        type: 'line',
-        data: chartData,
-        options: chartOptions
-    });
+    alert('Archivverwaltung erfolgt jetzt im Backend.');
 }
 
 function deleteArchive(archiveName) {
-    if (!confirm(`Dieses Archiv wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
-        return;
-    }
-    
-    fetch(`/api/archives/delete?name=${archiveName}`)
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            alert('Archiv erfolgreich gelöscht.');
-            loadArchivesList();
-        } else {
-            alert('Fehler beim Löschen: ' + (result.error || 'Unbekannter Fehler'));
-        }
-    })
-    .catch(error => {
-        console.error('Fehler beim Löschen des Archivs:', error);
-        alert('Fehler beim Löschen: ' + error.message);
-    });
+    alert('Archivverwaltung erfolgt jetzt im Backend.');
 }
 
 function runArchiveProcess() {
-    if (!confirm('Archivierungsprozess starten? Daten älter als 90 Tage werden in separate Dateien verschoben.')) {
-        return;
-    }
-    
-    document.getElementById('loading-message').textContent = 'Archivierungsprozess läuft...';
-    
-    fetch('/api/archives/process')
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            document.getElementById('loading-message').textContent = 'Archivierung abgeschlossen.';
-            alert('Archivierung erfolgreich abgeschlossen.');
-            loadArchivesList();
-            loadData(); // Hauptdaten neu laden
-        } else {
-            document.getElementById('loading-message').textContent = 'Archivierung fehlgeschlagen.';
-            alert('Fehler bei der Archivierung: ' + (result.error || 'Unbekannter Fehler'));
-        }
-    })
-    .catch(error => {
-        console.error('Fehler beim Archivierungsprozess:', error);
-        document.getElementById('loading-message').textContent = 'Archivierung fehlgeschlagen.';
-        alert('Fehler bei der Archivierung: ' + error.message);
-    });
+    alert('Archivierung erfolgt jetzt automatisch im Backend.');
 }
 
 function toggleArchivesView() {
-    const archivesContainer = document.getElementById('archives-container');
-    const dashboardContainers = document.querySelectorAll('.dashboard-container:not(#archives-container)');
-    const toggleButton = document.getElementById('toggle-archives-btn');
-    
-    showingArchives = !showingArchives;
-    
-    if (showingArchives) {
-        // Archive anzeigen
-        archivesContainer.style.display = 'grid';
-        dashboardContainers.forEach(container => {
-            container.style.display = 'none';
-        });
-        toggleButton.textContent = 'Dashboard anzeigen';
-        loadArchivesList();
-    } else {
-        // Dashboard anzeigen
-        archivesContainer.style.display = 'none';
-        dashboardContainers.forEach(container => {
-            container.style.display = 'grid';
-        });
-        toggleButton.textContent = 'Archive anzeigen';
-    }
+    alert('Archivansicht nicht mehr verfügbar - Daten werden im Backend verwaltet.');
 }
 
 function repairStatsCSV() {
-    if (!confirm('Möchten Sie eine Reparatur der CSV-Datei durchführen? Dies kann bei beschädigten Daten helfen.')) {
-        return;
-    }
-    
-    fetch('/api/repair/stats')
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('CSV-Datei erfolgreich repariert. Die Seite wird neu geladen.');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            alert('Reparatur fehlgeschlagen: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Fehler bei der Reparatur:', error);
-        alert('Fehler bei der Reparatur: ' + error.message);
-    });
+    alert('CSV-Reparatur nicht mehr erforderlich - Daten werden im Backend verwaltet.');
 }

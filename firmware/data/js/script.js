@@ -209,22 +209,18 @@ function getMoodClassName(value) {
 // Schalter-Updates
 function updateSwitches(data) {
   if (!data) return;
-  
+
   const lightSwitch = document.getElementById('light-switch');
   const modeSwitch = document.getElementById('mode-switch');
   const modeText = document.getElementById('mode-text');
   const brightness = document.getElementById('brightness');
   const brightnessVal = document.getElementById('brightness-val');
-  const headlines = document.getElementById('headlines');
-  const headlinesVal = document.getElementById('headlines-val');
-  
+
   if (lightSwitch) lightSwitch.checked = data.lightOn;
   if (modeSwitch) modeSwitch.checked = data.mode === 'Auto';
   if (modeText) modeText.textContent = data.mode;
   if (brightness) brightness.value = data.brightness || 255;
   if (brightnessVal) brightnessVal.textContent = data.brightness || 255;
-  if (headlines) headlines.value = data.headlines || 1;
-  if (headlinesVal) headlinesVal.textContent = data.headlines || 1;
 }
 
 // Control functions
@@ -247,12 +243,6 @@ function setColor(color) {
 function setBrightness(value) {
   document.getElementById('brightness-val').textContent = value;
   fetch(`/set-brightness?value=${value}`)
-    .then(() => setTimeout(refreshStatus, 300));
-}
-
-function setHeadlines(value) {
-  document.getElementById('headlines-val').textContent = value;
-  fetch(`/set-headlines?value=${value}`)
     .then(() => setTimeout(refreshStatus, 300));
 }
 
