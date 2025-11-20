@@ -707,7 +707,7 @@
                     <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
                     <div class="stat-label">Messungen</div>
                     <div class="stat-value" id="stat-count">--</div>
-                    <div class="stat-label" style="margin-top: 10px; font-size: 0.8rem;">Letzte 7 Tage</div>
+                    <div class="stat-label" style="margin-top: 10px; font-size: 0.8rem;">Gesamt</div>
                 </div>
             </div>
 
@@ -1174,7 +1174,7 @@
             else mood = "äußerst negativ";
 
             const summary = `
-                Basierend auf ${stats.count} Messungen der letzten 7 Tage
+                Basierend auf ${stats.count} Messungen
                 ist die allgemeine Stimmung der Weltlage <strong>${mood}</strong> mit einem Durchschnittswert von <strong>${stats.avg.toFixed(2)}</strong>.
                 Die Werte schwanken zwischen ${stats.min.toFixed(2)} und ${stats.max.toFixed(2)}.
             `;
