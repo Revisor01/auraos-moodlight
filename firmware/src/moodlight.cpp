@@ -28,7 +28,7 @@
 #define DEST_FS_USES_LITTLEFS
 #include <ESP32-targz.h>
 #include <time.h>
-// #define DEBUG_MODE
+#define DEBUG_MODE  // AKTIVIERT für besseres Debugging
 // #define CONFIG_FREERTOS_UNICORE
 #include "config.h"
 
@@ -1043,28 +1043,37 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
     HTTPClient http;
     http.setReuse(false);
     http.setUserAgent("MoodlightClient/1.0");
-    http.setTimeout(15000);  // Längeres Timeout für Statistiken
+
+    // Ensure any previous connection is closed
+    if (wifiClientHTTP.connected()) {
+        wifiClientHTTP.stop();
+        delay(10);
+    }
 
     if (!http.begin(wifiClientHTTP, statsUrl)) {
         debug(F("HTTP Begin fehlgeschlagen für Backend-Statistiken"));
         return false;
     }
 
-    int httpCode = http.GET();
-    debug(String(F("Backend-Statistiken HTTP Code: ")) + String(httpCode));
+    http.setTimeout(15000);  // Längeres Timeout für Statistiken
+
+    int httpCode = 0;
+    try {
+        httpCode = http.GET();
+        debug(String(F("Backend-Statistiken HTTP Code: ")) + String(httpCode));
+    } catch (...) {
+        debug(F("Exception während HTTP GET für Backend-Statistiken"));
+        http.end();
+        return false;
+    }
 
     if (httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
+        // Parse JSON direkt vom Stream wie safeHttpGet
+        DeserializationError error = deserializeJson(doc, http.getStream());
         http.end();
-
-        debug(String(F("Backend Payload Größe: ")) + String(payload.length()) + F(" bytes"));
-
-        // Parse JSON from string
-        DeserializationError error = deserializeJson(doc, payload);
 
         if (error) {
             debug(String(F("JSON Parsing Fehler bei Backend-Statistiken: ")) + error.c_str());
-            debug(String(F("Payload Preview: ")) + payload.substring(0, 100));
             return false;
         }
 
@@ -1072,16 +1081,16 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
         return true;
     } else {
         debug(String(F("HTTP Fehler beim Laden der Backend-Statistiken: ")) + httpCode);
-        // Bei 404 oder anderen Fehlern die Antwort ausgeben für besseres Debugging
-        if (httpCode > 0) {
-            String payload = http.getString();
-            if (payload.length() > 0 && payload.length() < 500) {
-                debug(String(F("Backend Antwort: ")) + payload);
-            }
-        }
         http.end();
         return false;
     }
+
+    // Force close WiFi client
+    if (wifiClientHTTP.connected()) {
+        wifiClientHTTP.stop();
+    }
+
+    return false;
 }
 
 void initFS() {
