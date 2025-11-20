@@ -3124,10 +3124,11 @@ server.on("/api/settings/api", HTTP_GET, []() {
     bool changed = false;  // Flag, um zu prüfen, ob sich *irgendetwas* geändert hat
 
     // Werte aus JSON extrahieren und globale Variablen aktualisieren
-    if (doc["apiUrl"].is<float>()) {
+    if (doc["apiUrl"].is<const char*>()) {
       String newApiUrl = doc["apiUrl"].as<String>();
       if (newApiUrl != apiUrl) {
         apiUrl = newApiUrl;
+        lastMoodUpdate = 0;  // Erzwinge Sentiment-Update bei nächster Gelegenheit
         changed = true;
         debug(String(F("API URL geändert zu: ")) + apiUrl);
       }
