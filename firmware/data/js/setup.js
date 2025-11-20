@@ -1,4 +1,7 @@
-// RSS-Feed Verwaltung
+// v9.0: Default API URL
+const DEFAULT_NEWS_API_URL = 'https://analyse.godsapp.de/api/moodlight/current';
+
+// RSS-Feed Verwaltung (REMOVED in v9.0)
 let feeds = [];
 
 function pageInit() {

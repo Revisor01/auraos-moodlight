@@ -23,12 +23,8 @@
             <button id="theme-btn" class="btn btn-sm" onclick="toggleDarkMode()" aria-label="Zwischen Hell- und Dunkelmodus wechseln">☼</button>
         </div>
     </div>
-    
-    <div class="archive-toggle">
-        <button class="btn" id="toggle-archives-btn" onclick="toggleArchivesView()" aria-label="Zwischen Archiv- und Dashboard-Ansicht wechseln">
-            <i class="fas fa-archive" aria-hidden="true"></i> Archive anzeigen
-        </button>
-    </div>
+
+    <!-- v9.0: Archive-Feature entfernt - Daten im Backend verwaltet -->
 
     <div class="dashboard-container">
         <div class="dashboard-item full-width">
@@ -75,44 +71,9 @@
             </div>
         </div>
     </div>
-    
-    <div class="dashboard-container" id="archives-container" style="display:none;">
-        <div class="dashboard-item full-width">
-            <div class="chart-header">
-                <div class="chart-header-info">
-                    <h2>Datenarchive</h2>
-                    <div class="chart-subtitle">Historische Daten älter als 90 Tage</div>
-                </div>
-                <div>
-                    <button class="btn" onclick="loadArchivesList()" aria-label="Archivliste aktualisieren">
-                        <i class="fas fa-sync-alt" aria-hidden="true"></i> Aktualisieren
-                    </button>
-                    <button class="btn" onclick="runArchiveProcess()" aria-label="Archivierungsprozess starten">
-                        <i class="fas fa-archive" aria-hidden="true"></i> Archivierung starten
-                    </button>
-                </div>
-            </div>
-            
-            <div class="data-table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Zeitraum</th>
-                            <th scope="col">Datenpunkte</th>
-                            <th scope="col">Größe</th>
-                            <th scope="col">Aktionen</th>
-                        </tr>
-                    </thead>
-                    <tbody id="archives-list">
-                        <tr>
-                            <td colspan="4" class="center">Lade Archive...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    
+
+    <!-- v9.0: Archiv-Container entfernt - Daten im Backend verwaltet -->
+
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-balance-scale" aria-hidden="true"></i></div>
