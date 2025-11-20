@@ -219,7 +219,7 @@ function pageInit() {
             loadSystemInfo();
         }
     }
-    initImportForms();
+    // v9.0: initImportForms() removed - import/export managed in backend
 }
 
 
@@ -1047,6 +1047,8 @@ function saveFeeds() {
 */
 // ===== END OF REMOVED RSS FUNCTIONS =====
 
+// ===== REMOVED v9.0: Import/Export Functions - data managed in backend =====
+/*
 function exportStatistics() {
     // Ladeindikator anzeigen
     const exportBtn = document.getElementById('export-stats-btn');
@@ -1284,3 +1286,5 @@ function initImportForms() {
         label.textContent = this.files.length ? this.files[0].name : 'Einstellungsdatei wählen';
     });
 }
+*/
+// ===== END OF REMOVED IMPORT/EXPORT FUNCTIONS =====

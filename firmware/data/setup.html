@@ -37,9 +37,7 @@
             <a href="#" class="tab-link" data-tab="colors" role="tab" aria-selected="false" aria-controls="colors-tab">
                 <i class="fas fa-palette" aria-hidden="true"></i> Farben
             </a>
-            <a href="#" class="tab-link" data-tab="export" role="tab" aria-selected="false" aria-controls="export-tab">
-                <i class="fas fa-download" aria-hidden="true"></i> Daten Import/Export
-            </a>
+            <!-- REMOVED v9.0: Import/Export Tab - data managed in backend -->
             <a href="#" class="tab-link" data-tab="ui-update" role="tab" aria-selected="false" aria-controls="ui-update-tab">
                 <i class="fas fa-upload" aria-hidden="true"></i> Update
             </a>
@@ -233,63 +231,9 @@
             </div>
         </div>
     </div>
-    
-    <div id="export-tab" class="tab-content" role="tabpanel" aria-labelledby="export-tab">
-        <div class="card">
-            <div class="card-header">
-                <h2>Daten exportieren</h2>
-            </div>
-            <div class="alert alert-info">
-                Laden Sie Ihre Sentiment-Daten und Einstellungen herunter, um Backups zu erstellen.
-            </div>
-            <div style="margin-top: 10px;">
-                <button id="export-stats-btn" class="btn btn-sm" onclick="exportStatistics()">
-                    <i class="fas fa-file-csv" aria-hidden="true"></i> Statistikdaten exportieren
-                </button>
-                <button id="export-settings-btn" class="btn btn-sm" onclick="exportSettings()">
-                    <i class="fas fa-file-code" aria-hidden="true"></i> Einstellungen exportieren
-                </button>
-            </div>
-            <div id="export-result" style="margin-top: 10px;"></div>
-        </div>
-        
-        <div class="card" style="margin-top: 15px;">
-            <div class="card-header">
-                <h2>Daten importieren</h2>
-            </div>
-            <div class="alert alert-info">
-                Importieren Sie zuvor exportierte Daten, um Ihren Moodlight wiederherzustellen.
-            </div>
-            <div style="margin-top: 10px;">
-                <form id="stats-upload-form" action="/api/import/stats" method="POST" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="stats-file">CSV-Statistikdatei</label>
-                        <div class="custom-file">
-                            <input type="file" name="stats-file" id="stats-file" class="custom-file-input" accept=".csv">
-                            <label for="stats-file" class="custom-file-label" id="stats-file-label">Statistikdatei wählen</label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-warning">
-                        <i class="fas fa-file-import" aria-hidden="true"></i> Statistikdaten importieren
-                    </button>
-                </form>
-                
-                <form id="settings-upload-form" action="/api/import/settings" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
-                    <div class="form-group">
-                        <label for="settings-file">JSON-Einstellungsdatei</label>
-                        <div class="custom-file">
-                            <input type="file" name="settings-file" id="settings-file" class="custom-file-input" accept=".json">
-                            <label for="settings-file" class="custom-file-label" id="settings-file-label">Einstellungsdatei wählen</label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-warning">
-                        <i class="fas fa-file-import" aria-hidden="true"></i> Einstellungen importieren
-                    </button>
-                </form>
-            </div>
-            <div id="import-result" style="margin-top: 10px;"></div>
-        </div>
-    </div>
+
+    <!-- REMOVED v9.0: Import/Export Tab - data managed in backend -->
+
     <!-- Update Tab -->
     <div id="ui-update-tab" class="tab-content" role="tabpanel" aria-labelledby="ui-update-tab">
         <div class="card">
