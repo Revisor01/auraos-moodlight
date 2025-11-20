@@ -97,7 +97,7 @@ String floatToString(float value, int decimalPlaces)
 
 // === ArduinoHA Setup ===
 WiFiClient wifiClientHA;
-WiFiClientSecure wifiClientHTTP; // HTTPS Client für Backend API
+WiFiClient wifiClientHTTP; // HTTP Client für Backend API
 byte mac[6];
 HADevice device; // Wird in setupHA initialisiert
 HAMqtt mqtt(wifiClientHA, device);
@@ -109,7 +109,7 @@ HASelect haMode("mode");
 HAButton haRefreshSentiment("refresh_sentiment");
 HANumber haUpdateInterval("update_interval", HANumber::PrecisionP0);
 HANumber haDhtInterval("dht_interval", HANumber::PrecisionP0);
-HANumber haHeadlinesPerSource("headlines_per_source", HANumber::PrecisionP0);
+// v9.0: haHeadlinesPerSource removed - parameter only for legacy API endpoints
 HASensor haSentimentCategory("sentiment_category");
 // Heartbeat-Sensoren
 HASensor haUptime("uptime");
@@ -150,7 +150,7 @@ volatile uint8_t ledBrightness = DEFAULT_LED_BRIGHTNESS;
 volatile bool ledClear = false;
 int currentLedIndex = 2;
 int lastLedIndex = 2;
-int headlines_per_source = 1;
+// v9.0: headlines_per_source removed - only used for legacy API endpoints
 unsigned long lastMoodUpdate = 0;
 bool settingsNeedSaving = false;
 unsigned long lastSettingsSaved = 0;
@@ -319,31 +319,9 @@ SafeFileOps fileOps;
 // CSVBuffer statsBuffer("/data/stats.csv");
 NetworkDiagnostics netDiag;
 SystemHealthCheck sysHealth;
-TaskManager archiveTask("ArchiveTask", 8192); 
+// v9.0: archiveTask removed - archiving handled in backend
 unsigned long lastSystemHealthCheckTime = 0;
 const unsigned long HEALTH_CHECK_INTERVAL = 3600000; // 1 Stunde
-
-void archiveOldData();
-
-void archiveTaskFunction(void* parameter) {
-    for (;;) {
-        // Warte auf Signal vom Haupttask
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        
-        debug(F("Archivierungstask aktiviert"));
-        
-        // Speicherprüfung vor dem Start
-        if (memMonitor.checkHeapBefore("Archivierung", 30000)) {
-            archiveOldData();
-            debug(F("Archivierung abgeschlossen"));
-        } else {
-            debug(F("Nicht genügend Speicher für Archivierung"));
-        }
-        
-        // Optional: Task in regelmäßigen Abständen ausführen
-        // vTaskDelay(24 * 60 * 60 * 1000 / portTICK_PERIOD_MS); // Tägliche Ausführung
-    }
-}
 
 struct JsonBufferPool {
     char buffers[JSON_BUFFER_COUNT][JSON_BUFFER_SIZE];
@@ -686,7 +664,7 @@ bool saveSettingsToFile() {
     doc["lightOn"] = lightOn;
     doc["manBright"] = manualBrightness;
     doc["manColor"] = manualColor;
-    doc["headlinesPS"] = headlines_per_source;
+    // v9.0: headlinesPS removed - only for legacy API endpoints
 
     // WiFi-Einstellungen
     doc["wifiSSID"] = wifiSSID;
@@ -739,7 +717,7 @@ bool loadSettingsFromFile() {
     // Einstellungen aus JSON extrahieren
     moodUpdateInterval = doc["moodInterval"] | DEFAULT_MOOD_UPDATE_INTERVAL;
     dhtUpdateInterval = doc["dhtInterval"] | DEFAULT_DHT_READ_INTERVAL;
-    headlines_per_source = doc["headlinesPS"] | 1;
+    // v9.0: headlinesPS removed
     autoMode = doc["autoMode"] | true;
     lightOn = doc["lightOn"] | true;
     manualBrightness = doc["manBright"] | DEFAULT_LED_BRIGHTNESS;
@@ -787,7 +765,7 @@ void saveSettings()
     preferences.putBool("lightOn", lightOn);
     preferences.putUChar("manBright", manualBrightness);
     preferences.putUInt("manColor", manualColor);
-    preferences.putInt("headlinesPS", headlines_per_source);
+    // v9.0: headlinesPS removed
 
     // Speichere WiFi-Einstellungen
     preferences.putString("wifiSSID", wifiSSID);
@@ -831,7 +809,7 @@ void loadSettings()
         // Lade allgemeine Einstellungen
         moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
         dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
-        headlines_per_source = 1;
+        // v9.0: headlines_per_source removed
         autoMode = true;
         lightOn = true;
         manualBrightness = DEFAULT_LED_BRIGHTNESS;
@@ -871,7 +849,7 @@ void loadSettings()
     debug("  Mood Interval: " + String(moodUpdateInterval / 1000) + "s");
     debug("  DHT Interval: " + String(dhtUpdateInterval / 1000) + "s");
     debug(String(F("  DHT Enabled: ")) + (dhtEnabled ? "ja" : "nein"));
-    debug("  Headlines pro Quelle: " + String(headlines_per_source));
+    // v9.0: Headlines debugging removed
     debug(String(F("  AutoMode: ")) + (autoMode ? "true" : "false"));
     debug(String(F("  LightOn: ")) + (lightOn ? "true" : "false"));
     debug(String(F("  WiFi konfiguriert: ")) + (wifiConfigured ? "ja" : "nein"));
@@ -1546,7 +1524,7 @@ void handleApiStatus() {
     doc["mode"] = autoMode ? "Auto" : "Manual";
     doc["lightOn"] = lightOn;
     doc["brightness"] = manualBrightness;
-    doc["headlines"] = headlines_per_source;
+    // v9.0: headlines removed
     doc["version"] = SOFTWARE_VERSION;
 
     // LED-Farbe als Hex
@@ -1612,86 +1590,6 @@ void handleApiDeleteDataPoint() {
     server.send(410, "application/json",
         "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
     debug(F("Delete datapoint disabled - backend manages data"));
-    /* OLD CODE - CSV-based deletion
-    if (!server.hasArg("timestamp")) {
-        server.send(400, "application/json", "{\"error\":\"Missing timestamp parameter\"}");
-        return;
-    }
-
-    String targetTimestamp = server.arg("timestamp");
-    debug(String(F("Versuche Datenpunkt zu löschen: ")) + targetTimestamp);
-
-    if (!LittleFS.exists("/data/stats.csv")) {
-        server.send(404, "application/json", "{\"error\":\"Keine Statistikdaten vorhanden\"}");
-        return;
-    }
-
-    // Open original file
-    File sourceFile = LittleFS.open("/data/stats.csv", "r");
-    if (!sourceFile) {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Öffnen der Statistikdatei\"}");
-        return;
-    }
-
-    // Create temporary file
-    File tempFile = LittleFS.open("/data/stats_temp.csv", "w");
-    if (!tempFile) {
-        sourceFile.close();
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Erstellen der temporären Datei\"}");
-        return;
-    }
-
-    // Copy header
-    String header = sourceFile.readStringUntil('\n');
-    tempFile.println(header);
-
-    // Copy all lines except the one to delete
-    bool foundMatch = false;
-    while (sourceFile.available()) {
-        String line = sourceFile.readStringUntil('\n');
-        if (line.length() > 0) {
-            // Check if this is the line to delete
-            int firstComma = line.indexOf(',');
-            if (firstComma > 0) {
-                String lineTimestamp = line.substring(0, firstComma);
-                if (lineTimestamp != targetTimestamp) {
-                    tempFile.println(line);
-                } else {
-                    foundMatch = true;
-                    debug(String(F("Datenpunkt gefunden und übersprungen: ")) + lineTimestamp);
-                }
-            } else {
-                // If no comma found, preserve the line (could be malformed)
-                tempFile.println(line);
-            }
-        }
-    }
-
-    // Close both files
-    sourceFile.close();
-    tempFile.close();
-
-    // Replace original with temp file
-    if (foundMatch) {
-        if (LittleFS.remove("/data/stats.csv")) {
-            if (LittleFS.rename("/data/stats_temp.csv", "/data/stats.csv")) {
-                server.send(200, "application/json", "{\"success\":true,\"message\":\"Datenpunkt erfolgreich gelöscht\"}");
-                debug(F("Datenpunkt erfolgreich gelöscht"));
-            } else {
-                server.send(500, "application/json", "{\"error\":\"Fehler beim Umbenennen der temporären Datei\"}");
-                debug(F("Fehler beim Umbenennen der temporären Datei"));
-            }
-        } else {
-            LittleFS.remove("/data/stats_temp.csv");
-            server.send(500, "application/json", "{\"error\":\"Fehler beim Löschen der Original-Datei\"}");
-            debug(F("Fehler beim Löschen der Original-Datei"));
-        }
-    } else {
-        LittleFS.remove("/data/stats_temp.csv");
-        server.send(404, "application/json", "{\"error\":\"Datenpunkt nicht gefunden\"}");
-        debug(F("Datenpunkt nicht gefunden"));
-    }
-    */
 }
 
 // ===== DISABLED IN v9.0: Local CSV Management =====
@@ -1699,208 +1597,9 @@ void handleApiResetAllData() {
     server.send(410, "application/json",
         "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
     debug(F("Reset all data disabled - backend manages data"));
-    /* OLD CODE - CSV-based reset
-    debug(F("Versuche alle Statistikdaten zurückzusetzen"));
-
-    if (!LittleFS.exists("/data/stats.csv")) {
-        server.send(200, "application/json", "{\"success\":true,\"message\":\"Keine Daten vorhanden\"}");
-        return;
-    }
-
-    // Delete the file and create a new one with just the header
-    if (!LittleFS.remove("/data/stats.csv")) {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Löschen der Datei\"}");
-        return;
-    }
-    
-    File file = LittleFS.open("/data/stats.csv", "w");
-    if (!file) {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Erstellen der neuen Datei\"}");
-        return;
-    }
-
-    // Write header - CHANGED: Removed category from header
-    if (file.println("timestamp,sentiment")) {
-        file.close();
-        server.send(200, "application/json", "{\"success\":true,\"message\":\"Alle Daten wurden zurückgesetzt\"}");
-        debug(F("Alle Statistikdaten wurden zurückgesetzt"));
-    } else {
-        file.close();
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Schreiben des Headers\"}");
-        debug(F("Fehler beim Schreiben des Headers"));
-    }
-    */
 }
 
-  // Liste der Archive abrufen
-  void getArchivesList(JsonArray &archives) {
-    if (!LittleFS.exists("/data/archives")) {
-      return;
-    }
-    
-    File root = LittleFS.open("/data/archives");
-    if (!root || !root.isDirectory()) {
-      return;
-    }
-    
-    File file = root.openNextFile();
-    while (file) {
-      if (!file.isDirectory() && String(file.name()).endsWith(".csv")) {
-        JsonObject archive = archives.add<JsonObject>();
-        archive["name"] = String(file.name());
-        archive["size"] = file.size();
-        
-        // Versuche Jahr/Monat aus dem Dateinamen zu parsen (Format: stats_YYYY_MM.csv)
-        String filename = String(file.name());
-        int startPos = filename.indexOf("stats_");
-        if (startPos >= 0) {
-          startPos += 6; // "stats_" überspringen
-          int year = filename.substring(startPos, startPos + 4).toInt();
-          int month = filename.substring(startPos + 5, startPos + 7).toInt();
-          
-          if (year > 0 && month > 0 && month <= 12) {
-            char dateStr[32];
-            sprintf(dateStr, "%04d-%02d", year, month);
-            archive["period"] = dateStr;
-          }
-        }
-        
-        // Anzahl der Datensätze ermitteln
-        int recordCount = 0;
-        String path = "/data/archives/" + String(file.name());
-        File archiveFile = LittleFS.open(path, "r");
-        if (archiveFile) {
-          // Header überspringen
-          archiveFile.readStringUntil('\n');
-          
-          while (archiveFile.available()) {
-            String line = archiveFile.readStringUntil('\n');
-            if (line.length() > 0) {
-              recordCount++;
-            }
-          }
-          archiveFile.close();
-        }
-        archive["records"] = recordCount;
-      }
-      file = root.openNextFile();
-    }
-  }
-  
-// Funktion zur Archivierung von Daten älter als 90 Tage
-void archiveOldData() {
-    // Prüfe zuerst, ob genügend Speicher verfügbar ist
-    if (!memMonitor.checkHeapBefore("Archivierung", 30000)) {
-        debug(F("Zu wenig Speicher für Archivierung, überspringe..."));
-        return;
-    }
-
-    if (!LittleFS.exists("/data/stats.csv")) {
-        debug(F("Keine Statistikdaten zum Archivieren vorhanden"));
-        return;
-    }
-    
-    // Heutiges Datum für das Archiv
-    time_t now;
-    time(&now);
-    
-    // Prüfen, ob Zeit verfügbar, ansonsten Epoche-Zeit verwenden
-    if (now < 1600000000) { // Zeitstempel vor 2020
-        debug(F("Zeit nicht synchronisiert für Archivierung, verwende Epoche"));
-    }
-    
-    time_t cutoffDate = now - (90 * 24 * 3600); // 90 Tage zurück
-    
-    // Archivverzeichnis erstellen falls nötig
-    if (!LittleFS.exists("/data/archives")) {
-        if (!LittleFS.mkdir("/data/archives")) {
-            debug(F("Fehler beim Erstellen des Archivverzeichnisses"));
-            return;
-        }
-    }
-    
-    // Statistikdatei öffnen mit sicherer Operation
-    String statsContent = fileOps.readFile("/data/stats.csv");
-    if (statsContent.isEmpty()) {
-        debug(F("Fehler beim Lesen der Statistikdatei oder Datei leer"));
-        return;
-    }
-    
-    // Archivdatei erstellen - Monat-Jahr als Dateiname
-    char archiveFileName[64];
-    struct tm *timeinfo = localtime(&now);
-    strftime(archiveFileName, sizeof(archiveFileName), "/data/archives/stats_%Y_%m.csv", timeinfo);
-    
-    // Verarbeite die CSV-Daten
-    String header;
-    String currentData;
-    String archiveData;
-    
-    // Teile den Inhalt in Zeilen auf
-    int lineStart = 0;
-    int lineEnd = statsContent.indexOf('\n');
-    if (lineEnd < 0) {
-        debug(F("Keine vollständigen Zeilen in Statistikdatei gefunden"));
-        return;
-    }
-    
-    // Header extrahieren
-    header = statsContent.substring(lineStart, lineEnd + 1);
-    lineStart = lineEnd + 1;
-    
-    // Prüfen, ob Archiv bereits existiert
-    bool archiveExists = LittleFS.exists(archiveFileName);
-    
-    int currentCount = 0;
-    int archivedCount = 0;
-    
-    // Zeilen verarbeiten
-    while (lineStart < statsContent.length()) {
-        lineEnd = statsContent.indexOf('\n', lineStart);
-        if (lineEnd < 0) lineEnd = statsContent.length();
-        
-        String line = statsContent.substring(lineStart, lineEnd);
-        
-        // Timestamp extrahieren
-        int firstComma = line.indexOf(',');
-        if (firstComma > 0) {
-            String timestampStr = line.substring(0, firstComma);
-            time_t lineTime = atol(timestampStr.c_str());
-            
-            if (lineTime >= cutoffDate) {
-                // In aktueller Datei behalten
-                currentData += line + "\n";
-                currentCount++;
-            } else {
-                // Ins Archiv verschieben
-                archiveData += line + "\n";
-                archivedCount++;
-            }
-        }
-        
-        lineStart = lineEnd + 1;
-    }
-    
-    // Schreibe Archivdaten
-    if (archivedCount > 0) {
-        String archiveContent = archiveExists ? archiveData : header + archiveData;
-        
-        if (fileOps.writeFile(archiveFileName, archiveContent)) {
-            debug(String(F("Archiviert: ")) + archivedCount + F(" Datenpunkte in ") + archiveFileName);
-        } else {
-            debug(String(F("Fehler beim Schreiben des Archivs: ")) + archiveFileName);
-            return;
-        }
-    }
-    
-    // Schreibe aktuelle Daten zurück
-    if (fileOps.writeFile("/data/stats.csv", header + currentData)) {
-        debug(String(F("Archivierung abgeschlossen. ")) + currentCount + 
-              F(" Datenpunkte behalten, ") + archivedCount + F(" Datenpunkte archiviert."));
-    } else {
-        debug(F("Fehler beim Aktualisieren der Statistikdatei nach Archivierung"));
-    }
-}
+// v9.0: Archive functions removed (getArchivesList, archiveOldData) - handled in backend
 
   // Speicherinformationen abrufen
 void getStorageInfo(uint64_t &totalBytes, uint64_t &usedBytes, uint64_t &freeBytes) {
@@ -1915,346 +1614,27 @@ void getStorageInfo(uint64_t &totalBytes, uint64_t &usedBytes, uint64_t &freeByt
     }
   }
 
-  int countStatsRecords();
-  
   // API-Endpunkt für Speicherinformationen
   void handleApiStorageInfo() {
     uint64_t totalBytes, usedBytes, freeBytes;
     getStorageInfo(totalBytes, usedBytes, freeBytes);
-    
+
     JsonDocument doc;
     doc["total"] = totalBytes;
     doc["used"] = usedBytes;
     doc["free"] = freeBytes;
     doc["percentUsed"] = (totalBytes > 0) ? ((float)usedBytes / totalBytes * 100) : 0;
-    
-    // Statistikdateigröße abrufen
-    if (LittleFS.exists("/data/stats.csv")) {
-      File statsFile = LittleFS.open("/data/stats.csv", "r");
-      if (statsFile) {
-        doc["statsSize"] = statsFile.size();
-        statsFile.close();
-      }
-    }
-    
-    // Anzahl der Datensätze
-    int recordCount = countStatsRecords();
-    doc["recordCount"] = recordCount;
-    
-    // Archivinformationen
-    JsonArray archives = doc["archives"].to<JsonArray>();
-    getArchivesList(archives);
-    
+
+    // v9.0: Stats and archives managed in backend, no local record count needed
+    doc["recordCount"] = 0;
+
     char* jsonBuffer = jsonPool.acquire();
     size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
     server.send(200, "application/json", jsonBuffer);
     jsonPool.release(jsonBuffer);
   }
-  
-  // Anzahl der Datensätze in der Statistikdatei zählen
-  int countStatsRecords() {
-    if (!LittleFS.exists("/data/stats.csv")) {
-      return 0;
-    }
-    
-    File statsFile = LittleFS.open("/data/stats.csv", "r");
-    if (!statsFile) {
-      return 0;
-    }
-    
-    // Header überspringen
-    statsFile.readStringUntil('\n');
-    
-    int count = 0;
-    while (statsFile.available()) {
-      String line = statsFile.readStringUntil('\n');
-      if (line.length() > 0) {
-        count++;
-      }
-    }
-    
-    statsFile.close();
-    return count;
-  }
 
-  // Archiv-Verwaltungs-Endpunkte initialisieren
-void setupArchiveEndpoints() {
-    // Archive auflisten
-    server.on("/api/archives", HTTP_GET, []() {
-      JsonDocument doc;
-      JsonArray archives = doc["archives"].to<JsonArray>();
-      getArchivesList(archives);
-      
-      char* jsonBuffer = jsonPool.acquire();
-      size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-      server.send(200, "application/json", jsonBuffer);
-      jsonPool.release(jsonBuffer);
-    });
-    
- // Fügen Sie diese API-Endpunkte in Ihre setupWebServer()-Funktion ein:
-
-// Metrics endpoint für die Visualisierung der Systemdaten
-server.on("/api/system/metrics", HTTP_GET, []() {
-    JsonDocument doc;
-    
-    // Memory metrics
-    doc["heap"] = ESP.getFreeHeap();
-    doc["maxBlock"] = ESP.getMaxAllocHeap();
-    doc["minHeap"] = memMonitor.getLowestHeap();
-    
-    // File system metrics
-    uint64_t total, used, free;
-    getStorageInfo(total, used, free);
-    doc["fsTotal"] = (unsigned long)total;
-    doc["fsUsed"] = (unsigned long)used;
-    doc["fsFree"] = (unsigned long)(total - used);
-    doc["fsPercent"] = (float)used * 100.0 / total;
-    
-    // System uptime
-    doc["uptime"] = millis() / 1000;
-    
-    // WiFi metrics
-    doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
-    if (WiFi.status() == WL_CONNECTED) {
-        doc["rssi"] = WiFi.RSSI();
-        doc["ssid"] = WiFi.SSID();
-        doc["channel"] = WiFi.channel();
-        doc["ip"] = WiFi.localIP().toString();
-    }
-    
-    // MQTT metrics
-    doc["mqttEnabled"] = mqttEnabled;
-    doc["mqttConnected"] = mqttEnabled && mqtt.isConnected();
-    
-    // CPU temperature (ESP32 specific)
-    doc["temperature"] = temperatureRead();
-    
-    // Sentiment metrics
-    doc["sentiment"] = lastSentimentScore;
-    doc["sentimentCategory"] = lastSentimentCategory;
-    
-    // System status assessments
-    bool memoryOk = ESP.getFreeHeap() > 30000;
-    bool fragmentationOk = (float)ESP.getMaxAllocHeap() / ESP.getFreeHeap() > 0.7;
-    bool filesystemOk = ((float)used * 100.0 / total) < 80.0;
-    bool wifiOk = WiFi.status() == WL_CONNECTED && WiFi.RSSI() > -80;
-    bool mqttOk = !mqttEnabled || (mqttEnabled && mqtt.isConnected());
-    
-    doc["status"]["memory"] = memoryOk ? "ok" : "warning";
-    doc["status"]["fragmentation"] = fragmentationOk ? "ok" : "warning";
-    doc["status"]["filesystem"] = filesystemOk ? "ok" : "warning";
-    doc["status"]["wifi"] = wifiOk ? "ok" : "warning";
-    doc["status"]["mqtt"] = mqttOk ? "ok" : "warning";
-    doc["status"]["overall"] = (memoryOk && fragmentationOk && filesystemOk && wifiOk && mqttOk) ? "ok" : "warning";
-    
-    char* jsonBuffer = jsonPool.acquire();
-    size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-    server.send(200, "application/json", jsonBuffer);
-    jsonPool.release(jsonBuffer);
-});
-
-// Endpunkt für vollständige Systemdiagnose
-server.on("/api/system/diagnose", HTTP_GET, []() {
-    debug(F("Vollständige Systemdiagnose angefordert"));
-    
-    // Memory-Diagnose
-    memMonitor.diagnose();
-    
-    // Netzwerk-Diagnose
-    netDiag.fullAnalysis();
-    
-    // System-Gesundheitscheck
-    sysHealth.performFullCheck();
-    
-    // Dateisystem-Info
-    fileOps.listDir("/", 1);
-    
-    JsonDocument doc;
-    doc["success"] = true;
-    doc["message"] = F("Diagnose abgeschlossen");
-    
-    char* jsonBuffer = jsonPool.acquire();
-    size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-    server.send(200, "application/json", jsonBuffer);
-    jsonPool.release(jsonBuffer);
-});
-
-// Endpunkt für Dateisystemreinigung
-server.on("/api/system/cleanup", HTTP_GET, []() {
-    debug(F("Dateisystem-Bereinigung angefordert"));
-    
-    int cleanedFiles = 0;
-    
-    // Temporäre Dateien löschen
-    if (LittleFS.exists("/temp")) {
-        File root = LittleFS.open("/temp");
-        if (root && root.isDirectory()) {
-            File file = root.openNextFile();
-            while (file) {
-                String filePath = file.path();
-                file.close();
-                
-                if (LittleFS.remove(filePath)) {
-                    cleanedFiles++;
-                    debug(String(F("Gelöscht: ")) + filePath);
-                }
-                
-                file = root.openNextFile();
-            }
-        }
-    }
-    
-    // Temporäre Dateien in /data
-    if (LittleFS.exists("/data")) {
-        File dataDir = LittleFS.open("/data");
-        if (dataDir && dataDir.isDirectory()) {
-            File file = dataDir.openNextFile();
-            while (file) {
-                String filePath = file.path();
-                file.close();
-                
-                if (filePath.endsWith(".tmp") || filePath.endsWith(".bak")) {
-                    if (LittleFS.remove(filePath)) {
-                        cleanedFiles++;
-                        debug(String(F("Gelöscht: ")) + filePath);
-                    }
-                }
-                
-                file = dataDir.openNextFile();
-            }
-        }
-    }
-    
-    JsonDocument doc;
-    doc["success"] = true;
-    doc["filesRemoved"] = cleanedFiles;
-    doc["message"] = String(cleanedFiles) + F(" Dateien bereinigt");
-    
-    uint64_t total, used, free;
-    getStorageInfo(total, used, free);
-    doc["freeSpace"] = (unsigned long)free;
-    doc["freeSpacePercent"] = (float)free * 100.0 / total;
-    
-    char* jsonBuffer = jsonPool.acquire();
-    size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-    server.send(200, "application/json", jsonBuffer);
-    jsonPool.release(jsonBuffer);
-});
-
-server.on("/diagnostics", HTTP_GET, []() {
-    handleStaticFile("/diagnostics.html");
-});
-
-    // Archivdaten abrufen
-    server.on("/api/archives/data", HTTP_GET, []() {
-        if (!server.hasArg("name")) {
-          server.send(400, "application/json", "{\"error\":\"Archivname fehlt\"}");
-          return;
-        }
-        
-        String archiveName = server.arg("name");
-        // Sicherheitscheck um Directory Traversal zu verhindern
-        if (archiveName.indexOf("..") >= 0 || archiveName.indexOf("/") >= 0) {
-          server.send(400, "application/json", "{\"error\":\"Ungültiger Archivname\"}");
-          return;
-        }
-        
-        String path = "/data/archives/" + archiveName;
-        if (!LittleFS.exists(path)) {
-          server.send(404, "application/json", "{\"error\":\"Archiv nicht gefunden\"}");
-          return;
-        }
-        
-        File archiveFile = LittleFS.open(path, "r");
-        if (!archiveFile) {
-          server.send(500, "application/json", "{\"error\":\"Fehler beim Öffnen des Archivs\"}");
-          return;
-        }
-        
-        // Benötigte Dokumentgröße berechnen
-        size_t fileSize = archiveFile.size();
-        size_t jsonCapacity = fileSize * 2; // Schätzung: JSON ist etwa 2x so groß wie CSV
-        if (jsonCapacity < 4096) jsonCapacity = 4096; // Minimale Größe
-        if (jsonCapacity > 32768) jsonCapacity = 32768; // Begrenzung auf 32KB, um Speicherprobleme zu vermeiden
-        
-        JsonDocument doc;
-        JsonArray data = doc["data"].to<JsonArray>();
-        
-        // Header überspringen
-        String header = archiveFile.readStringUntil('\n');
-        
-        // CSV-Daten lesen
-        while (archiveFile.available()) {
-          String line = archiveFile.readStringUntil('\n');
-          if (line.length() > 0) {
-            int firstComma = line.indexOf(',');
-            
-            if (firstComma > 0) {
-              String timestampStr = line.substring(0, firstComma);
-              String sentimentStr = line.substring(firstComma + 1);
-              
-              long timestamp = atol(timestampStr.c_str());
-              float sentiment = atof(sentimentStr.c_str());
-              
-              // Determine category from sentiment value
-              String category;
-              if (sentiment >= 0.30) category = "sehr positiv";
-              else if (sentiment >= 0.10) category = "positiv";
-              else if (sentiment >= -0.20) category = "neutral";
-              else if (sentiment >= -0.50) category = "negativ";
-              else category = "sehr negativ";
-              
-              JsonObject entry = data.add<JsonObject>();
-              entry["timestamp"] = timestamp;
-              entry["sentiment"] = sentiment;
-              entry["category"] = category;  // Add category dynamically
-            }
-          }
-        }
-        
-        archiveFile.close();
-        
-        char* jsonBuffer = jsonPool.acquire();
-        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-        server.send(200, "application/json", jsonBuffer);
-        jsonPool.release(jsonBuffer);
-      });
-    
-    // Archiv löschen
-    server.on("/api/archives/delete", HTTP_GET, []() {
-      if (!server.hasArg("name")) {
-        server.send(400, "application/json", "{\"error\":\"Archivname fehlt\"}");
-        return;
-      }
-      
-      String archiveName = server.arg("name");
-      // Sicherheitscheck um Directory Traversal zu verhindern
-      if (archiveName.indexOf("..") >= 0 || archiveName.indexOf("/") >= 0) {
-        server.send(400, "application/json", "{\"error\":\"Ungültiger Archivname\"}");
-        return;
-      }
-      
-      String path = "/data/archives/" + archiveName;
-      if (!LittleFS.exists(path)) {
-        server.send(404, "application/json", "{\"error\":\"Archiv nicht gefunden\"}");
-        return;
-      }
-      
-      if (LittleFS.remove(path)) {
-        server.send(200, "application/json", "{\"success\":true,\"message\":\"Archiv gelöscht\"}");
-        debug(String(F("Archiv gelöscht: ")) + archiveName);
-      } else {
-        server.send(500, "application/json", "{\"error\":\"Fehler beim Löschen des Archivs\"}");
-        debug(String(F("Fehler beim Löschen des Archivs: ")) + archiveName);
-      }
-    });
-    
-    // Archivierungsprozess manuell starten
-    server.on("/api/archives/process", HTTP_GET, []() {
-      archiveOldData();
-      server.send(200, "application/json", "{\"success\":true,\"message\":\"Archivierungsprozess abgeschlossen\"}");
-    });
-  }
+  // v9.0: CSV/Archive functions removed (countStatsRecords, setupArchiveEndpoints) - stats managed in backend
 
   // ===== UPDATED IN v9.0: Stats from Backend =====
   // Stats are now fetched from backend instead of local CSV
@@ -2386,12 +1766,7 @@ void formatString(char *buffer, size_t maxLen, const char *format, ...)
 
 // ===== REMOVED IN v9.0: Local CSV Statistics Storage =====
 // Statistics are now fetched from backend instead of stored locally
-// This saves ~2KB Flash and removes file system wear
-void saveSentimentStats(float sentiment) {
-    // Stub function - no longer saves to CSV
-    // Data is managed centrally in backend PostgreSQL database
-    (void)sentiment; // Suppress unused parameter warning
-}
+// saveSentimentStats() removed - data managed in backend
 
 // ===== REMOVED IN v9.0: RSS Feed HTTP Handlers =====
 // - handleApiGetFeeds()
@@ -2417,349 +1792,6 @@ void handleApiBackendStats() {
         server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
     }
 }
-
-// ===== REMOVED IN v9.0: CSV Import/Repair Functions =====
-// Statistics are managed in backend, no local CSV needed
-/*
-// Validiere und importiere CSV-Datei
-bool validateAndImportCSV(const String& filePath) {
-    File importFile = LittleFS.open(filePath, "r");
-    if (!importFile) {
-        debug(String(F("Fehler beim Öffnen der Importdatei: ")) + filePath);
-        return false;
-    }
-    
-    // Header prüfen
-    String header = importFile.readStringUntil('\n');
-    header.trim();
-    if (header != "timestamp,sentiment") {
-        debug(F("Ungültiger CSV-Header. Erwartet: 'timestamp,sentiment'"));
-        importFile.close();
-        return false;
-    }
-    
-    // Datenzähler für Validierung
-    int validLines = 0;
-    int invalidLines = 0;
-    
-    // Temporäre validierte Datei erstellen
-    File validatedFile = LittleFS.open("/data/stats_validated.csv", "w");
-    if (!validatedFile) {
-        debug(F("Fehler beim Erstellen der validierten Datei"));
-        importFile.close();
-        return false;
-    }
-    
-    // Header schreiben
-    validatedFile.println("timestamp,sentiment");
-    
-    // Zeilen validieren
-    while (importFile.available()) {
-        String line = importFile.readStringUntil('\n');
-        line.trim();
-        
-        if (line.length() == 0) continue;  // Leere Zeilen überspringen
-        
-        // Zeile parsen
-        int commaPos = line.indexOf(',');
-        if (commaPos <= 0) {
-            invalidLines++;
-            continue;  // Ungültige Zeile
-        }
-        
-        String timestampStr = line.substring(0, commaPos);
-        String sentimentStr = line.substring(commaPos + 1);
-        
-        // Timestamp validieren
-        time_t timestamp = atol(timestampStr.c_str());
-        if (timestamp <= 0) {
-            invalidLines++;
-            continue;  // Ungültiger Timestamp
-        }
-        
-        // Sentiment validieren
-        float sentiment;
-        try {
-            sentiment = atof(sentimentStr.c_str());
-        } catch (...) {
-            invalidLines++;
-            continue;  // Konvertierungsfehler
-        }
-        
-        // Sentiment-Bereich prüfen
-        if (sentiment < -1.0 || sentiment > 1.0) {
-            invalidLines++;
-            continue;  // Sentiment außerhalb des gültigen Bereichs
-        }
-        
-        // Gültige Zeile in validierte Datei schreiben
-        validatedFile.print(timestamp);
-        validatedFile.print(",");
-        validatedFile.println(sentiment, 2);  // Maximal 2 Nachkommastellen
-        
-        validLines++;
-    }
-    
-    importFile.close();
-    validatedFile.close();
-    
-    debug(String(F("CSV-Validierung abgeschlossen: ")) + validLines + F(" gültige Zeilen, ") + invalidLines + F(" ungültige Zeilen"));
-    
-    // Validierte Datei in die Hauptdatei verschieben
-    if (validLines > 0) {
-        if (LittleFS.exists("/data/stats.csv")) {
-            LittleFS.remove("/data/stats.csv");
-        }
-        
-        if (fileOps.moveFile("/data/stats_validated.csv", "/data/stats.csv")) {
-            debug(F("Validierte Datei wurde erfolgreich übernommen"));
-            return true;
-        } else {
-            debug(F("Fehler beim Übernehmen der validierten Datei"));
-            return false;
-        }
-    } else {
-        debug(F("Keine gültigen Daten gefunden, Import abgebrochen"));
-        LittleFS.remove("/data/stats_validated.csv");
-        return false;
-    }
-}
-
-// Validiere und importiere Einstellungen
-bool validateAndImportSettings(const String& jsonContent) {
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, jsonContent);
-    
-    if (error) {
-        debug(String(F("JSON-Parsing-Fehler: ")) + error.c_str());
-        return false;
-    }
-    
-    // Grundlegende Validierung: Prüfe, ob mindestens einige erwartete Felder vorhanden sind
-    // Mit isNull() und ! kann geprüft werden, ob der Schlüssel existiert und nicht null ist
-    if (doc["moodInterval"].isNull() || doc["autoMode"].isNull()) {
-        debug(F("Ungültiges Settings-Format: Erforderliche Felder fehlen"));
-        return false;
-    }
-    
-    // Einstellungen übernehmen - mit Validierung und sinnvollen Grenzwerten
-    
-    // Mood-Intervall (10 Sekunden bis 2 Stunden)
-    if (!doc["moodInterval"].isNull()) {
-        unsigned long interval = doc["moodInterval"].as<unsigned long>() * 1000;
-        moodUpdateInterval = constrain(interval, 10000UL, 7200000UL);
-    }
-    
-    // DHT-Intervall (10 Sekunden bis 1 Stunde)
-    if (!doc["dhtInterval"].isNull()) {
-        unsigned long interval = doc["dhtInterval"].as<unsigned long>() * 1000;
-        dhtUpdateInterval = constrain(interval, 10000UL, 3600000UL);
-    }
-    
-    // Boolean-Einstellungen
-    if (!doc["autoMode"].isNull()) autoMode = doc["autoMode"].as<bool>();
-    if (!doc["lightOn"].isNull()) lightOn = doc["lightOn"].as<bool>();
-    if (!doc["dhtEnabled"].isNull()) dhtEnabled = doc["dhtEnabled"].as<bool>();
-    if (!doc["wifiConfigured"].isNull()) wifiConfigured = doc["wifiConfigured"].as<bool>();
-    if (!doc["mqttEnabled"].isNull()) mqttEnabled = doc["mqttEnabled"].as<bool>();
-    
-    // Numerische Einstellungen mit Grenzwerten
-    if (!doc["manBright"].isNull()) manualBrightness = constrain(doc["manBright"].as<uint8_t>(), 10, 255);
-    if (!doc["headlinesPS"].isNull()) headlines_per_source = constrain(doc["headlinesPS"].as<int>(), 1, 10);
-    if (!doc["ledPin"].isNull()) ledPin = constrain(doc["ledPin"].as<int>(), 0, 39);
-    if (!doc["dhtPin"].isNull()) dhtPin = constrain(doc["dhtPin"].as<int>(), 0, 39);
-    if (!doc["numLeds"].isNull()) numLeds = constrain(doc["numLeds"].as<int>(), 1, 300);
-    
-    // String-Einstellungen mit Validierung
-    if (!doc["wifiSSID"].isNull()) wifiSSID = doc["wifiSSID"].as<String>();
-    if (!doc["wifiPass"].isNull()) wifiPassword = doc["wifiPass"].as<String>();
-    if (!doc["apiUrl"].isNull()) {
-        String url = doc["apiUrl"].as<String>();
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            apiUrl = url;
-        }
-    }
-    if (!doc["mqttServer"].isNull()) mqttServer = doc["mqttServer"].as<String>();
-    if (!doc["mqttUser"].isNull()) mqttUser = doc["mqttUser"].as<String>();
-    if (!doc["mqttPass"].isNull()) mqttPassword = doc["mqttPass"].as<String>();
-    
-    // Manuelle Farbe
-    if (!doc["manColor"].isNull()) manualColor = doc["manColor"].as<uint32_t>();
-    
-    // Benutzerdefinierte Farben laden
-    for (int i = 0; i < 5; i++) {
-        String colorKey = "color" + String(i);
-        if (!doc[colorKey].isNull()) {
-            customColors[i] = doc[colorKey].as<uint32_t>();
-        }
-    }
-    
-    debug(F("Einstellungen erfolgreich validiert und importiert"));
-    return true;
-}
-
-/* v9.0: CSV repair removed
-bool repairStatsCSV() {
-    debug(F("Starte Reparatur der Statistik-CSV-Datei..."));
-    
-    if (!LittleFS.exists("/data/stats.csv")) {
-        debug(F("Keine Statistikdatei zum Reparieren vorhanden"));
-        return false;
-    }
-    
-    // Erstelle Backup der Originaldatei
-    if (!fileOps.copyFile("/data/stats.csv", "/data/stats.csv.bak")) {
-        debug(F("Konnte kein Backup der Statistikdatei erstellen"));
-        // Fahre trotzdem fort mit dem Reparaturversuch
-    }
-    
-    // Öffne die Statistikdatei
-    File sourceFile = LittleFS.open("/data/stats.csv", "r");
-    if (!sourceFile) {
-        debug(F("Fehler beim Öffnen der Statistikdatei"));
-        return false;
-    }
-    
-    // Erstelle eine temporäre reparierte Datei
-    File repairedFile = LittleFS.open("/data/stats_repaired.csv", "w");
-    if (!repairedFile) {
-        debug(F("Fehler beim Erstellen der reparierten Datei"));
-        sourceFile.close();
-        return false;
-    }
-    
-    // Header lesen und schreiben
-    String header = sourceFile.readStringUntil('\n');
-    header.trim();
-    
-    // Überprüfe Header-Format
-    if (header != "timestamp,sentiment") {
-        debug(F("Ungültiger CSV-Header, setze Standard-Header"));
-        repairedFile.println("timestamp,sentiment");
-    } else {
-        repairedFile.println(header);
-    }
-    
-    // Zeilenzähler für die Statistik
-    int totalLines = 0;
-    int validLines = 0;
-    int repairedLines = 0;
-    int droppedLines = 0;
-    
-    // Letzte gültige Zeit für Reihenfolgenprüfung
-    time_t lastValidTime = 0;
-    
-    // Zeile für Zeile verarbeiten
-    while (sourceFile.available()) {
-        String line = sourceFile.readStringUntil('\n');
-        line.trim();
-        totalLines++;
-        
-        if (line.length() == 0) continue; // Leere Zeilen überspringen
-        
-        // Formatprüfung: Muss ein Komma enthalten
-        int commaPos = line.indexOf(',');
-        if (commaPos <= 0) {
-            debug(String(F("Zeile ")) + totalLines + F(": Kein gültiges Komma gefunden, überspringe"));
-            droppedLines++;
-            continue;
-        }
-        
-        // Timestamp und Sentiment extrahieren
-        String timestampStr = line.substring(0, commaPos);
-        String sentimentStr = line.substring(commaPos + 1);
-        
-        // Timestamp parsen und validieren
-        time_t timestamp;
-        try {
-            timestamp = atol(timestampStr.c_str());
-        } catch (...) {
-            debug(String(F("Zeile ")) + totalLines + F(": Timestamp konnte nicht geparst werden, überspringe"));
-            droppedLines++;
-            continue;
-        }
-        
-        // Prüfe auf ungültige oder zukünftige Timestamps
-        time_t currentTime = time(NULL);
-        if (timestamp <= 0 || timestamp > currentTime + 86400) { // 1 Tag Zukunftspuffer
-            debug(String(F("Zeile ")) + totalLines + F(": Ungültiger Zeitstempel: ") + timestamp);
-            droppedLines++;
-            continue;
-        }
-        
-        // Prüfe auf Zeitreihenfolge (optional)
-        if (lastValidTime > 0 && timestamp < lastValidTime) {
-            debug(String(F("Zeile ")) + totalLines + F(": Zeitstempel in falscher Reihenfolge, korrigiere"));
-            timestamp = lastValidTime + 1; // Korrigiere zu 1 Sekunde nach dem letzten
-            repairedLines++;
-        }
-        
-        // Sentiment parsen und validieren
-        float sentiment;
-        try {
-            sentiment = atof(sentimentStr.c_str());
-        } catch (...) {
-            debug(String(F("Zeile ")) + totalLines + F(": Sentiment konnte nicht geparst werden, überspringe"));
-            droppedLines++;
-            continue;
-        }
-        
-        // Sentiment-Bereich prüfen und ggf. korrigieren
-        if (isnan(sentiment) || isinf(sentiment)) {
-            debug(String(F("Zeile ")) + totalLines + F(": Sentiment ist NaN oder Inf, überspringe"));
-            droppedLines++;
-            continue;
-        } else if (sentiment < -1.0 || sentiment > 1.0) {
-            debug(String(F("Zeile ")) + totalLines + F(": Sentiment außerhalb des gültigen Bereichs, korrigiere"));
-            sentiment = constrain(sentiment, -1.0f, 1.0f);
-            repairedLines++;
-        }
-        
-        // Schreibe reparierte Zeile
-        repairedFile.print(timestamp);
-        repairedFile.print(",");
-        repairedFile.println(sentiment, 2); // 2 Nachkommastellen
-        
-        validLines++;
-        lastValidTime = timestamp;
-    }
-    
-    // Dateien schließen
-    sourceFile.close();
-    repairedFile.close();
-    
-    debug(String(F("CSV-Reparatur abgeschlossen: ")) + 
-          validLines + F(" gültige Zeilen, ") + 
-          repairedLines + F(" reparierte Zeilen, ") + 
-          droppedLines + F(" verworfene Zeilen von insgesamt ") + 
-          totalLines + F(" Zeilen"));
-    
-    // Ersetze die Originaldatei mit der reparierten Version, wenn sie gültige Daten enthält
-    if (validLines > 0) {
-        if (LittleFS.remove("/data/stats.csv")) {
-            if (fileOps.moveFile("/data/stats_repaired.csv", "/data/stats.csv")) {
-                debug(F("Reparierte Datei erfolgreich übernommen"));
-                return true;
-            } else {
-                debug(F("Fehler beim Umbennen der reparierten Datei"));
-                // Versuche Backup wiederherzustellen
-                if (LittleFS.exists("/data/stats.csv.bak")) {
-                    fileOps.copyFile("/data/stats.csv.bak", "/data/stats.csv");
-                }
-                return false;
-            }
-        } else {
-            debug(F("Fehler beim Löschen der alten Datei"));
-            LittleFS.remove("/data/stats_repaired.csv");
-            return false;
-        }
-    } else {
-        debug(F("Keine gültigen Daten in der reparierten Datei, behalte Original"));
-        LittleFS.remove("/data/stats_repaired.csv");
-        return false;
-    }
-}
-*/ // End of CSV functions removed in v9.0
 
 // Webserver-Setup anpassen
 void setupWebServer()
@@ -2838,6 +1870,130 @@ void setupWebServer()
     server.on("/mood", HTTP_GET, []()
               { handleStaticFile("/mood.html"); });
 
+    server.on("/diagnostics", HTTP_GET, []()
+              { handleStaticFile("/diagnostics.html"); });
+
+    // System diagnostics endpoints
+    server.on("/api/system/metrics", HTTP_GET, []() {
+        JsonDocument doc;
+
+        doc["heap"] = ESP.getFreeHeap();
+        doc["maxBlock"] = ESP.getMaxAllocHeap();
+        doc["minHeap"] = memMonitor.getLowestHeap();
+
+        uint64_t total, used, free;
+        getStorageInfo(total, used, free);
+        doc["fsTotal"] = (unsigned long)total;
+        doc["fsUsed"] = (unsigned long)used;
+        doc["fsFree"] = (unsigned long)(total - used);
+        doc["fsPercent"] = (float)used * 100.0 / total;
+
+        doc["uptime"] = millis() / 1000;
+
+        doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
+        if (WiFi.status() == WL_CONNECTED) {
+            doc["rssi"] = WiFi.RSSI();
+            doc["ssid"] = WiFi.SSID();
+            doc["channel"] = WiFi.channel();
+            doc["ip"] = WiFi.localIP().toString();
+        }
+
+        doc["mqttEnabled"] = mqttEnabled;
+        doc["mqttConnected"] = mqttEnabled && mqtt.isConnected();
+        doc["temperature"] = temperatureRead();
+        doc["sentiment"] = lastSentimentScore;
+        doc["sentimentCategory"] = lastSentimentCategory;
+
+        bool memoryOk = ESP.getFreeHeap() > 30000;
+        bool fragmentationOk = (float)ESP.getMaxAllocHeap() / ESP.getFreeHeap() > 0.7;
+        bool filesystemOk = ((float)used * 100.0 / total) < 80.0;
+        bool wifiOk = WiFi.status() == WL_CONNECTED && WiFi.RSSI() > -80;
+        bool mqttOk = !mqttEnabled || (mqttEnabled && mqtt.isConnected());
+
+        doc["status"]["memory"] = memoryOk ? "ok" : "warning";
+        doc["status"]["fragmentation"] = fragmentationOk ? "ok" : "warning";
+        doc["status"]["filesystem"] = filesystemOk ? "ok" : "warning";
+        doc["status"]["wifi"] = wifiOk ? "ok" : "warning";
+        doc["status"]["mqtt"] = mqttOk ? "ok" : "warning";
+        doc["status"]["overall"] = (memoryOk && fragmentationOk && filesystemOk && wifiOk && mqttOk) ? "ok" : "warning";
+
+        char* jsonBuffer = jsonPool.acquire();
+        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(200, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+    });
+
+    server.on("/api/system/diagnose", HTTP_GET, []() {
+        debug(F("Vollständige Systemdiagnose angefordert"));
+        memMonitor.diagnose();
+        netDiag.fullAnalysis();
+        sysHealth.performFullCheck();
+        fileOps.listDir("/", 1);
+
+        JsonDocument doc;
+        doc["success"] = true;
+        doc["message"] = F("Diagnose abgeschlossen");
+
+        char* jsonBuffer = jsonPool.acquire();
+        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(200, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+    });
+
+    server.on("/api/system/cleanup", HTTP_GET, []() {
+        debug(F("Dateisystem-Bereinigung angefordert"));
+        int cleanedFiles = 0;
+
+        if (LittleFS.exists("/temp")) {
+            File root = LittleFS.open("/temp");
+            if (root && root.isDirectory()) {
+                File file = root.openNextFile();
+                while (file) {
+                    String filePath = file.path();
+                    file.close();
+                    if (LittleFS.remove(filePath)) {
+                        cleanedFiles++;
+                        debug(String(F("Gelöscht: ")) + filePath);
+                    }
+                    file = root.openNextFile();
+                }
+            }
+        }
+
+        if (LittleFS.exists("/data")) {
+            File dataDir = LittleFS.open("/data");
+            if (dataDir && dataDir.isDirectory()) {
+                File file = dataDir.openNextFile();
+                while (file) {
+                    String filePath = file.path();
+                    file.close();
+                    if (filePath.endsWith(".tmp") || filePath.endsWith(".bak")) {
+                        if (LittleFS.remove(filePath)) {
+                            cleanedFiles++;
+                            debug(String(F("Gelöscht: ")) + filePath);
+                        }
+                    }
+                    file = dataDir.openNextFile();
+                }
+            }
+        }
+
+        JsonDocument doc;
+        doc["success"] = true;
+        doc["filesRemoved"] = cleanedFiles;
+        doc["message"] = String(cleanedFiles) + F(" Dateien bereinigt");
+
+        uint64_t total, used, free;
+        getStorageInfo(total, used, free);
+        doc["freeSpace"] = (unsigned long)free;
+        doc["freeSpacePercent"] = (float)free * 100.0 / total;
+
+        char* jsonBuffer = jsonPool.acquire();
+        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(200, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+    });
+
     // API-Endpunkte für dynamische Daten
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/stats", HTTP_GET, handleApiStats);
@@ -2912,24 +2068,7 @@ server.on("/api/ui-version", HTTP_GET, []() {
 
       // Im Abschnitt setupWebServer() folgende Endpunkte hinzufügen:
 
-// CSV-Datei herunterladen
-server.on("/api/export/stats", HTTP_GET, []() {
-    if (!LittleFS.exists("/data/stats.csv")) {
-        server.send(404, "text/plain", "Keine Statistikdaten vorhanden");
-        return;
-    }
-    
-    File file = LittleFS.open("/data/stats.csv", "r");
-    if (!file) {
-        server.send(500, "text/plain", "Fehler beim Öffnen der Statistikdatei");
-        return;
-    }
-    
-    server.sendHeader("Content-Disposition", "attachment; filename=moodlight_stats.csv");
-    server.streamFile(file, "text/csv");
-    file.close();
-    debug(F("Statistikdaten wurden exportiert"));
-});
+// v9.0: CSV export removed - stats managed in backend
 
 // Einstellungen herunterladen
 server.on("/api/export/settings", HTTP_GET, []() {
@@ -2942,7 +2081,7 @@ server.on("/api/export/settings", HTTP_GET, []() {
     doc["lightOn"] = lightOn;
     doc["manBright"] = manualBrightness;
     doc["manColor"] = manualColor;
-    doc["headlinesPS"] = headlines_per_source;
+    // v9.0: headlinesPS removed
     
     // WiFi-Einstellungen
     doc["wifiSSID"] = wifiSSID;
@@ -2981,7 +2120,7 @@ server.on("/api/settings/api", HTTP_GET, []() {
     doc["apiUrl"] = apiUrl;
     doc["moodInterval"] = moodUpdateInterval / 1000;
     doc["dhtInterval"] = dhtUpdateInterval / 1000;
-    doc["headlinesPerSource"] = headlines_per_source;
+    // v9.0: headlinesPerSource removed
     doc["dhtEnabled"] = dhtEnabled;
     
     char* jsonBuffer = jsonPool.acquire();
@@ -3176,17 +2315,8 @@ server.on("/api/settings/api", HTTP_GET, []() {
         debug(String(F("DHT Enabled geändert zu: ")) + (dhtEnabled ? "ja" : "nein"));
       }
     }
-    // v9.0: headlinesPerSource ist optional (wird im Backend verwaltet)
-    if (doc["headlinesPerSource"].is<float>()) {
-      int newHeadlines = doc["headlinesPerSource"].as<int>();
-      newHeadlines = constrain(newHeadlines, 1, 10);
-      if (newHeadlines != headlines_per_source) {
-        headlines_per_source = newHeadlines;
-        lastMoodUpdate = 0;  // Erzwinge Sentiment-Update bei nächster Gelegenheit
-        changed = true;
-        debug(String(F("Headlines pro Quelle geändert zu: ")) + String(headlines_per_source));
-      }
-    }
+    // v9.0: headlinesPerSource removed - only for legacy API endpoints
+
     // NEU: DHT Intervall hier verarbeiten
     if (doc["dhtInterval"].is<float>()) {
       unsigned long newDhtInterval = 1000UL * doc["dhtInterval"].as<unsigned long>();
@@ -3211,9 +2341,7 @@ server.on("/api/settings/api", HTTP_GET, []() {
         haUpdateInterval.setState(float(moodUpdateInterval / 1000.0));
         debug(String(F("  HA: haUpdateInterval auf ")) + String(moodUpdateInterval / 1000.0) + F("s gesetzt."));
 
-        // Headlines pro Quelle
-        haHeadlinesPerSource.setState(float(headlines_per_source));
-        debug(String(F("  HA: haHeadlinesPerSource auf ")) + String(headlines_per_source) + F(" gesetzt."));
+        // v9.0: haHeadlinesPerSource removed
 
         // DHT Update Interval
         haDhtInterval.setState(float(dhtUpdateInterval / 1000.0));
@@ -3281,8 +2409,7 @@ server.on("/testapi", HTTP_POST, []() {
 
     // Werte aus JSON extrahieren
     String testApiUrl = doc["apiUrl"].as<String>();
-    // v9.0: headlinesPerSource ist optional
-    int testHeadlines = doc["headlinesPerSource"].is<int>() ? doc["headlinesPerSource"].as<int>() : 1;
+    // v9.0: headlinesPerSource removed - not needed for new API endpoints
 
     // API testen
     HTTPClient http;
@@ -3290,18 +2417,9 @@ server.on("/testapi", HTTP_POST, []() {
     http.setUserAgent("MoodlightClient/1.0");
 
     debug(String(F("Teste API URL: ")) + testApiUrl);
-    // v9.0: Bei neuer API keine headlines_per_source Parameter mehr anhängen
-    String testUrl = testApiUrl;
-    // Nur für alte API-Endpunkte den Parameter anhängen
-    if (testUrl.indexOf("/api/news/") >= 0 && testHeadlines > 0) {
-      if (testUrl.indexOf('?') >= 0) {
-        testUrl += "&headlines_per_source=" + String(testHeadlines);
-      } else {
-        testUrl += "?headlines_per_source=" + String(testHeadlines);
-      }
-    }
+    // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
 
-    if (http.begin(wifiClientHTTP, testUrl)) {
+    if (http.begin(wifiClientHTTP, testApiUrl)) {
       http.setTimeout(10000);
       int httpCode = http.GET();
 
@@ -3422,7 +2540,7 @@ server.on("/testapi", HTTP_POST, []() {
     ledPin = DEFAULT_LED_PIN;
     dhtPin = DEFAULT_DHT_PIN;
     numLeds = DEFAULT_NUM_LEDS;
-    headlines_per_source = 1;
+    // v9.0: headlines_per_source removed
 
     // Reboot planen
     rebootNeeded = true;
@@ -3468,7 +2586,7 @@ server.on("/testapi", HTTP_POST, []() {
     doc["mode"] = autoMode ? "Auto" : "Manual";
     doc["lightOn"] = lightOn;
     doc["brightness"] = manualBrightness;
-    doc["headlines"] = headlines_per_source;
+    // v9.0: headlines removed
 
     // LED-Farbe als Hex holen
     uint32_t currentColor;
@@ -3528,16 +2646,8 @@ server.on("/refresh", HTTP_GET, []() {
     pulseStartTime = millis();
 
     debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
-    // v9.0: Only add headlines_per_source for old API endpoints (/api/news/)
-    String requestUrl = apiUrl;
-    if (requestUrl.indexOf("/api/news/") >= 0 && headlines_per_source > 0) {
-        if (requestUrl.indexOf('?') >= 0) {
-            requestUrl += "&headlines_per_source=" + String(headlines_per_source);
-        } else {
-            requestUrl += "?headlines_per_source=" + String(headlines_per_source);
-        }
-    }
-    if (http.begin(wifiClientHTTP, requestUrl)) {
+    // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
+    if (http.begin(wifiClientHTTP, apiUrl)) {
       http.setTimeout(10000);  // Kürzeres Timeout für UI-Feedback
       int httpCode = http.GET();
 
@@ -3707,27 +2817,7 @@ server.on("/refresh", HTTP_GET, []() {
       server.send(400, "text/plain", "Missing value parameter");
     } });
 
-    // set-headlines Endpunkt
-    server.on("/set-headlines", HTTP_GET, []()
-              {
-    if (server.hasArg("value")) {
-      int headlines = server.arg("value").toInt();
-      headlines = constrain(headlines, 1, 10);
-      headlines_per_source = headlines;
-
-      // Save to preferences
-      preferences.begin("moodlight", false);
-      preferences.putInt("headlinesPS", headlines);
-      preferences.end();
-
-      server.send(200, "text/plain", "OK");
-      debug(String(F("Headlines pro Quelle geändert auf ")) + headlines);
-
-      // Force sentiment update next cycle
-      lastMoodUpdate = 0;
-    } else {
-      server.send(400, "text/plain", "Missing value");
-    } });
+    // v9.0: set-headlines endpoint removed - parameter not used anymore
 
     server.on("/api/settings/all", HTTP_GET, []() {
         JsonDocument doc;
@@ -3744,7 +2834,7 @@ server.on("/refresh", HTTP_GET, []() {
         sprintf(hexColor, "#%06X", manualColor);
         doc["manColor"] = hexColor;
         
-        doc["headlinesPS"] = headlines_per_source;
+        // v9.0: headlinesPS removed
       
         // WiFi-Einstellungen (Passwort maskiert)
         doc["wifiSSID"] = wifiSSID;
@@ -3775,8 +2865,8 @@ if (LittleFS.begin()) {
   doc["fsTotal"] = totalBytes;
   doc["fsUsed"] = usedBytes;
   doc["hasSettings"] = LittleFS.exists("/data/settings.json");
-  doc["hasStats"] = LittleFS.exists("/data/stats.csv");
-  doc["hasFeeds"] = LittleFS.exists("/data/feeds.json");
+  doc["hasStats"] = false; // v9.0: stats managed in backend
+  doc["hasFeeds"] = false; // v9.0: feeds managed in backend
 }
         
 char* jsonBuffer = jsonPool.acquire();
@@ -4027,23 +3117,7 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
     // lastMoodUpdate = millis() - (moodUpdateInterval / 2); // Hälfte des Intervalls
 }
 
-void onHeadlinesCommand(HANumeric value, HANumber *sender)
-{
-    int newHeadlines = value.toInt8();             // Bereich 1-10 passt in int8_t
-    newHeadlines = constrain(newHeadlines, 1, 10); // Bereich 1-10
-    if (newHeadlines == headlines_per_source)
-        return;
-
-    headlines_per_source = newHeadlines;
-    sender->setState(float(newHeadlines)); // Verwende float statt int
-    debug(String(F("Headlines pro Quelle gesetzt auf: ")) + String(newHeadlines));
-
-    // Direkt speichern statt verzögerter Speicherung
-    saveSettings();
-
-    // Erzwinge Sentiment-Update im nächsten Zyklus
-    lastMoodUpdate = 0;
-}
+// v9.0: onHeadlinesCommand() removed - headlines_per_source not used anymore
 
 void onDHTIntervalCommand(HANumeric value, HANumber *sender)
 {
@@ -4076,16 +3150,8 @@ void onRefreshButtonPressed(HAButton *sender)
     pulseStartTime = millis();
 
     debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
-    // v9.0: Only add headlines_per_source for old API endpoints (/api/news/)
-    String requestUrl = apiUrl;
-    if (requestUrl.indexOf("/api/news/") >= 0 && headlines_per_source > 0) {
-        if (requestUrl.indexOf('?') >= 0) {
-            requestUrl += "&headlines_per_source=" + String(headlines_per_source);
-        } else {
-            requestUrl += "?headlines_per_source=" + String(headlines_per_source);
-        }
-    }
-    if (http.begin(wifiClientHTTP, requestUrl))
+    // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
+    if (http.begin(wifiClientHTTP, apiUrl))
     {
         http.setTimeout(10000);
         int httpCode = http.GET();
@@ -4266,14 +3332,7 @@ void setupHA()
     haRefreshSentiment.setIcon("mdi:refresh");
     haRefreshSentiment.onCommand(onRefreshButtonPressed);
 
-    // Headlines pro Quelle
-    haHeadlinesPerSource.setName("Headlines pro Quelle");
-    haHeadlinesPerSource.setMin(1);
-    haHeadlinesPerSource.setMax(10);
-    haHeadlinesPerSource.setStep(1);
-    haHeadlinesPerSource.setIcon("mdi:newspaper");
-    haHeadlinesPerSource.onCommand(onHeadlinesCommand);
-    haHeadlinesPerSource.setRetain(true);
+    // v9.0: haHeadlinesPerSource setup removed - parameter not used anymore
 
     // Heartbeat Sensoren
     haUptime.setName("Moodlight Uptime");
@@ -4302,7 +3361,7 @@ void sendInitialStates()
     // Licht & Modus (aus globalen Variablen)
     haLight.setState(lightOn);
     haLight.setBrightness(manualBrightness);
-    haHeadlinesPerSource.setState(float(headlines_per_source));
+    // v9.0: haHeadlinesPerSource removed
     uint32_t initialColor = autoMode ? pixels.Color(
                                            getColorDefinition(currentLedIndex).r,
                                            getColorDefinition(currentLedIndex).g,
@@ -4463,28 +3522,14 @@ void getSentiment()
     isPulsing = true;
     pulseStartTime = currentMillis;
 
-    // Create URL with headlines parameter (only for old API endpoints)
-    String requestUrl = apiUrl;
-    // v9.0: Only add headlines_per_source for old API endpoints (/api/news/)
-    // New API endpoints (/api/moodlight/) don't need this parameter
-    if (requestUrl.indexOf("/api/news/") >= 0 && headlines_per_source > 0)
-    {
-        if (requestUrl.indexOf('?') >= 0)
-        {
-            requestUrl += "&headlines_per_source=" + String(headlines_per_source);
-        }
-        else
-        {
-            requestUrl += "?headlines_per_source=" + String(headlines_per_source);
-        }
-    }
+    // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
 
     // Use static document to avoid heap fragmentation
     static JsonDocument doc;
     doc.clear();
 
     // Use the safe HTTP request function
-    bool success = safeHttpGet(requestUrl, doc);
+    bool success = safeHttpGet(apiUrl, doc);
 
     // Always update timing state
     lastMoodUpdate = currentMillis;
@@ -4963,9 +4008,6 @@ void setup() {
     // Bluetooth deaktivieren um Speicher zu sparen
     btStop();
 
-    // WiFiClientSecure für HTTPS ohne Zertifikat-Prüfung
-    wifiClientHTTP.setInsecure();
-
     // WiFi-Energiesparfunktionen deaktivieren für bessere Konnektivität
     WiFi.persistent(false);  // Verhindert Flash-Verschleiß durch häufiges Speichern
     WiFi.mode(WIFI_STA);     // Station-Modus setzen
@@ -4987,19 +4029,7 @@ void setup() {
     // Dateisystem initialisieren
     initFS();
 
-    // v9.0: CSV repair removed - stats managed in backend
-    // debug(F("Prüfe und repariere CSV-Datei falls nötig..."));
-    // if (LittleFS.exists("/data/stats.csv")) {
-    //     repairStatsCSV();
-    // }
-
-    // Archivierungstask erstellen (läuft als separate Task)
-    bool archiveTaskStarted = archiveTask.begin(archiveTaskFunction);
-    if (archiveTaskStarted) {
-        debug(F("Archivierungstask gestartet"));
-    } else {
-        debug(F("Konnte Archivierungstask nicht starten"));
-    }
+    // v9.0: CSV repair and archiving tasks removed - stats managed in backend
 
     // MoodlightUtils initialisieren (Hilfsfunktionen)
     debug(F("Initialisiere MoodlightUtils..."));
@@ -5044,14 +4074,7 @@ void setup() {
     // DHT-Sensor initialisieren (falls verwendet)
     dht.begin();
 
-    // Archivierungsprozess starten
-    if (archiveTask.isRunning()) {
-        archiveTask.execute();
-        debug(F("Archivierungsauftrag in die Warteschlange gestellt"));
-    } else {
-        // Direktes Archivieren als Fallback
-        archiveOldData();
-    }
+    // v9.0: Archivierungsprozess removed - archiving handled in backend
 
     // Webserver-Routen definieren (Server wird später gestartet)
     setupWebServer();
@@ -5201,12 +4224,8 @@ void loop() {
     }
 
     // Tägliche Archivierung alter Daten
-    static unsigned long lastArchiveCheck = 0;
-    if (millis() - lastArchiveCheck >= 24 * 60 * 60 * 1000) {  // Einmal täglich
-        archiveOldData();
-        lastArchiveCheck = millis();
-    }
-    
+    // v9.0: Daily archive check removed - archiving handled in backend
+
     // Startup-Grace-Period beenden nach definierter Zeit
     if (initialStartupPhase && (millis() - startupTime > STARTUP_GRACE_PERIOD)) {
         initialStartupPhase = false;
@@ -5407,14 +4426,8 @@ void loop() {
         float percentUsed = (float)used * 100.0 / total;
         
         if (percentUsed > 85) {
-            debug(F("Hohe Dateisystembelegung erkannt - starte automatische Archivierung"));
-            
-            // Archivierung über Task oder direkt starten
-            if (archiveTask.isRunning()) {
-                archiveTask.execute();
-            } else {
-                archiveOldData();
-            }
+            debug(F("Hohe Dateisystembelegung erkannt - v9.0: Archivierung läuft im Backend"));
+            // v9.0: Archiving handled in backend, no local action needed
         }
         
         lastSystemHealthCheckTime = currentMillis;

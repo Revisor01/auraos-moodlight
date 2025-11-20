@@ -1,5 +1,5 @@
 // v9.0: Default API URL (moodlight endpoint with caching)
-const DEFAULT_NEWS_API_URL = 'https://analyse.godsapp.de/api/moodlight/current';
+const DEFAULT_NEWS_API_URL = 'http://analyse.godsapp.de/api/moodlight/current';
 
 // RSS-Feed Verwaltung (REMOVED in v9.0)
 let feeds = [];
@@ -409,20 +409,18 @@ function loadStorageInfo2() {
         const storageTotal = document.getElementById('storage-total');
         const storageFree = document.getElementById('storage-free');
         const storagePercent = document.getElementById('storage-percent');
-        const statsRecords = document.getElementById('stats-records');
-        const statsSize = document.getElementById('stats-size');
-        
+        // v9.0: statsRecords and statsSize removed - stats managed in backend
+
         if (storageBar) {
             storageBar.style.width = data.percentUsed.toFixed(1) + '%';
             storageBar.textContent = data.percentUsed.toFixed(1) + '%';
         }
-        
+
         if (storageUsed) storageUsed.textContent = formatFileSize(data.used);
         if (storageTotal) storageTotal.textContent = formatFileSize(data.total);
         if (storageFree) storageFree.textContent = formatFileSize(data.free);
         if (storagePercent) storagePercent.textContent = data.percentUsed.toFixed(1);
-        if (statsRecords) statsRecords.textContent = data.recordCount.toLocaleString();
-        if (statsSize) statsSize.textContent = formatFileSize(data.statsSize || 0);
+        // v9.0: statsRecords and statsSize display removed
         
         // Mood dashboard storage info
         const moodStorageBar = document.getElementById('mood-storage-bar');
