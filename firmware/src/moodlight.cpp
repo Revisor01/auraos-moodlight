@@ -1042,7 +1042,8 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
 
     HTTPClient http;
     http.setReuse(false);
-    http.setTimeout(5000);
+    http.setUserAgent("MoodlightClient/1.0");
+    http.setTimeout(10000);  // Längeres Timeout für Statistiken
 
     if (!http.begin(wifiClientHTTP, statsUrl)) {
         debug(F("HTTP Begin fehlgeschlagen für Backend-Statistiken"));
@@ -1050,6 +1051,7 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
     }
 
     int httpCode = http.GET();
+    debug(String(F("Backend-Statistiken HTTP Code: ")) + String(httpCode));
 
     if (httpCode == HTTP_CODE_OK) {
         WiFiClient* stream = http.getStreamPtr();
@@ -1065,6 +1067,13 @@ bool fetchBackendStatistics(JsonDocument& doc, int hours = 168) {
         return true;
     } else {
         debug(String(F("HTTP Fehler beim Laden der Backend-Statistiken: ")) + httpCode);
+        // Bei 404 oder anderen Fehlern die Antwort ausgeben für besseres Debugging
+        if (httpCode > 0) {
+            String payload = http.getString();
+            if (payload.length() > 0 && payload.length() < 200) {
+                debug(String(F("Backend Antwort: ")) + payload);
+            }
+        }
         http.end();
         return false;
     }
@@ -3502,7 +3511,16 @@ server.on("/refresh", HTTP_GET, []() {
     pulseStartTime = millis();
 
     debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
-    if (http.begin(wifiClientHTTP, apiUrl + String("?headlines_per_source=") + String(headlines_per_source))) {
+    // v9.0: Only add headlines_per_source for old API endpoints (/api/news/)
+    String requestUrl = apiUrl;
+    if (requestUrl.indexOf("/api/news/") >= 0 && headlines_per_source > 0) {
+        if (requestUrl.indexOf('?') >= 0) {
+            requestUrl += "&headlines_per_source=" + String(headlines_per_source);
+        } else {
+            requestUrl += "?headlines_per_source=" + String(headlines_per_source);
+        }
+    }
+    if (http.begin(wifiClientHTTP, requestUrl)) {
       http.setTimeout(10000);  // Kürzeres Timeout für UI-Feedback
       int httpCode = http.GET();
 
@@ -4041,7 +4059,16 @@ void onRefreshButtonPressed(HAButton *sender)
     pulseStartTime = millis();
 
     debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
-    if (http.begin(wifiClientHTTP, apiUrl + String("?headlines_per_source=") + String(headlines_per_source)))
+    // v9.0: Only add headlines_per_source for old API endpoints (/api/news/)
+    String requestUrl = apiUrl;
+    if (requestUrl.indexOf("/api/news/") >= 0 && headlines_per_source > 0) {
+        if (requestUrl.indexOf('?') >= 0) {
+            requestUrl += "&headlines_per_source=" + String(headlines_per_source);
+        } else {
+            requestUrl += "?headlines_per_source=" + String(headlines_per_source);
+        }
+    }
+    if (http.begin(wifiClientHTTP, requestUrl))
     {
         http.setTimeout(10000);
         int httpCode = http.GET();
@@ -4419,15 +4446,20 @@ void getSentiment()
     isPulsing = true;
     pulseStartTime = currentMillis;
 
-    // Create URL with headlines parameter
+    // Create URL with headlines parameter (only for old API endpoints)
     String requestUrl = apiUrl;
-    if (requestUrl.indexOf('?') >= 0)
+    // v9.0: Only add headlines_per_source for old API endpoints (/api/news/)
+    // New API endpoints (/api/moodlight/) don't need this parameter
+    if (requestUrl.indexOf("/api/news/") >= 0 && headlines_per_source > 0)
     {
-        requestUrl += "&headlines_per_source=" + String(headlines_per_source);
-    }
-    else
-    {
-        requestUrl += "?headlines_per_source=" + String(headlines_per_source);
+        if (requestUrl.indexOf('?') >= 0)
+        {
+            requestUrl += "&headlines_per_source=" + String(headlines_per_source);
+        }
+        else
+        {
+            requestUrl += "?headlines_per_source=" + String(headlines_per_source);
+        }
     }
 
     // Use static document to avoid heap fragmentation
