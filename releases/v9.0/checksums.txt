@@ -1,2 +1,4 @@
 54c1462e3fa5d48b3a0fce1fb3b0fb34faf53443b4309ad7eca18a48ffad9060  Firmware-9.0-AuraOS.bin
-0bdb01163bff64a0132d4764de9fd4894eea60bd53ab681c1c06ea95ee112962  UI-9.0-AuraOS.tgz
+54c1462e3fa5d48b3a0fce1fb3b0fb34faf53443b4309ad7eca18a48ffad9060  Firmware-9.1-AuraOS.bin
+65d099d5efa115ed91389f64f72b4f5b836bb29655e5be12cfef2bbed6c06f68  UI-9.0-AuraOS.tgz
+0bdb01163bff64a0132d4764de9fd4894eea60bd53ab681c1c06ea95ee112962  UI-9.1-AuraOS.tgz
