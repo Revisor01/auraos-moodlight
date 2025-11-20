@@ -1,4 +1,4 @@
-// v9.0: Default API URL
+// v9.0: Default API URL (moodlight endpoint with caching)
 const DEFAULT_NEWS_API_URL = 'https://analyse.godsapp.de/api/moodlight/current';
 
 // RSS-Feed Verwaltung (REMOVED in v9.0)
@@ -345,9 +345,7 @@ function loadApiSettings() {
         if (data.dhtInterval) {
             document.getElementById('dht-interval').value = data.dhtInterval;
         }
-        if (data.headlinesPerSource) {
-            document.getElementById('headlines-per-source').value = data.headlinesPerSource;
-        }
+        // v9.0: headlinesPerSource removed - managed in backend
         if (data.dhtEnabled !== undefined) {
             document.getElementById('dht-enabled').checked = data.dhtEnabled;
         }
@@ -631,14 +629,14 @@ function saveAPISettings() {
     const moodInterval = parseInt(document.getElementById('mood-interval').value);
     const dhtEnabled = document.getElementById('dht-enabled').checked;
     const dhtInterval = parseInt(document.getElementById('dht-interval').value);
-    const headlinesPerSource = parseInt(document.getElementById('headlines-per-source').value);
-    
+    // v9.0: headlinesPerSource removed - managed in backend
+
     const data = {
         apiUrl: apiUrl || DEFAULT_NEWS_API_URL,
         moodInterval: moodInterval || 1800,
         dhtEnabled: dhtEnabled,
-        dhtInterval: dhtInterval || 300,
-        headlinesPerSource: headlinesPerSource || 1
+        dhtInterval: dhtInterval || 300
+        // v9.0: headlinesPerSource removed
     };
     
     fetch('/saveapi', {
@@ -667,20 +665,20 @@ function saveAPISettings() {
 // Test API connection
 function testAPI() {
     const apiUrl = document.getElementById('api-url').value.trim();
-    const headlinesPerSource = parseInt(document.getElementById('headlines-per-source').value) || 1;
-    
+    // v9.0: headlinesPerSource removed - managed in backend
+
     if (!apiUrl) {
         alert('Bitte API URL eingeben');
         return;
     }
-    
+
     // Show spinner
     const spinner = document.getElementById('test-spinner');
     spinner.innerHTML = '<div class="loading"></div>';
-    
+
     const data = {
-        apiUrl: apiUrl,
-        headlinesPerSource: headlinesPerSource
+        apiUrl: apiUrl
+        // v9.0: headlinesPerSource removed
     };
     
     fetch('/testapi', {
