@@ -194,6 +194,7 @@ unsigned long lastMqttReconnectAttempt = 0;
 unsigned long lastMqttHeartbeat = 0;
 const unsigned long MQTT_HEARTBEAT_INTERVAL = 60000; // 1 Minute
 bool mqttWasConnected = false;                       // Um Aktionen nach Reconnect zu steuern
+bool sendingInitialStates = false;                   // Flag um Callback-Loops zu vermeiden
 
 // Fehlertolerante Sentiment-Verarbeitung
 unsigned long lastSuccessfulSentimentUpdate = 0;
@@ -3025,6 +3026,12 @@ void pulseCurrentColor()
 // === Home Assistant Callbacks ===
 void onStateCommand(bool state, HALight *sender)
 {
+    // Ignoriere Callbacks während wir Initial States senden
+    if (sendingInitialStates) {
+        debug(F("Ignoriere State Command während Initial States"));
+        return;
+    }
+
     if (state == lightOn)
         return;
     lightOn = state;
@@ -3039,13 +3046,19 @@ void onStateCommand(bool state, HALight *sender)
         updateLEDs(); // Stellt korrekten Zustand wieder her
     }
     sender->setState(state);
-    
+
     // Direkt speichern statt verzögerter Speicherung
     saveSettings();
 }
 
 void onBrightnessCommand(uint8_t brightness, HALight *sender)
 {
+    // Ignoriere Callbacks während wir Initial States senden
+    if (sendingInitialStates) {
+        debug(F("Ignoriere Brightness Command während Initial States"));
+        return;
+    }
+
     if (brightness == manualBrightness)
         return;
     manualBrightness = brightness;
@@ -3055,13 +3068,19 @@ void onBrightnessCommand(uint8_t brightness, HALight *sender)
         updateLEDs(); // updateLEDs berücksichtigt jetzt manualBrightness
     }
     sender->setBrightness(brightness);
-    
+
     // Direkt speichern statt verzögerter Speicherung
     saveSettings();
 }
 
 void onRGBColorCommand(HALight::RGBColor color, HALight *sender)
 {
+    // Ignoriere Callbacks während wir Initial States senden
+    if (sendingInitialStates) {
+        debug(F("Ignoriere RGB Command während Initial States"));
+        return;
+    }
+
     uint32_t newColor = pixels.Color(color.red, color.green, color.blue);
     if (newColor == manualColor)
         return;
@@ -3101,6 +3120,12 @@ void onModeCommand(int8_t index, HASelect *sender) {
 
 void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
 {
+    // Ignoriere Callbacks während wir Initial States senden
+    if (sendingInitialStates) {
+        debug(F("Ignoriere Update Interval Command während Initial States"));
+        return;
+    }
+
     float intervalSeconds = value.toFloat();
     intervalSeconds = constrain(intervalSeconds, 10, 7200);
     unsigned long newInterval = (unsigned long)(intervalSeconds * 1000);
@@ -3109,10 +3134,10 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
     moodUpdateInterval = newInterval;
     sender->setState(float(intervalSeconds));
     debug(String(F("Mood Update Interval gesetzt auf: ")) + String(intervalSeconds) + "s");
-    
+
     // Direkt speichern statt verzögerter Speicherung
     saveSettings();
-    
+
     // Reset des Zeitgebers für das nächste Update (optional)
     // lastMoodUpdate = millis() - (moodUpdateInterval / 2); // Hälfte des Intervalls
 }
@@ -3121,6 +3146,12 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
 
 void onDHTIntervalCommand(HANumeric value, HANumber *sender)
 {
+    // Ignoriere Callbacks während wir Initial States senden
+    if (sendingInitialStates) {
+        debug(F("Ignoriere DHT Interval Command während Initial States"));
+        return;
+    }
+
     float intervalSeconds = value.toFloat();
     intervalSeconds = constrain(intervalSeconds, 10, 7200);
     unsigned long newInterval = (unsigned long)(intervalSeconds * 1000);
@@ -3129,7 +3160,7 @@ void onDHTIntervalCommand(HANumeric value, HANumber *sender)
     dhtUpdateInterval = newInterval;
     sender->setState(float(intervalSeconds));
     debug(String(F("DHT Interval gesetzt auf: ")) + String(intervalSeconds) + "s");
-    
+
     // Direkt speichern statt verzögerter Speicherung
     saveSettings();
 }
@@ -3356,7 +3387,11 @@ void sendInitialStates()
         debug(F("MQTT not connected, skipping initial states."));
         return;
     }
+
     debug(F("Sende initiale Zustände an HA..."));
+
+    // Setze Flag um Callback-Loops zu vermeiden
+    sendingInitialStates = true;
 
     // Licht & Modus (aus globalen Variablen)
     haLight.setState(lightOn);
@@ -3424,6 +3459,9 @@ void sendInitialStates()
     sendHeartbeat();
 
     debug(F("Initiale Zustände gesendet."));
+
+    // Flag zurücksetzen - Callbacks sind jetzt wieder aktiv
+    sendingInitialStates = false;
 }
 
 // Add this function for safer HTTP requests with JSON
