@@ -1079,7 +1079,7 @@
 
                 console.log('History data:', historyData); // Debug
 
-                if (historyData.status === 'success' && historyData.data) {
+                if (historyData.data && historyData.data.length > 0) {
                     allHistoryData = historyData.data;
                     processStatistics();
                     createAllCharts();
