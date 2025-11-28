@@ -2662,7 +2662,6 @@ server.on("/refresh", HTTP_GET, []() {
                 success = true;
                 debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
                 lastMoodUpdate = millis();
-                initialAnalysisDone = true;
             } else {
                 debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
             }
@@ -2679,6 +2678,7 @@ server.on("/refresh", HTTP_GET, []() {
     // Verarbeite das empfangene Sentiment
     if (success) {
       handleSentiment(receivedSentiment);
+      initialAnalysisDone = true;
       if (statusLedMode == 2) {
         setStatusLED(0);  // Normalmodus
       }
@@ -3198,7 +3198,6 @@ void onRefreshButtonPressed(HAButton *sender)
                     success = true;
                     debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
                     lastMoodUpdate = millis();
-                    initialAnalysisDone = true;
                 } else {
                     debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
                 }
@@ -3226,6 +3225,7 @@ void onRefreshButtonPressed(HAButton *sender)
     if (success)
     {
         handleSentiment(receivedSentiment);
+        initialAnalysisDone = true;
     }
 
     isPulsing = false;
@@ -3571,15 +3571,15 @@ void getSentiment()
 
     // Always update timing state
     lastMoodUpdate = currentMillis;
-    initialAnalysisDone = true;
 
     if (success && doc["sentiment"].is<float>())
     {
         float receivedSentiment = doc["sentiment"].as<float>();
         debug(String(F("Sentiment empfangen: ")) + String(receivedSentiment, 2));
 
-        // Process valid sentiment value
+        // Process valid sentiment value (vor initialAnalysisDone=true, damit MQTT-Werte gesendet werden!)
         handleSentiment(receivedSentiment);
+        initialAnalysisDone = true;
         lastSuccessfulSentimentUpdate = currentMillis;
 
         // Reset error tracking
