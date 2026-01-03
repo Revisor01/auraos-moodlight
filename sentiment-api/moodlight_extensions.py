@@ -143,17 +143,18 @@ def register_moodlight_endpoints(app):
         Sentiment-Historie abrufen
 
         Query-Parameter:
-            hours: Anzahl Stunden zurück (einfacher Modus)
-            from: ISO8601 timestamp (default: -24h)
+            hours: Anzahl Stunden zurück (einfacher Modus, default: 168 = 7 Tage)
+            from: ISO8601 timestamp
             to: ISO8601 timestamp (default: now)
-            limit: Max. Anzahl Einträge (default: 1000)
+            limit: Max. Anzahl Einträge (default: 10000)
         """
         try:
             # Parameter parsen
+            # Default: letzte 7 Tage (168 Stunden) wenn kein Parameter angegeben
             hours_param = request.args.get('hours', type=int)
             from_param = request.args.get('from')
             to_param = request.args.get('to')
-            limit = request.args.get('limit', 1000, type=int)
+            limit = request.args.get('limit', 10000, type=int)
 
             # Zeitstempel konvertieren
             from_time = None
@@ -163,18 +164,22 @@ def register_moodlight_endpoints(app):
             if hours_param:
                 from_time = datetime.utcnow() - timedelta(hours=hours_param)
                 to_time = datetime.utcnow()
-            else:
-                if from_param:
-                    try:
-                        from_time = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
-                    except ValueError:
-                        return jsonify({"error": "Ungültiges 'from' Format (ISO8601 erwartet)"}), 400
+            elif from_param:
+                # Expliziter from-Parameter
+                try:
+                    from_time = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
+                except ValueError:
+                    return jsonify({"error": "Ungültiges 'from' Format (ISO8601 erwartet)"}), 400
 
                 if to_param:
                     try:
                         to_time = datetime.fromisoformat(to_param.replace('Z', '+00:00'))
                     except ValueError:
                         return jsonify({"error": "Ungültiges 'to' Format (ISO8601 erwartet)"}), 400
+            else:
+                # Keine Parameter: Default 7 Tage
+                from_time = datetime.utcnow() - timedelta(days=7)
+                to_time = datetime.utcnow()
 
             # Daten aus DB holen
             db = get_database()
