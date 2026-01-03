@@ -215,39 +215,55 @@ class Database:
         self,
         from_time: Optional[datetime] = None,
         to_time: Optional[datetime] = None,
-        limit: int = 1000
+        limit: int = 50000
     ) -> List[Dict[str, Any]]:
         """
         Hole Sentiment-Historie aus Datenbank
 
         Args:
-            from_time: Start-Zeitpunkt (default: -24h)
+            from_time: Start-Zeitpunkt (None = alle Daten)
             to_time: End-Zeitpunkt (default: now)
             limit: Maximale Anzahl Einträge
 
         Returns:
             Liste von Sentiment-Daten
         """
-        if from_time is None:
-            from_time = datetime.now() - timedelta(hours=24)
         if to_time is None:
             to_time = datetime.now()
 
-        query = """
-            SELECT
-                timestamp,
-                sentiment_score,
-                category,
-                headlines_analyzed
-            FROM sentiment_history
-            WHERE timestamp BETWEEN %s AND %s
-            ORDER BY timestamp ASC
-            LIMIT %s;
-        """
+        # Query dynamisch bauen je nachdem ob from_time gesetzt ist
+        if from_time is None:
+            # Alle Daten bis to_time
+            query = """
+                SELECT
+                    timestamp,
+                    sentiment_score,
+                    category,
+                    headlines_analyzed
+                FROM sentiment_history
+                WHERE timestamp <= %s
+                ORDER BY timestamp ASC
+                LIMIT %s;
+            """
+            params = (to_time, limit)
+        else:
+            # Zeitbereich
+            query = """
+                SELECT
+                    timestamp,
+                    sentiment_score,
+                    category,
+                    headlines_analyzed
+                FROM sentiment_history
+                WHERE timestamp BETWEEN %s AND %s
+                ORDER BY timestamp ASC
+                LIMIT %s;
+            """
+            params = (from_time, to_time, limit)
 
         try:
             with self.get_cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(query, (from_time, to_time, limit))
+                cur.execute(query, params)
                 results = cur.fetchall()
                 return [dict(row) for row in results]
         except Exception as e:

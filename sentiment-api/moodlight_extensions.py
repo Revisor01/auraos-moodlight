@@ -143,25 +143,30 @@ def register_moodlight_endpoints(app):
         Sentiment-Historie abrufen
 
         Query-Parameter:
+            all: Wenn 'true', hole alle Daten (kein Zeitlimit)
             hours: Anzahl Stunden zurück (einfacher Modus, default: 168 = 7 Tage)
             from: ISO8601 timestamp
             to: ISO8601 timestamp (default: now)
-            limit: Max. Anzahl Einträge (default: 10000)
+            limit: Max. Anzahl Einträge (default: 50000)
         """
         try:
             # Parameter parsen
-            # Default: letzte 7 Tage (168 Stunden) wenn kein Parameter angegeben
+            all_param = request.args.get('all', '').lower() == 'true'
             hours_param = request.args.get('hours', type=int)
             from_param = request.args.get('from')
             to_param = request.args.get('to')
-            limit = request.args.get('limit', 10000, type=int)
+            limit = request.args.get('limit', 50000, type=int)
 
             # Zeitstempel konvertieren
             from_time = None
             to_time = None
 
-            # Wenn 'hours' Parameter vorhanden, berechne from_time
-            if hours_param:
+            if all_param:
+                # Alle Daten: Kein Zeitfilter (from_time bleibt None)
+                to_time = datetime.utcnow()
+                logger.info("History: Hole ALLE Daten (kein Zeitlimit)")
+            elif hours_param:
+                # Wenn 'hours' Parameter vorhanden, berechne from_time
                 from_time = datetime.utcnow() - timedelta(hours=hours_param)
                 to_time = datetime.utcnow()
             elif from_param:
