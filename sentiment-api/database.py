@@ -1,23 +1,30 @@
 # -*- coding: utf-8 -*-
 """
 Database Layer für Moodlight System
-PostgreSQL + Redis Integration
+PostgreSQL + Redis Integration mit robustem Connection-Handling
 """
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2 import pool
 import redis
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
+# Konstanten für Connection-Handling
+MAX_RECONNECT_ATTEMPTS = 3
+RECONNECT_DELAY_SECONDS = 1
+
 
 class Database:
-    """PostgreSQL Datenbank-Wrapper"""
+    """PostgreSQL Datenbank-Wrapper mit robustem Connection-Handling"""
 
     def __init__(self, database_url: str):
         """
@@ -29,21 +36,97 @@ class Database:
         """
         self.database_url = database_url
         self.conn = None
+        self._connection_pool = None
 
     def connect(self):
-        """Stelle Verbindung zur Datenbank her"""
+        """Stelle Verbindung zur Datenbank her mit Connection-Pool"""
         try:
-            self.conn = psycopg2.connect(self.database_url)
-            logger.info("PostgreSQL Verbindung erfolgreich hergestellt")
+            # Verwende Connection-Pool für bessere Stabilität
+            self._connection_pool = pool.ThreadedConnectionPool(
+                minconn=1,
+                maxconn=5,
+                dsn=self.database_url
+            )
+            # Erstelle initiale Verbindung für Kompatibilität
+            self.conn = self._connection_pool.getconn()
+            logger.info("PostgreSQL Connection-Pool erfolgreich initialisiert")
         except Exception as e:
             logger.error(f"Fehler bei PostgreSQL Verbindung: {e}")
             raise
 
     def disconnect(self):
-        """Schließe Datenbankverbindung"""
-        if self.conn:
+        """Schließe alle Datenbankverbindungen"""
+        if self._connection_pool:
+            self._connection_pool.closeall()
+            logger.info("PostgreSQL Connection-Pool geschlossen")
+        elif self.conn:
             self.conn.close()
             logger.info("PostgreSQL Verbindung geschlossen")
+
+    def _ensure_connection(self) -> bool:
+        """
+        Stelle sicher, dass eine gültige Verbindung besteht.
+        Versucht automatisch Wiederverbindung bei Fehlern.
+
+        Returns:
+            True wenn Verbindung OK, False bei Fehler
+        """
+        for attempt in range(MAX_RECONNECT_ATTEMPTS):
+            try:
+                # Prüfe ob Verbindung noch lebt
+                if self.conn and not self.conn.closed:
+                    # Teste die Verbindung mit einfacher Query
+                    with self.conn.cursor() as cur:
+                        cur.execute("SELECT 1")
+                    return True
+
+                # Verbindung tot - versuche neue aus Pool
+                logger.warning(f"Verbindung verloren, Wiederverbindung Versuch {attempt + 1}/{MAX_RECONNECT_ATTEMPTS}")
+
+                if self._connection_pool:
+                    # Alte Verbindung zurückgeben (falls vorhanden)
+                    if self.conn:
+                        try:
+                            self._connection_pool.putconn(self.conn, close=True)
+                        except Exception:
+                            pass
+                    # Neue Verbindung aus Pool holen
+                    self.conn = self._connection_pool.getconn()
+                    logger.info("Neue Verbindung aus Pool erhalten")
+                    return True
+                else:
+                    # Kein Pool - direkte Verbindung
+                    self.conn = psycopg2.connect(self.database_url)
+                    logger.info("Neue direkte Verbindung hergestellt")
+                    return True
+
+            except Exception as e:
+                logger.error(f"Verbindungsversuch {attempt + 1} fehlgeschlagen: {e}")
+                if attempt < MAX_RECONNECT_ATTEMPTS - 1:
+                    time.sleep(RECONNECT_DELAY_SECONDS)
+
+        logger.error("Alle Wiederverbindungsversuche fehlgeschlagen")
+        return False
+
+    @contextmanager
+    def get_cursor(self, cursor_factory=None):
+        """
+        Context Manager für sichere Cursor-Verwendung mit Auto-Reconnect.
+
+        Args:
+            cursor_factory: Optional Cursor-Factory (z.B. RealDictCursor)
+
+        Yields:
+            Datenbank-Cursor
+        """
+        if not self._ensure_connection():
+            raise Exception("Datenbankverbindung nicht verfügbar")
+
+        cursor = self.conn.cursor(cursor_factory=cursor_factory) if cursor_factory else self.conn.cursor()
+        try:
+            yield cursor
+        finally:
+            cursor.close()
 
     def save_sentiment(
         self,
@@ -76,7 +159,7 @@ class Database:
         """
 
         try:
-            with self.conn.cursor() as cur:
+            with self.get_cursor() as cur:
                 cur.execute(query, (
                     sentiment_score,
                     category,
@@ -90,7 +173,11 @@ class Database:
                 logger.info(f"Sentiment-Daten gespeichert: ID={result_id}, Score={sentiment_score}")
                 return result_id
         except Exception as e:
-            self.conn.rollback()
+            if self.conn:
+                try:
+                    self.conn.rollback()
+                except Exception:
+                    pass
             logger.error(f"Fehler beim Speichern der Sentiment-Daten: {e}")
             raise
 
@@ -116,7 +203,7 @@ class Database:
         """
 
         try:
-            with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query)
                 result = cur.fetchone()
                 return dict(result) if result else None
@@ -159,7 +246,7 @@ class Database:
         """
 
         try:
-            with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query, (from_time, to_time, limit))
                 results = cur.fetchall()
                 return [dict(row) for row in results]
@@ -205,13 +292,17 @@ class Database:
         """
 
         try:
-            with self.conn.cursor() as cur:
+            with self.get_cursor() as cur:
                 cur.execute(query, (device_id, device_name, mac_address, firmware_version, ip_address, location))
                 self.conn.commit()
                 logger.debug(f"Gerät registriert/aktualisiert: {device_id}")
                 return True
         except Exception as e:
-            self.conn.rollback()
+            if self.conn:
+                try:
+                    self.conn.rollback()
+                except Exception:
+                    pass
             logger.error(f"Fehler beim Registrieren des Geräts {device_id}: {e}")
             return False
 
@@ -240,7 +331,7 @@ class Database:
         """
 
         try:
-            with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query, (hours,))
                 results = cur.fetchall()
                 return [dict(row) for row in results]
@@ -265,7 +356,7 @@ class Database:
 
         stats = {}
         try:
-            with self.conn.cursor() as cur:
+            with self.get_cursor() as cur:
                 for key, query in queries.items():
                     cur.execute(query)
                     result = cur.fetchone()
@@ -280,6 +371,32 @@ class Database:
         except Exception as e:
             logger.error(f"Fehler beim Abrufen der Statistiken: {e}")
             return {}
+
+    def check_connection_health(self) -> Dict[str, Any]:
+        """
+        Prüfe Gesundheit der Datenbankverbindung
+
+        Returns:
+            Dict mit Status-Informationen
+        """
+        health = {
+            'connected': False,
+            'pool_available': self._connection_pool is not None,
+            'last_check': datetime.now().isoformat()
+        }
+
+        try:
+            if self._ensure_connection():
+                health['connected'] = True
+                with self.get_cursor() as cur:
+                    cur.execute("SELECT version();")
+                    health['db_version'] = cur.fetchone()[0]
+                    cur.execute("SELECT COUNT(*) FROM sentiment_history;")
+                    health['total_records'] = cur.fetchone()[0]
+        except Exception as e:
+            health['error'] = str(e)
+
+        return health
 
 
 class RedisCache:
