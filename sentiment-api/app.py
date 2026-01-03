@@ -78,12 +78,27 @@ def analyze_sentiment_openai(headlines_batch: list) -> list:
 
     prompt_lines = [
       "Analysiere das Sentiment jeder der folgenden deutschen Nachrichtenschlagzeilen.",
-      "Gib für jede Schlagzeile ausschließlich eine einzige Fließkommazahl zwischen -1.0 (extrem negativ) und +1.0 (extrem positiv) zurück, wobei 0.0 neutral ist.",
-      "WICHTIG: Nutze unbedingt die VOLLE Bandbreite von -1.0 bis +1.0. Vermeide Werte nahe bei 0, außer bei wirklich neutralen Nachrichten.",
-      "Als Orientierung: -1.0 bis -0.7: Katastrophen, Kriege; -0.7 bis -0.4: Schwere Probleme, Skandale; -0.4 bis -0.1: Leicht negative Nachrichten",
-      "0.1 bis 0.4: Leicht positive Nachrichten; 0.4 bis 0.7: Gute Nachrichten; 0.7 bis 1.0: Herausragende Erfolge, wissenschaftliche Durchbrüche",
-      "Da positive Nachrichten seltener sind, gib ihnen einen etwas stärkeren Ausschlag, wenn sie klar positiv sind.",
-      "Formatiere die Ausgabe als nummerierte Liste, wobei jede Zeile nur die Nummer der Schlagzeile gefolgt von einem Doppelpunkt und dem Sentiment-Score enthält (z.B. \"1: -0.5\"). Gib KEINEN zusätzlichen Text, keine Erklärungen, keine Einheiten und keine Kopf- oder Fußzeilen aus. Starte direkt mit \"1:\".",
+      "Gib für jede Schlagzeile eine Fließkommazahl zwischen -1.0 und +1.0 zurück.",
+      "",
+      "WICHTIG - Ausgewogene Bewertung:",
+      "- Nachrichten sind oft neutral formuliert, auch wenn das Thema ernst ist. Bewerte die NACHRICHT, nicht das Thema.",
+      "- Eine sachliche Meldung über ein Problem ist NICHT automatisch stark negativ.",
+      "- Reserviere extreme Werte (-1.0 oder +1.0) nur für wirklich außergewöhnliche Ereignisse.",
+      "",
+      "Skala:",
+      "-1.0: Katastrophe mit vielen Toten, Weltuntergang",
+      "-0.7: Schwere Krise, großes Unglück",
+      "-0.4: Probleme, Konflikte, schlechte Entwicklungen",
+      "-0.2: Leicht negative oder besorgniserregende Nachrichten",
+      " 0.0: Neutral, sachliche Berichterstattung, gemischte Nachrichten",
+      "+0.2: Leicht positive Entwicklungen, kleine Fortschritte",
+      "+0.4: Gute Nachrichten, Erfolge, positive Entwicklungen",
+      "+0.7: Sehr gute Nachrichten, bedeutende Erfolge",
+      "+1.0: Herausragende Durchbrüche, historisch positive Ereignisse",
+      "",
+      "Die meisten alltäglichen Nachrichten sollten zwischen -0.4 und +0.4 liegen!",
+      "",
+      "Format: Nur \"Nummer: Score\" pro Zeile (z.B. \"1: -0.3\"). Keine Erklärungen.",
       "",
       "Schlagzeilen:"
     ]
@@ -214,56 +229,28 @@ def analyze_headlines_openai_batch(headlines: list):
     if analyzed_count > 0:
       # Alle individuellen Sentiment-Scores sammeln
       all_scores = [item['sentiment'] for item in results]
-      
+
       # Basis-Durchschnitt berechnen
       base_avg = sum(all_scores) / len(all_scores)
-      
-      # Extremwerte identifizieren (noch niedrigere Schwelle)
-      extreme_negative_count = sum(1 for s in all_scores if s <= -0.5)  # War -0.6
-      extreme_positive_count = sum(1 for s in all_scores if s >= 0.5)   # War 0.6
-      
-      # Verstärkter Skalierungsfaktor
-      scale_factor = 3.5  # War 3.5
-      
-      # Stärkerer Extremwert-Boost
-      extreme_boost_factor = 0.6  # War 0.6
-      
-      # Quadratische Transformation mit höherem Multiplikator
-      if abs(base_avg) > 0.05:
-        transformed_avg = math.copysign(base_avg**2 * 8.0, base_avg)  # War 5.0
+
+      # Einfache lineare Skalierung mit moderatem Faktor
+      # Verstärkt den Durchschnitt leicht, damit kleine Änderungen sichtbar werden
+      scale_factor = 1.5
+
+      # Leichte Verstärkung durch quadratische Komponente für mehr Dynamik
+      # Aber deutlich sanfter als vorher
+      if abs(base_avg) > 0.1:
+        # Quadratischer Anteil nur für stärkere Ausschläge
+        quadratic_boost = math.copysign(base_avg**2 * 1.5, base_avg)
+        weighted_mood_score = base_avg * scale_factor + quadratic_boost
       else:
-        transformed_avg = 0
-        
-      # Üblicher linearer Faktor
-      scaled_avg = base_avg * scale_factor if abs(base_avg) <= 0.05 else transformed_avg
-      
-      # Verstärkter Extremwert-Boost
-      extreme_factor = 0.0
-      if extreme_negative_count > 0:
-        extreme_factor -= (extreme_negative_count / len(all_scores)) * extreme_boost_factor
-        # Extra-Boost für sehr hohen Anteil negativer Nachrichten
-        if extreme_negative_count / len(all_scores) > 0.25:  # War 0.3
-          extreme_factor -= 0.3  # War 0.2
-        
-      if extreme_positive_count > 0:
-        extreme_factor += (extreme_positive_count / len(all_scores)) * extreme_boost_factor
-        # Extra-Boost für sehr hohen Anteil positiver Nachrichten
-        if extreme_positive_count / len(all_scores) > 0.25:  # War 0.3
-          extreme_factor += 0.3  # War 0.2
-        
-      # NEU: Balance-Faktor (verstärkt das Signal wenn eine Richtung überwiegt)
-      neg_count = sum(1 for s in all_scores if s < -0.1)
-      pos_count = sum(1 for s in all_scores if s > 0.1)
-      if abs(neg_count - pos_count) >= 3:  # Wenn mind. 3 mehr in einer Richtung
-        imbalance_factor = 0.2 * math.copysign(1, neg_count - pos_count)
-        extreme_factor += imbalance_factor
-        logging.info(f"Balance-Boost angewendet: {imbalance_factor:.2f} (Neg: {neg_count}, Pos: {pos_count})")
-      
-      # Kombinieren und im gültigen Bereich halten
-      weighted_mood_score = max(-1.0, min(1.0, scaled_avg + extreme_factor))
-      
-      logging.info(f"Sentiment Berechnung: Basis-Durchschnitt={base_avg:.4f}, Skaliert={scaled_avg:.4f}, Extremwert-Boost={extreme_factor:.4f}")
-      logging.info(f"Gewichteter Score (als total_sentiment): {weighted_mood_score:.4f} (Extremwerte: {extreme_negative_count} neg, {extreme_positive_count} pos)")
+        # Bei kleinen Werten nur lineare Skalierung
+        weighted_mood_score = base_avg * scale_factor
+
+      # Im gültigen Bereich halten
+      weighted_mood_score = max(-1.0, min(1.0, weighted_mood_score))
+
+      logging.info(f"Sentiment Berechnung: Basis-Durchschnitt={base_avg:.4f}, Gewichtet={weighted_mood_score:.4f}")
 
     else:
         logging.warning("Keine Headlines analysiert, total_sentiment bleibt 0.0")
