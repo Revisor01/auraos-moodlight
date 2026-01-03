@@ -225,32 +225,19 @@ def analyze_headlines_openai_batch(headlines: list):
     logging.info(f"Analyse abgeschlossen. Verarbeitet: {analyzed_count}. (Durchschnittl. Sentiment für Logging: {average_sentiment_for_logging:.4f})")
 
     # 2. Gewichteter Mood Score (dies wird der neue 'total_sentiment')
+    # Jetzt einfach: Durchschnitt der Einzelwerte, keine weitere Verstärkung
     weighted_mood_score = 0.0
     if analyzed_count > 0:
       # Alle individuellen Sentiment-Scores sammeln
       all_scores = [item['sentiment'] for item in results]
 
-      # Basis-Durchschnitt berechnen
-      base_avg = sum(all_scores) / len(all_scores)
+      # Einfacher Durchschnitt - die Einzelwerte sind bereits aussagekräftig
+      weighted_mood_score = sum(all_scores) / len(all_scores)
 
-      # Einfache lineare Skalierung mit moderatem Faktor
-      # Verstärkt den Durchschnitt leicht, damit kleine Änderungen sichtbar werden
-      scale_factor = 1.5
-
-      # Leichte Verstärkung durch quadratische Komponente für mehr Dynamik
-      # Aber deutlich sanfter als vorher
-      if abs(base_avg) > 0.1:
-        # Quadratischer Anteil nur für stärkere Ausschläge
-        quadratic_boost = math.copysign(base_avg**2 * 1.5, base_avg)
-        weighted_mood_score = base_avg * scale_factor + quadratic_boost
-      else:
-        # Bei kleinen Werten nur lineare Skalierung
-        weighted_mood_score = base_avg * scale_factor
-
-      # Im gültigen Bereich halten
+      # Im gültigen Bereich halten (sollte eh schon sein)
       weighted_mood_score = max(-1.0, min(1.0, weighted_mood_score))
 
-      logging.info(f"Sentiment Berechnung: Basis-Durchschnitt={base_avg:.4f}, Gewichtet={weighted_mood_score:.4f}")
+      logging.info(f"Sentiment Berechnung: Durchschnitt={weighted_mood_score:.4f} aus {len(all_scores)} Headlines")
 
     else:
         logging.warning("Keine Headlines analysiert, total_sentiment bleibt 0.0")
