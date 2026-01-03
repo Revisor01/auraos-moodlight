@@ -315,9 +315,50 @@ def index():
     "status": "running",
     "endpoints": {
       "current": "/api/moodlight/current",
-      "history": "/api/moodlight/history?hours=168"
+      "history": "/api/moodlight/history?hours=168",
+      "health": "/api/health"
     }
   })
+
+@app.route('/api/health')
+def health_check():
+  """
+  Health-Check Endpoint mit Datenbank-Verbindungstest
+  """
+  from database import get_database
+
+  health = {
+    "status": "healthy",
+    "service": "AuraOS Moodlight API",
+    "checks": {}
+  }
+
+  # Datenbank-Check
+  try:
+    db = get_database()
+    db_health = db.check_connection_health()
+    health["checks"]["database"] = {
+      "status": "healthy" if db_health.get('connected') else "unhealthy",
+      "connected": db_health.get('connected', False),
+      "pool_available": db_health.get('pool_available', False),
+      "total_records": db_health.get('total_records', 0)
+    }
+    if not db_health.get('connected'):
+      health["status"] = "unhealthy"
+  except Exception as e:
+    health["checks"]["database"] = {"status": "unhealthy", "error": str(e)}
+    health["status"] = "unhealthy"
+
+  # OpenAI-Check
+  health["checks"]["openai"] = {
+    "status": "healthy" if openai_client else "unhealthy",
+    "available": openai_client is not None
+  }
+  if not openai_client:
+    health["status"] = "degraded"
+
+  status_code = 200 if health["status"] == "healthy" else 503 if health["status"] == "unhealthy" else 200
+  return jsonify(health), status_code
 
 @app.route('/api/dashboard')
 def get_dashboard_data():
