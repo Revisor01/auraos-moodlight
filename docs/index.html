@@ -1104,7 +1104,7 @@
         async function loadStatistics() {
             try {
                 // Load all available history data (unlimited)
-                const historyResponse = await fetch(`${API_BASE}/api/moodlight/history`);
+                const historyResponse = await fetch(`${API_BASE}/api/moodlight/history?all=true`);
                 const historyData = await historyResponse.json();
 
                 console.log('History data:', historyData); // Debug
