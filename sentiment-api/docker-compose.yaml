@@ -37,7 +37,7 @@ services:
       POSTGRES_USER: moodlight
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - /opt/stacks/auraos-moodlight/data/postgres:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     # Ports nur intern im Docker-Netzwerk
     expose:
@@ -57,7 +57,7 @@ services:
     container_name: moodlight-redis
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
     volumes:
-      - redis_data:/data
+      - /opt/stacks/auraos-moodlight/data/redis:/data
     # Ports nur intern im Docker-Netzwerk
     expose:
       - "6379"
@@ -73,9 +73,3 @@ services:
 networks:
   moodlight-net:
     driver: bridge
-
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
