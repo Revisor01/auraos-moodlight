@@ -225,19 +225,28 @@ def analyze_headlines_openai_batch(headlines: list):
     logging.info(f"Analyse abgeschlossen. Verarbeitet: {analyzed_count}. (Durchschnittl. Sentiment für Logging: {average_sentiment_for_logging:.4f})")
 
     # 2. Gewichteter Mood Score (dies wird der neue 'total_sentiment')
-    # Jetzt einfach: Durchschnitt der Einzelwerte, keine weitere Verstärkung
+    # Mit Verstärkung für mehr Varianz auf der LED-Darstellung
     weighted_mood_score = 0.0
     if analyzed_count > 0:
       # Alle individuellen Sentiment-Scores sammeln
       all_scores = [item['sentiment'] for item in results]
 
-      # Einfacher Durchschnitt - die Einzelwerte sind bereits aussagekräftig
-      weighted_mood_score = sum(all_scores) / len(all_scores)
+      # Basis: Durchschnitt der Einzelwerte
+      raw_average = sum(all_scores) / len(all_scores)
 
-      # Im gültigen Bereich halten (sollte eh schon sein)
-      weighted_mood_score = max(-1.0, min(1.0, weighted_mood_score))
+      # Verstärkungsfunktion: Streckt moderate Werte für mehr Varianz
+      # Verwendet eine sanfte S-Kurve (tanh-ähnlich) mit Faktor 2.0
+      # Bei raw_average = -0.25 -> ca. -0.47
+      # Bei raw_average = -0.35 -> ca. -0.62
+      # Bei raw_average = -0.50 -> ca. -0.76
+      amplification_factor = 2.0
+      stretched = raw_average * amplification_factor
 
-      logging.info(f"Sentiment Berechnung: Durchschnitt={weighted_mood_score:.4f} aus {len(all_scores)} Headlines")
+      # Sanfte Begrenzung mit tanh-ähnlicher Funktion (verhindert harte Clipping)
+      # math.tanh begrenzt natürlich auf [-1, 1]
+      weighted_mood_score = math.tanh(stretched)
+
+      logging.info(f"Sentiment Berechnung: Roh-Durchschnitt={raw_average:.4f}, Verstärkt (x{amplification_factor})={weighted_mood_score:.4f}")
 
     else:
         logging.warning("Keine Headlines analysiert, total_sentiment bleibt 0.0")

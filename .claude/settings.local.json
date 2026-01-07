@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./build-release.sh:*)",
+      "Bash(tar:*)",
+      "Bash(git commit:*)",
+      "Bash(pio run:*)",
+      "Bash(bash:*)",
+      "Bash(git push)",
+      "Bash(ssh root@server.godsapp.de:*)",
+      "Bash(cat:*)",
+      "Bash(platformio run:*)",
+      "Bash(git checkout:*)",
+      "Bash(find . -name \".git\" -type d -exec sh -c 'cd {} && cd .. && git remote -v 2>/dev/null | grep -q \"\"news-sentiment-backend\"\" && pwd' ;)",
+      "Bash(python3:*)",
+      "Bash(gh repo list:*)",
+      "Bash(gh repo archive:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(git rm:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
