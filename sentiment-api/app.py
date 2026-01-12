@@ -294,7 +294,7 @@ def get_headlines_per_source(route_default: int) -> int:
 @app.route('/')
 def index():
   return jsonify({
-    "service": "AuraOS Moodlight API v9.0",
+    "service": "AuraOS Moodlight API v9.1",
     "status": "running",
     "endpoints": {
       "current": "/api/moodlight/current",

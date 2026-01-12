@@ -21,7 +21,9 @@
       "Bash(git rm:*)",
       "Bash(git show:*)",
       "Bash(git add:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(gh variable set:*)",
+      "Bash(gh variable list:*)"
     ],
     "deny": [],
     "ask": []
