@@ -35,8 +35,8 @@ Requirements for the stabilization milestone. Each maps to roadmap phases.
 
 ### Repository — Hygiene
 
-- [ ] **REPO-01**: `.env` ist in `.gitignore` — kein Risiko dass API-Keys oder DB-Passwörter versehentlich committed werden
-- [ ] **REPO-02**: Temporäre und binäre Dateien sind aus Git entfernt — `setup.html.tmp.html` gelöscht, `releases/`, `*.tmp.html` in `.gitignore`
+- [x] **REPO-01**: `.env` ist in `.gitignore` — kein Risiko dass API-Keys oder DB-Passwörter versehentlich committed werden
+- [x] **REPO-02**: Temporäre und binäre Dateien sind aus Git entfernt — `setup.html.tmp.html` gelöscht, `releases/`, `*.tmp.html` in `.gitignore`
 
 ## v2 Requirements
 
@@ -86,8 +86,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | DATA-03 | Phase 2 | Pending |
-| REPO-01 | Phase 2 | Pending |
-| REPO-02 | Phase 2 | Pending |
+| REPO-01 | Phase 2 | Complete |
+| REPO-02 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 13 total
