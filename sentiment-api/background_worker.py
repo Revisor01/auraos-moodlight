@@ -132,7 +132,7 @@ class SentimentUpdateWorker:
         (Nutzt die gleiche Logik wie in app.py)
         """
         import feedparser
-        import socket
+        import requests
 
         rss_feeds = {
             "Zeit": "https://newsfeed.zeit.de/index",
@@ -151,30 +151,24 @@ class SentimentUpdateWorker:
 
         headlines = []
         processed_links = set()
-        socket_timeout = 10.0
         num_headlines_per_source = 1  # Für Background-Worker nur 1 Headline/Quelle
-
-        # Temporäres Timeout setzen
-        original_timeout = socket.getdefaulttimeout()
-        timeout_changed = False
-
-        if original_timeout is None or original_timeout != socket_timeout:
-            try:
-                socket.setdefaulttimeout(socket_timeout)
-                timeout_changed = True
-            except Exception as e:
-                logger.warning(f"Konnte Socket-Timeout nicht setzen: {e}")
 
         # Feeds abrufen
         for source, url in rss_feeds.items():
             try:
-                feed = feedparser.parse(url, request_headers={'User-Agent': 'WorldMoodAnalyzer/2.0'})
+                try:
+                    response = requests.get(url, timeout=15, headers={'User-Agent': 'WorldMoodAnalyzer/2.0'})
+                    response.raise_for_status()
+                    feed = feedparser.parse(response.content)
+                except requests.exceptions.Timeout:
+                    logger.warning(f"Timeout bei {source}")
+                    continue
+                except requests.exceptions.RequestException as e:
+                    logger.warning(f"Fehler beim Abrufen von {source}: {e}")
+                    continue
 
                 if feed.bozo and isinstance(feed.bozo_exception, Exception):
-                    if isinstance(feed.bozo_exception, socket.timeout):
-                        logger.warning(f"Timeout bei {source}")
-                    else:
-                        logger.warning(f"Feed-Fehler bei {source}: {feed.bozo_exception}")
+                    logger.warning(f"Feed-Fehler bei {source}: {feed.bozo_exception}")
                     continue
 
                 headlines_from_source = 0
@@ -199,17 +193,8 @@ class SentimentUpdateWorker:
                                 processed_links.add(unique_key)
                                 headlines_from_source += 1
 
-            except socket.timeout:
-                logger.warning(f"Timeout bei {source}")
             except Exception as e:
                 logger.error(f"Fehler bei {source}: {e}")
-
-        # Timeout zurücksetzen
-        if timeout_changed and original_timeout is not None:
-            try:
-                socket.setdefaulttimeout(original_timeout)
-            except Exception as e:
-                logger.warning(f"Konnte Timeout nicht zurücksetzen: {e}")
 
         return headlines
 
