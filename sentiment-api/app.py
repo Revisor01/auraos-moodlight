@@ -326,16 +326,6 @@ def health_check():
   status_code = 200 if health["status"] == "healthy" else 503 if health["status"] == "unhealthy" else 200
   return jsonify(health), status_code
 
-@app.route('/api/dashboard')
-def get_dashboard_data():
-  # Hier Daten für das Dashboard generieren
-  return jsonify({...})
-
-@app.route('/api/logs')
-def get_logs():
-  # Hier Logs bereitstellen
-  return jsonify({...})
-
 # --- Flask Routen (angepasst für Konfiguration und neuen Score) ---
 @app.route('/api/news', methods=['GET'])
 def get_news():
