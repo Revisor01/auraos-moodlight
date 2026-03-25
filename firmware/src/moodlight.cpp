@@ -742,14 +742,24 @@ bool loadSettingsFromFile() {
 
     // WiFi-Einstellungen
     wifiSSID = doc["wifiSSID"] | "";
-    wifiPassword = doc["wifiPass"] | "";
+    {
+        String loadedWifiPass = doc["wifiPass"] | "";
+        if (loadedWifiPass != "****") {
+            wifiPassword = loadedWifiPass;
+        }
+    }
     wifiConfigured = doc["wifiConfigured"] | false;
 
     // Erweiterte Einstellungen
     apiUrl = doc["apiUrl"] | DEFAULT_NEWS_API_URL;
     mqttServer = doc["mqttServer"] | "";
     mqttUser = doc["mqttUser"] | "";
-    mqttPassword = doc["mqttPass"] | "";
+    {
+        String loadedMqttPass = doc["mqttPass"] | "";
+        if (loadedMqttPass != "****") {
+            mqttPassword = loadedMqttPass;
+        }
+    }
     dhtPin = doc["dhtPin"] | DEFAULT_DHT_PIN;
     dhtEnabled = doc["dhtEnabled"] | true;
     ledPin = doc["ledPin"] | DEFAULT_LED_PIN;
@@ -2104,28 +2114,28 @@ server.on("/api/export/settings", HTTP_GET, []() {
     
     // WiFi-Einstellungen
     doc["wifiSSID"] = wifiSSID;
-    doc["wifiPass"] = wifiPassword;
+    doc["wifiPass"] = "****";
     doc["wifiConfigured"] = wifiConfigured;
-    
+
     // Erweiterte Einstellungen
     doc["apiUrl"] = apiUrl;
     doc["mqttServer"] = mqttServer;
     doc["mqttUser"] = mqttUser;
-    doc["mqttPass"] = mqttPassword;
+    doc["mqttPass"] = "****";
     doc["dhtPin"] = dhtPin;
     doc["dhtEnabled"] = dhtEnabled;
     doc["ledPin"] = ledPin;
     doc["numLeds"] = numLeds;
     doc["mqttEnabled"] = mqttEnabled;
-    
+
     // Benutzerdefinierte Farben
     for (int i = 0; i < 5; i++) {
         doc["color" + String(i)] = customColors[i];
     }
-    
+
     String jsonContent;
     serializeJson(doc, jsonContent);
-    
+
     server.sendHeader("Content-Disposition", "attachment; filename=moodlight_settings.json");
     server.send(200, "application/json", jsonContent);
     debug(F("Einstellungen wurden exportiert"));
@@ -2154,7 +2164,7 @@ server.on("/api/settings/api", HTTP_GET, []() {
     doc["enabled"] = mqttEnabled;
     doc["server"] = mqttServer;
     doc["user"] = mqttUser;
-    doc["pass"] = mqttPassword;
+    doc["pass"] = "****";
     
     char* jsonBuffer = jsonPool.acquire();
     size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
