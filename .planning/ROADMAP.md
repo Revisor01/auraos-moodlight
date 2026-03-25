@@ -38,7 +38,12 @@ Plans:
   3. RSS-Feed-Liste existiert an einer einzigen Stelle — `shared_config.py` ist die einzige Definition
   4. `/api/dashboard` und `/api/logs` geben 404 zurück
   5. `.env` und `*.tmp.html` sind nicht im Git-Repository enthalten — kein `git status` zeigt diese Dateien als tracked
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Shared Config erstellen (DATA-01, DATA-02) und tote Endpoints entfernen (DATA-03)
+- [ ] 02-02-PLAN.md — Gunicorn-Migration (BE-01) und Per-Connection Timeouts (BE-02)
+- [ ] 02-03-PLAN.md — Repository-Hygiene: .gitignore und getrackte Artefakte (REPO-01, REPO-02)
 
 ## Progress
 
@@ -48,4 +53,4 @@ Phases execute in numeric order: 1 → 2
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Firmware-Stabilität | 2/3 | In Progress|  |
-| 2. Backend-Hardening | 0/TBD | Not started | - |
+| 2. Backend-Hardening | 0/3 | Not started | - |
