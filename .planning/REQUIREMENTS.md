@@ -29,9 +29,9 @@ Requirements for the stabilization milestone. Each maps to roadmap phases.
 
 ### Backend — Datenqualität
 
-- [ ] **DATA-01**: RSS-Feed-Liste existiert nur einmal — `background_worker.py` importiert Feeds aus `app.py` oder einer shared Config
-- [ ] **DATA-02**: Sentiment-Kategorie-Thresholds sind konsistent — eine einzige `get_sentiment_category()` Funktion, verwendet von app.py, background_worker.py und moodlight_extensions.py
-- [ ] **DATA-03**: Tote API-Endpoints sind entfernt — `/api/dashboard` und `/api/logs` existieren nicht mehr
+- [x] **DATA-01**: RSS-Feed-Liste existiert nur einmal — `background_worker.py` importiert Feeds aus `app.py` oder einer shared Config
+- [x] **DATA-02**: Sentiment-Kategorie-Thresholds sind konsistent — eine einzige `get_sentiment_category()` Funktion, verwendet von app.py, background_worker.py und moodlight_extensions.py
+- [x] **DATA-03**: Tote API-Endpoints sind entfernt — `/api/dashboard` und `/api/logs` existieren nicht mehr
 
 ### Repository — Hygiene
 
@@ -83,9 +83,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-01 | Phase 1 | Complete |
 | BE-01 | Phase 2 | Pending |
 | BE-02 | Phase 2 | Pending |
-| DATA-01 | Phase 2 | Pending |
-| DATA-02 | Phase 2 | Pending |
-| DATA-03 | Phase 2 | Pending |
+| DATA-01 | Phase 2 | Complete |
+| DATA-02 | Phase 2 | Complete |
+| DATA-03 | Phase 2 | Complete |
 | REPO-01 | Phase 2 | Complete |
 | REPO-02 | Phase 2 | Complete |
 
