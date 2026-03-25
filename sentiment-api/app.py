@@ -6,7 +6,6 @@ from collections import Counter
 import os
 import re
 import math
-import socket
 from openai import OpenAI, OpenAIError
 
 app = Flask(__name__)
@@ -362,20 +361,6 @@ def get_news():
     num_headlines_per_source = get_headlines_per_source(DEFAULT_HEADLINES_PER_SOURCE_MAIN)
 
     headlines = []; errors = []; processed_links = set(); skipped_feeds = []
-    socket_timeout = 10.0
-
-    # Temporäres Timeout setzen
-    original_timeout = socket.getdefaulttimeout()
-    timeout_changed = False
-    # ... (Timeout Code unverändert) ...
-    if original_timeout is None or original_timeout != socket_timeout:
-        try:
-            socket.setdefaulttimeout(socket_timeout)
-            logging.info(f"Socket-Timeout temporär auf {socket_timeout}s gesetzt.")
-            timeout_changed = True
-        except Exception as e:
-             logging.warning(f"Konnte globalen Socket-Timeout nicht setzen: {e}")
-
 
     logging.info(f"Starte Feed-Abruf für /api/news (max. {num_headlines_per_source} Headlines/Quelle)...")
     total_headlines_found_before_filtering = 0
@@ -383,16 +368,23 @@ def get_news():
     for source, url in rss_feeds.items():
         logging.debug(f"--- Verarbeite Quelle: {source} ({url}) ---")
         try:
-            feed = feedparser.parse(url, request_headers={'User-Agent': 'WorldMoodAnalyzer/1.0'})
-            # ... (Bozo-Prüfung und Timeout-Handling unverändert) ...
+            try:
+                response = requests.get(url, timeout=15, headers={'User-Agent': 'WorldMoodAnalyzer/1.0'})
+                response.raise_for_status()
+                feed = feedparser.parse(response.content)
+            except requests.exceptions.Timeout:
+                logging.warning(f"Überspringe Feed von {source} wegen Timeout (15s).")
+                skipped_feeds.append(f"{source} (Timeout)")
+                continue
+            except requests.exceptions.RequestException as e:
+                logging.warning(f"Fehler beim Abrufen von {source}: {e}")
+                skipped_feeds.append(f"{source} (Abruffehler)")
+                continue
+
             if feed.bozo and isinstance(feed.bozo_exception, Exception):
-                 if isinstance(feed.bozo_exception, socket.timeout):
-                      logging.warning(f"Überspringe Feed von {source} wegen Timeout ({socket_timeout}s).")
-                      skipped_feeds.append(f"{source} (Timeout)")
-                 else:
-                      logging.warning(f"Überspringe fehlerhaften Feed (bozo) von {source}: {feed.bozo_exception}")
-                      skipped_feeds.append(f"{source} (Formatfehler)")
-                 continue
+                logging.warning(f"Überspringe fehlerhaften Feed (bozo) von {source}: {feed.bozo_exception}")
+                skipped_feeds.append(f"{source} (Formatfehler)")
+                continue
 
             headlines_from_source = 0
             if feed.entries:
@@ -414,22 +406,9 @@ def get_news():
                 logging.debug(f"  Quelle {source}: {headlines_from_source} Headlines übernommen.")
             # else: logging.info(f"Keine Einträge im Feed von {source} gefunden.")
 
-        except socket.timeout:
-             logging.warning(f"Überspringe Feed von {source} wegen explizitem Socket-Timeout ({socket_timeout}s).")
-             skipped_feeds.append(f"{source} (Timeout)")
-             continue
         except Exception as e:
             logging.error(f"Fehler beim Abrufen/Parsen des Feeds von {source}: {e}", exc_info=True)
             errors.append(f"Fehler bei {source}")
-
-    # Timeout zurücksetzen
-    # ... (Code unverändert) ...
-    if timeout_changed and original_timeout is not None:
-        try:
-            socket.setdefaulttimeout(original_timeout)
-            logging.info(f"Socket-Timeout auf ursprünglichen Wert ({original_timeout}) zurückgesetzt.")
-        except Exception as e:
-             logging.warning(f"Konnte Socket-Timeout nicht zurücksetzen: {e}")
 
 
     # --- Analyse und Rückgabe ---
