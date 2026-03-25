@@ -189,6 +189,8 @@ const unsigned long MAX_RECONNECT_DELAY = 300000; // Maximale Verzögerung (5 Mi
 int wifiReconnectAttempts = 0;
 bool wifiWasConnected = false; // Zu Beginn als false annehmen
 bool wifiReconnectActive = false; // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
+unsigned long disconnectStartMs = 0;                // LED-03: Grace-Timer fuer Status-LED
+const unsigned long STATUS_LED_GRACE_MS = 30000;    // LED-03: 30s bevor Status-LED aktiviert wird
 
 // MQTT Reconnect und Heartbeat
 unsigned long lastMqttReconnectAttempt = 0;
@@ -3762,7 +3764,13 @@ void checkAndReconnectWifi()
             wifiReconnectActive = true;  // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
             wifiReconnectAttempts = 0;
             wifiReconnectDelay = 5000;
-            setStatusLED(1);  // Wird in LED-03 (Task 2) durch Grace-Timer ersetzt
+            disconnectStartMs = millis();  // LED-03: Grace-Timer starten, KEIN setStatusLED(1) hier
+        }
+
+        // LED-03: Status-LED erst nach Grace Period aktivieren
+        if (disconnectStartMs > 0 && (currentMillis - disconnectStartMs > STATUS_LED_GRACE_MS)) {
+            setStatusLED(1);
+            disconnectStartMs = 0;  // Einmalig setzen
         }
 
         // Check if it's time for a new reconnect attempt
@@ -3798,6 +3806,7 @@ void checkAndReconnectWifi()
                     debug(F("WiFi erfolgreich wieder verbunden!"));
                     wifiWasConnected = true;
                     wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
+                    disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
                     wifiReconnectAttempts = 0;
                     wifiReconnectDelay = 5000;
 
@@ -3826,6 +3835,7 @@ void checkAndReconnectWifi()
         debug(F("WiFi ist wieder verbunden."));
         wifiWasConnected = true;
         wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
+        disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
         wifiReconnectAttempts = 0;
         wifiReconnectDelay = 5000;
 
