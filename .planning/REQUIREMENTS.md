@@ -10,8 +10,8 @@ Requirements for the stabilization milestone. Each maps to roadmap phases.
 ### Firmware — LED Stabilität
 
 - [x] **LED-01**: LED-Array ist gegen Buffer-Overflow geschützt — `ledColors` verwendet `MAX_LEDS` Konstante, `numLeds` wird beim Laden validiert
-- [ ] **LED-02**: LED-Updates flackern nicht bei WiFi/MQTT-Reconnects — keine `pixels.show()` während aktiver Reconnect-Phase
-- [ ] **LED-03**: Status-LED blinkt nicht bei kurzen Verbindungsunterbrechungen (<30s) — Debounce mit konfigurierbarem Threshold
+- [x] **LED-02**: LED-Updates flackern nicht bei WiFi/MQTT-Reconnects — keine `pixels.show()` während aktiver Reconnect-Phase
+- [x] **LED-03**: Status-LED blinkt nicht bei kurzen Verbindungsunterbrechungen (<30s) — Debounce mit konfigurierbarem Threshold
 
 ### Firmware — Speicher & Stabilität
 
@@ -76,8 +76,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | LED-01 | Phase 1 | Complete |
-| LED-02 | Phase 1 | Pending |
-| LED-03 | Phase 1 | Pending |
+| LED-02 | Phase 1 | Complete |
+| LED-03 | Phase 1 | Complete |
 | MEM-01 | Phase 1 | Complete |
 | MEM-02 | Phase 1 | Pending |
 | SEC-01 | Phase 1 | Pending |

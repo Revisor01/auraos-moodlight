@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 01-firmware-stabilit-t-01-01-PLAN.md
-last_updated: "2026-03-25T18:46:20.176Z"
+stopped_at: Completed 01-firmware-stabilit-t-01-02-PLAN.md
+last_updated: "2026-03-25T18:51:30.060Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 01 (firmware-stabilit-t) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Plan: 2 of 3
 
 *Updated after each plan completion*
 | Phase 01-firmware-stabilit-t P01 | 311 | 2 tasks | 2 files |
+| Phase 01-firmware-stabilit-t P02 | 15 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,8 @@ Recent decisions affecting current work:
 - NeoPixelBus als Fallback — nur migrieren wenn Core-Pinning + Mutex den Flicker nicht lösen
 - [Phase 01-firmware-stabilit-t]: MAX_LEDS auf 64 gesetzt — deckt alle realistischen LED-Strip-Groessen ab
 - [Phase 01-firmware-stabilit-t]: delete[] ausserhalb Mutex-Block in JsonBufferPool::release() — verhindert Heap-Leak bei Mutex-Timeout
+- [Phase 01-firmware-stabilit-t]: wifiReconnectActive als einzige Bedingung in processLEDUpdates() statt alter mehrteiliger WiFi/MQTT-Logik
+- [Phase 01-firmware-stabilit-t]: 30s Grace-Timer (disconnectStartMs) fuer Status-LED — kurze Verbindungsunterbrechungen aktivieren Status-LED nicht
 
 ### Pending Todos
 
@@ -72,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T18:46:20.174Z
-Stopped at: Completed 01-firmware-stabilit-t-01-01-PLAN.md
+Last session: 2026-03-25T18:51:30.057Z
+Stopped at: Completed 01-firmware-stabilit-t-01-02-PLAN.md
 Resume file: None
