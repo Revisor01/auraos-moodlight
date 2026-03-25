@@ -188,6 +188,7 @@ unsigned long wifiReconnectDelay = 5000;          // Basis-Reconnect-Verzögerun
 const unsigned long MAX_RECONNECT_DELAY = 300000; // Maximale Verzögerung (5 Minuten)
 int wifiReconnectAttempts = 0;
 bool wifiWasConnected = false; // Zu Beginn als false annehmen
+bool wifiReconnectActive = false; // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
 
 // MQTT Reconnect und Heartbeat
 unsigned long lastMqttReconnectAttempt = 0;
@@ -601,8 +602,8 @@ void processLEDUpdates() {
     
     // Only call show() if we have updates and not in a critical section
     if (needsUpdate) {
-        // Don't update LEDs when WiFi or MQTT operations are in progress
-        if (!WiFi.isConnected() || (WiFi.isConnected() && mqtt.isConnected()) || !mqttEnabled) {
+        // LED-02: LEDs nur aktualisieren wenn kein WiFi-Reconnect aktiv ist
+        if (!wifiReconnectActive) {
             // Wait for any ongoing interrupt operations
             yield();
             delay(1);
@@ -3758,9 +3759,10 @@ void checkAndReconnectWifi()
         {
             debug(F("WiFi Verbindung verloren! Starte Reconnect-Prozess..."));
             wifiWasConnected = false;
+            wifiReconnectActive = true;  // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
             wifiReconnectAttempts = 0;
             wifiReconnectDelay = 5000;
-            setStatusLED(1);
+            setStatusLED(1);  // Wird in LED-03 (Task 2) durch Grace-Timer ersetzt
         }
 
         // Check if it's time for a new reconnect attempt
@@ -3795,6 +3797,7 @@ void checkAndReconnectWifi()
                 {
                     debug(F("WiFi erfolgreich wieder verbunden!"));
                     wifiWasConnected = true;
+                    wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
                     wifiReconnectAttempts = 0;
                     wifiReconnectDelay = 5000;
 
@@ -3822,6 +3825,7 @@ void checkAndReconnectWifi()
         // WiFi is now connected but was disconnected before
         debug(F("WiFi ist wieder verbunden."));
         wifiWasConnected = true;
+        wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
         wifiReconnectAttempts = 0;
         wifiReconnectDelay = 5000;
 
