@@ -4438,6 +4438,9 @@ void loop() {
             }
         }
         
+        // Systemgesundheit aktualisieren vor Restart-Entscheidung
+        sysHealth.update();
+
         // Prüfen, ob Neustart empfohlen wird
         if (sysHealth.isRestartRecommended()) {
             debug(F("System empfiehlt Neustart - plane Neustart für 3:00 Uhr..."));
@@ -4511,20 +4514,11 @@ void loop() {
     yield();
     delay(20);  // 20ms Pause
     
-    // Speichernutzung überwachen
-    memMonitor.update();
-    
-    // Regelmäßiger Systemgesundheitscheck
+    // Regelmaessiger Systemgesundheitscheck (5 Minuten)
     static unsigned long lastHealthCheck = 0;
-    if (millis() - lastHealthCheck > 300000) {  // Alle 5 Minuten
+    if (millis() - lastHealthCheck > 300000) {
         sysHealth.update();
+        memMonitor.update();
         lastHealthCheck = millis();
-        
-        // Neustart empfehlen bei kritischen Problemen
-        if (sysHealth.isRestartRecommended()) {
-            debug(F("Systemdiagnose empfiehlt Neustart. Plane Neustart in 60 Sekunden..."));
-            rebootNeeded = true;
-            rebootTime = millis() + 60000;
-        }
     }
 }
