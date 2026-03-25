@@ -14,5 +14,5 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 6237
 
-# Run app.py directly to start Background Worker
-CMD ["python", "app.py"]
+# Gunicorn mit einem Worker (-w 1) damit Background Worker genau einmal laeuft
+CMD ["gunicorn", "-w", "1", "--threads", "4", "-b", "0.0.0.0:6237", "--timeout", "120", "--access-logfile", "-", "app:app"]
