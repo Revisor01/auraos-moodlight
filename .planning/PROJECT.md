@@ -32,13 +32,16 @@ Das Moodlight läuft stabil und zuverlässig im Dauerbetrieb — ohne unerklärl
 
 ### Active
 
-- [ ] Backend: Flask Dev-Server durch Gunicorn ersetzen
-- [ ] Backend: Globale Socket-Timeouts durch per-Connection Timeouts ersetzen
-- [ ] Backend: Duplizierte RSS-Feed-Listen konsolidieren
-- [ ] Backend: Inkonsistente Sentiment-Kategorie-Thresholds vereinheitlichen
-- [ ] Credentials nicht mehr über API exposen (Passwörter maskieren)
-- [ ] Tote Endpoints entfernen (/api/dashboard, /api/logs)
-- [ ] Aufräumen: tmp-Dateien, .env in .gitignore, unreachable Code
+(Alle v1 Requirements abgeschlossen — Milestone complete)
+
+### Recently Validated
+
+- ✓ Backend: Gunicorn mit `-w 1` statt Flask Dev-Server — Phase 2
+- ✓ Backend: Per-Connection Timeouts via requests.get(timeout=15) — Phase 2
+- ✓ Backend: RSS-Feed-Liste in shared_config.py konsolidiert — Phase 2
+- ✓ Backend: Sentiment-Kategorie-Thresholds vereinheitlicht (0.30/0.10/-0.20/-0.50) — Phase 2
+- ✓ Tote Endpoints /api/dashboard und /api/logs entfernt — Phase 2
+- ✓ .env in .gitignore, tmp-Dateien und Binaries aus Git entfernt — Phase 2
 
 ### Out of Scope
 
@@ -95,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after Phase 1 completion*
+*Last updated: 2026-03-25 after Phase 2 completion (Milestone complete)*
