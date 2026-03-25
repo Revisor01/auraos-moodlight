@@ -9,13 +9,13 @@ Requirements for the stabilization milestone. Each maps to roadmap phases.
 
 ### Firmware — LED Stabilität
 
-- [ ] **LED-01**: LED-Array ist gegen Buffer-Overflow geschützt — `ledColors` verwendet `MAX_LEDS` Konstante, `numLeds` wird beim Laden validiert
+- [x] **LED-01**: LED-Array ist gegen Buffer-Overflow geschützt — `ledColors` verwendet `MAX_LEDS` Konstante, `numLeds` wird beim Laden validiert
 - [ ] **LED-02**: LED-Updates flackern nicht bei WiFi/MQTT-Reconnects — keine `pixels.show()` während aktiver Reconnect-Phase
 - [ ] **LED-03**: Status-LED blinkt nicht bei kurzen Verbindungsunterbrechungen (<30s) — Debounce mit konfigurierbarem Threshold
 
 ### Firmware — Speicher & Stabilität
 
-- [ ] **MEM-01**: JSON Buffer Pool hat kein Memory Leak — RAII-Guard stellt sicher dass Heap-Allokationen immer freigegeben werden, auch bei Mutex-Timeout
+- [x] **MEM-01**: JSON Buffer Pool hat kein Memory Leak — RAII-Guard stellt sicher dass Heap-Allokationen immer freigegeben werden, auch bei Mutex-Timeout
 - [ ] **MEM-02**: Health-Checks sind in einer einzigen Routine konsolidiert — kein doppelter Timer (1h + 5min), klare Eskalation von Warnung zu Neustart
 
 ### Firmware — Sicherheit
@@ -75,10 +75,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LED-01 | Phase 1 | Pending |
+| LED-01 | Phase 1 | Complete |
 | LED-02 | Phase 1 | Pending |
 | LED-03 | Phase 1 | Pending |
-| MEM-01 | Phase 1 | Pending |
+| MEM-01 | Phase 1 | Complete |
 | MEM-02 | Phase 1 | Pending |
 | SEC-01 | Phase 1 | Pending |
 | BE-01 | Phase 2 | Pending |

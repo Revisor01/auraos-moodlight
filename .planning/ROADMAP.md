@@ -21,10 +21,10 @@ Dieses Milestone-Roadmap behebt bekannte Stabilitätsprobleme im laufenden Syste
   3. `ESP.getFreeHeap()` bleibt nach 24h Dauerbetrieb stabil — kein kontinuierlicher Rückgang
   4. Gerät startet nach Konfiguration von `numLeds > 12` nicht neu und beschädigt keine benachbarten Variablen
   5. `/api/export/settings` und `/api/settings/mqtt` geben `"****"` für WiFi- und MQTT-Passwörter zurück
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 01-01-PLAN.md — Buffer-Overflow Fix (LED-01) und JSON Buffer Pool RAII Guard (MEM-01)
+- [x] 01-01-PLAN.md — Buffer-Overflow Fix (LED-01) und JSON Buffer Pool RAII Guard (MEM-01)
 - [ ] 01-02-PLAN.md — WiFi-Reconnect LED-Guard (LED-02) und Status-LED Debounce (LED-03)
 - [ ] 01-03-PLAN.md — Health-Check Konsolidierung (MEM-02) und Credential-Maskierung (SEC-01)
 
@@ -47,5 +47,5 @@ Phases execute in numeric order: 1 → 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Firmware-Stabilität | 0/3 | Planned | - |
+| 1. Firmware-Stabilität | 1/3 | In Progress|  |
 | 2. Backend-Hardening | 0/TBD | Not started | - |
