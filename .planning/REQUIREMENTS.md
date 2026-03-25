@@ -16,11 +16,11 @@ Requirements for the stabilization milestone. Each maps to roadmap phases.
 ### Firmware — Speicher & Stabilität
 
 - [x] **MEM-01**: JSON Buffer Pool hat kein Memory Leak — RAII-Guard stellt sicher dass Heap-Allokationen immer freigegeben werden, auch bei Mutex-Timeout
-- [ ] **MEM-02**: Health-Checks sind in einer einzigen Routine konsolidiert — kein doppelter Timer (1h + 5min), klare Eskalation von Warnung zu Neustart
+- [x] **MEM-02**: Health-Checks sind in einer einzigen Routine konsolidiert — kein doppelter Timer (1h + 5min), klare Eskalation von Warnung zu Neustart
 
 ### Firmware — Sicherheit
 
-- [ ] **SEC-01**: API-Responses enthalten keine Klartext-Passwörter — `/api/export/settings` und `/api/settings/mqtt` maskieren WiFi- und MQTT-Passwörter mit `"****"`
+- [x] **SEC-01**: API-Responses enthalten keine Klartext-Passwörter — `/api/export/settings` und `/api/settings/mqtt` maskieren WiFi- und MQTT-Passwörter mit `"****"`
 
 ### Backend — Production Readiness
 
@@ -79,8 +79,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LED-02 | Phase 1 | Complete |
 | LED-03 | Phase 1 | Complete |
 | MEM-01 | Phase 1 | Complete |
-| MEM-02 | Phase 1 | Pending |
-| SEC-01 | Phase 1 | Pending |
+| MEM-02 | Phase 1 | Complete |
+| SEC-01 | Phase 1 | Complete |
 | BE-01 | Phase 2 | Pending |
 | BE-02 | Phase 2 | Pending |
 | DATA-01 | Phase 2 | Pending |

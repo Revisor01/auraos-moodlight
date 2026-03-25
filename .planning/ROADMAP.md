@@ -26,7 +26,7 @@ Dieses Milestone-Roadmap behebt bekannte Stabilitätsprobleme im laufenden Syste
 Plans:
 - [x] 01-01-PLAN.md — Buffer-Overflow Fix (LED-01) und JSON Buffer Pool RAII Guard (MEM-01)
 - [x] 01-02-PLAN.md — WiFi-Reconnect LED-Guard (LED-02) und Status-LED Debounce (LED-03)
-- [ ] 01-03-PLAN.md — Health-Check Konsolidierung (MEM-02) und Credential-Maskierung (SEC-01)
+- [x] 01-03-PLAN.md — Health-Check Konsolidierung (MEM-02) und Credential-Maskierung (SEC-01)
 
 ### Phase 2: Backend-Hardening
 **Goal**: Backend läuft produktionstauglich hinter Gunicorn, ohne duplizierte Konfiguration oder Secret-Leaks im Repository
