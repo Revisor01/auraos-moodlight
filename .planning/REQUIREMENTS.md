@@ -24,8 +24,8 @@ Requirements for the stabilization milestone. Each maps to roadmap phases.
 
 ### Backend — Production Readiness
 
-- [ ] **BE-01**: Flask läuft hinter Gunicorn statt Dev-Server — `gunicorn -w 1 -b 0.0.0.0:6237 app:app` in Dockerfile, Background Worker startet nur einmal
-- [ ] **BE-02**: Socket-Timeouts sind per-Connection statt global — kein `socket.setdefaulttimeout()`, stattdessen `requests.get(url, timeout=15)` für Feed-Fetching
+- [x] **BE-01**: Flask läuft hinter Gunicorn statt Dev-Server — `gunicorn -w 1 -b 0.0.0.0:6237 app:app` in Dockerfile, Background Worker startet nur einmal
+- [x] **BE-02**: Socket-Timeouts sind per-Connection statt global — kein `socket.setdefaulttimeout()`, stattdessen `requests.get(url, timeout=15)` für Feed-Fetching
 
 ### Backend — Datenqualität
 
@@ -81,8 +81,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-01 | Phase 1 | Complete |
 | MEM-02 | Phase 1 | Complete |
 | SEC-01 | Phase 1 | Complete |
-| BE-01 | Phase 2 | Pending |
-| BE-02 | Phase 2 | Pending |
+| BE-01 | Phase 2 | Complete |
+| BE-02 | Phase 2 | Complete |
 | DATA-01 | Phase 2 | Complete |
 | DATA-02 | Phase 2 | Complete |
 | DATA-03 | Phase 2 | Complete |

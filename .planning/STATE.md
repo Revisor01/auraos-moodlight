@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 02-backend-hardening-02-01-PLAN.md
-last_updated: "2026-03-25T19:19:21.627Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 02-backend-hardening-02-02-PLAN.md
+last_updated: "2026-03-25T19:24:34.698Z"
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -51,6 +51,7 @@ Plan: 3 of 3
 | Phase 01-firmware-stabilit-t P03 | 3 | 2 tasks | 1 files |
 | Phase 02-backend-hardening P03 | 5 | 1 tasks | 6 files |
 | Phase 02-backend-hardening P01 | 159 | 2 tasks | 4 files |
+| Phase 02-backend-hardening P02 | 152 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 02-backend-hardening]: History-Bereinigung (BFG/filter-branch) out of scope — Binaerdateien bleiben in Git-History, werden aber nicht mehr getrackt
 - [Phase 02-backend-hardening]: Thresholds 0.30/0.10/-0.20/-0.50 aus background_worker.py als kanonische Werte gewaehlt
 - [Phase 02-backend-hardening]: rss_feeds = RSS_FEEDS Alias in app.py behalten fuer Kompatibilitaet mit /api/feedconfig Route
+- [Phase 02-backend-hardening]: Gunicorn mit -w 1 --threads 4 — Background Worker laeuft im Prozess, kein Multi-Worker
+- [Phase 02-backend-hardening]: requests.get(timeout=15) als Ersatz fuer socket.setdefaulttimeout() — per-Connection statt global
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T19:19:21.624Z
-Stopped at: Completed 02-backend-hardening-02-01-PLAN.md
+Last session: 2026-03-25T19:24:34.696Z
+Stopped at: Completed 02-backend-hardening-02-02-PLAN.md
 Resume file: None

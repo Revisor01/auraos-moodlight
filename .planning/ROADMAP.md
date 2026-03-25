@@ -7,7 +7,7 @@ Dieses Milestone-Roadmap behebt bekannte Stabilitätsprobleme im laufenden Syste
 ## Phases
 
 - [ ] **Phase 1: Firmware-Stabilität** - ESP32-Crashes, Buffer-Overflow, Heap-Leak und LED-Flicker beseitigen
-- [ ] **Phase 2: Backend-Hardening** - Flask produktionstauglich machen, Konfiguration konsolidieren, Repository säubern
+- [x] **Phase 2: Backend-Hardening** - Flask produktionstauglich machen, Konfiguration konsolidieren, Repository säubern (completed 2026-03-25)
 
 ## Phase Details
 
@@ -38,11 +38,11 @@ Plans:
   3. RSS-Feed-Liste existiert an einer einzigen Stelle — `shared_config.py` ist die einzige Definition
   4. `/api/dashboard` und `/api/logs` geben 404 zurück
   5. `.env` und `*.tmp.html` sind nicht im Git-Repository enthalten — kein `git status` zeigt diese Dateien als tracked
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — Shared Config erstellen (DATA-01, DATA-02) und tote Endpoints entfernen (DATA-03)
-- [ ] 02-02-PLAN.md — Gunicorn-Migration (BE-01) und Per-Connection Timeouts (BE-02)
+- [x] 02-02-PLAN.md — Gunicorn-Migration (BE-01) und Per-Connection Timeouts (BE-02)
 - [x] 02-03-PLAN.md — Repository-Hygiene: .gitignore und getrackte Artefakte (REPO-01, REPO-02)
 
 ## Progress
@@ -53,4 +53,4 @@ Phases execute in numeric order: 1 → 2
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Firmware-Stabilität | 2/3 | In Progress|  |
-| 2. Backend-Hardening | 2/3 | In Progress|  |
+| 2. Backend-Hardening | 3/3 | Complete   | 2026-03-25 |
