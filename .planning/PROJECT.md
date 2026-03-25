@@ -24,14 +24,14 @@ Das Moodlight läuft stabil und zuverlässig im Dauerbetrieb — ohne unerklärl
 - ✓ CI/CD Pipeline: GitHub Actions → GHCR → Portainer Webhook — existing
 - ✓ CSV-Export/Import für Sentiment-Verlaufsdaten — existing
 - ✓ Device-Tracking im Backend (Firmware-Version, Statistiken) — existing
+- ✓ LED-Steuerung stabilisiert: WiFi/MQTT-Reconnect LED-Guard, Status-LED 30s Debounce — Phase 1
+- ✓ Buffer-Overflow bei LED-Anzahl > 12 gefixt (MAX_LEDS 64) — Phase 1
+- ✓ JSON Buffer Pool Memory Leak gefixt (RAII-Guard) — Phase 1
+- ✓ Health-Checks konsolidiert (ein Timer, klare Eskalation) — Phase 1
+- ✓ Credentials in API-Responses maskiert — Phase 1
 
 ### Active
 
-- [ ] LED-Steuerung stabilisieren: Timing-Konflikte zwischen LED-Updates und WiFi/MQTT-Reconnects beseitigen
-- [ ] Buffer-Overflow bei konfigurierbarer LED-Anzahl > 12 fixen
-- [ ] JSON Buffer Pool Memory Leak bei Mutex-Timeout fixen (RAII-Pattern)
-- [ ] Doppelte Health-Checks konsolidieren (1h + 5min → eine klare Routine)
-- [ ] Status-LED Blink-Verhalten bei kurzen Reconnects unterdrücken
 - [ ] Backend: Flask Dev-Server durch Gunicorn ersetzen
 - [ ] Backend: Globale Socket-Timeouts durch per-Connection Timeouts ersetzen
 - [ ] Backend: Duplizierte RSS-Feed-Listen konsolidieren
@@ -95,4 +95,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after initialization*
+*Last updated: 2026-03-25 after Phase 1 completion*
