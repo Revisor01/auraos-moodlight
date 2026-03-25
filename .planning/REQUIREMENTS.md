@@ -75,25 +75,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LED-01 | Pending | Pending |
-| LED-02 | Pending | Pending |
-| LED-03 | Pending | Pending |
-| MEM-01 | Pending | Pending |
-| MEM-02 | Pending | Pending |
-| SEC-01 | Pending | Pending |
-| BE-01 | Pending | Pending |
-| BE-02 | Pending | Pending |
-| DATA-01 | Pending | Pending |
-| DATA-02 | Pending | Pending |
-| DATA-03 | Pending | Pending |
-| REPO-01 | Pending | Pending |
-| REPO-02 | Pending | Pending |
+| LED-01 | Phase 1 | Pending |
+| LED-02 | Phase 1 | Pending |
+| LED-03 | Phase 1 | Pending |
+| MEM-01 | Phase 1 | Pending |
+| MEM-02 | Phase 1 | Pending |
+| SEC-01 | Phase 1 | Pending |
+| BE-01 | Phase 2 | Pending |
+| BE-02 | Phase 2 | Pending |
+| DATA-01 | Phase 2 | Pending |
+| DATA-02 | Phase 2 | Pending |
+| DATA-03 | Phase 2 | Pending |
+| REPO-01 | Phase 2 | Pending |
+| REPO-02 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 after roadmap creation*
