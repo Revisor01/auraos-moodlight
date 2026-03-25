@@ -48,3 +48,13 @@ Icon?
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets — API-Keys und DB-Passwoerter
+.env
+sentiment-api/.env
+
+# Releases (Binaries via GitHub Releases, nicht im Repo)
+releases/
+
+# Temporaere HTML-Dateien
+*.tmp.html
