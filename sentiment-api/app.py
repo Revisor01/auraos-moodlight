@@ -554,6 +554,12 @@ from background_worker import start_background_worker
 # Neue Endpunkte registrieren
 register_moodlight_endpoints(app)
 
+# Background Worker starten - muss ausserhalb __main__ sein damit Gunicorn ihn startet
+start_background_worker(
+    app=app,
+    analyze_function=analyze_headlines_openai_batch,
+    interval_seconds=1800
+)
 
 # Hauptausführungspunkt
 if __name__ == '__main__':
@@ -563,12 +569,5 @@ if __name__ == '__main__':
     logging.info(f"Starte Flask App im {'Debug' if is_debug_mode else 'Production'} Modus (GPT-4o-mini + PostgreSQL + Redis)...")
     if not openai_client:
          logging.warning("!!! OpenAI Client konnte nicht initialisiert werden (fehlender API Key?). API wird Fehler zurückgeben. !!!")
-
-    # Background Worker starten (alle 30 Minuten)
-    start_background_worker(
-        app=app,
-        analyze_function=analyze_headlines_openai_batch,
-        interval_seconds=1800
-    )
 
     app.run(host='0.0.0.0', port=6237, debug=is_debug_mode)
