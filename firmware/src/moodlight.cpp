@@ -357,6 +357,7 @@ struct JsonBufferPool {
     
     // Gibt einen Puffer frei
     void release(char* buffer) {
+        if (!buffer) return;
         if (xSemaphoreTake(mutex, 100 / portTICK_PERIOD_MS) == pdTRUE) {
             for (int i = 0; i < JSON_BUFFER_COUNT; i++) {
                 if (buffer == buffers[i]) {
@@ -366,13 +367,25 @@ struct JsonBufferPool {
                 }
             }
             xSemaphoreGive(mutex);
-            // Wenn Buffer nicht im Pool ist, war es ein Heap-Allocation
-            delete[] buffer;
         }
+        // KRITISCHER FIX: delete[] IMMER wenn nicht im Pool —
+        // unabhaengig ob Mutex erfolgreich war
+        delete[] buffer;
     }
 };
 
 JsonBufferPool jsonPool;
+
+// RAII-Guard fuer sichere JSON-Buffer-Verwaltung (automatisches release() im Destruktor)
+class JsonBufferGuard {
+public:
+    char* buf;
+    JsonBufferGuard() : buf(jsonPool.acquire()) {}
+    ~JsonBufferGuard() { if (buf) jsonPool.release(buf); }
+    // Nicht kopierbar
+    JsonBufferGuard(const JsonBufferGuard&) = delete;
+    JsonBufferGuard& operator=(const JsonBufferGuard&) = delete;
+};
 
 // Add this function to initialize time via NTP
 // Simplified NTP time initialization
