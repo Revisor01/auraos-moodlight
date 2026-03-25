@@ -9,6 +9,7 @@ import time
 from threading import Thread
 from datetime import datetime
 from database import get_database, get_cache
+from shared_config import RSS_FEEDS, get_sentiment_category
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class SentimentUpdateWorker:
 
             # 3. In Datenbank speichern
             db = get_database()
-            category = self._get_category(sentiment_score)
+            category = get_sentiment_category(sentiment_score)
 
             response_time_ms = int((time.time() - start_time) * 1000)
 
@@ -134,20 +135,7 @@ class SentimentUpdateWorker:
         import feedparser
         import socket
 
-        rss_feeds = {
-            "Zeit": "https://newsfeed.zeit.de/index",
-            "Tagesschau": "https://www.tagesschau.de/xml/rss2",
-            "Sueddeutsche": "https://rss.sueddeutsche.de/rss/Alles",
-            "FAZ": "https://www.faz.net/rss/aktuell/",
-            "Die Welt": "https://www.welt.de/feeds/latest.rss",
-            "Handelsblatt": "https://www.handelsblatt.com/contentexport/feed/schlagzeilen",
-            "n-tv": "https://www.n-tv.de/rss",
-            "Focus": "https://rss.focus.de/fol/XML/rss_folnews.xml",
-            "Stern": "https://www.stern.de/feed/standard/alle-nachrichten/",
-            "Telekom": "https://www.t-online.de/feed.rss",
-            "TAZ": "https://taz.de/!p4608;rss/",
-            "Deutschlandfunk": "https://www.deutschlandfunk.de/nachrichten-100.rss"
-        }
+        rss_feeds = RSS_FEEDS
 
         headlines = []
         processed_links = set()
@@ -212,20 +200,6 @@ class SentimentUpdateWorker:
                 logger.warning(f"Konnte Timeout nicht zurücksetzen: {e}")
 
         return headlines
-
-    def _get_category(self, sentiment_score):
-        """Bestimme Kategorie aus Sentiment-Score"""
-        if sentiment_score >= 0.30:
-            return "sehr positiv"
-        elif sentiment_score >= 0.10:
-            return "positiv"
-        elif sentiment_score >= -0.20:
-            return "neutral"
-        elif sentiment_score >= -0.50:
-            return "negativ"
-        else:
-            return "sehr negativ"
-
 
 # Singleton-Instanz
 _worker = None

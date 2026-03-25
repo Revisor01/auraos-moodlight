@@ -12,6 +12,7 @@ import logging
 from flask import jsonify, request
 from datetime import datetime, timedelta
 from database import get_database, get_cache
+from shared_config import get_sentiment_category as get_category_from_score
 import time
 
 logger = logging.getLogger(__name__)
@@ -19,20 +20,6 @@ logger = logging.getLogger(__name__)
 
 # Farben werden auf dem Moodlight selbst konfiguriert (Teil der User-Config)
 # Wir liefern nur den reinen Sentiment-Score
-
-
-def get_category_from_score(score: float) -> str:
-    """Bestimmt Kategorie aus Sentiment-Score"""
-    if score >= 0.30:
-        return "sehr positiv"
-    elif score >= 0.10:
-        return "positiv"
-    elif score >= -0.20:
-        return "neutral"
-    elif score >= -0.50:
-        return "negativ"
-    else:
-        return "sehr negativ"
 
 
 def register_moodlight_endpoints(app):

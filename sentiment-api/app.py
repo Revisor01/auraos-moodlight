@@ -8,6 +8,7 @@ import re
 import math
 import socket
 from openai import OpenAI, OpenAIError
+from shared_config import RSS_FEEDS, get_sentiment_category
 
 app = Flask(__name__)
 
@@ -50,22 +51,8 @@ else:
     logging.error("############################################################")
 
 
-# Liste der RSS-Feeds
-# (Code unverändert)
-rss_feeds = {
-    "Zeit": "https://newsfeed.zeit.de/index",
-    "Tagesschau": "https://www.tagesschau.de/xml/rss2",
-    "Sueddeutsche": "https://rss.sueddeutsche.de/rss/Alles",
-    "FAZ": "https://www.faz.net/rss/aktuell/",
-    "Die Welt": "https://www.welt.de/feeds/latest.rss",
-    "Handelsblatt": "https://www.handelsblatt.com/contentexport/feed/schlagzeilen",
-    "n-tv": "https://www.n-tv.de/rss",
-    "Focus": "https://rss.focus.de/fol/XML/rss_folnews.xml",
-    "Stern": "https://www.stern.de/feed/standard/alle-nachrichten/",
-    "Telekom": "https://www.t-online.de/feed.rss",
-    "TAZ": "https://taz.de/!p4608;rss/",
-    "Deutschlandfunk": "https://www.deutschlandfunk.de/nachrichten-100.rss"
-}
+# Liste der RSS-Feeds (Single Source of Truth: shared_config.py)
+rss_feeds = RSS_FEEDS
 
 # --- Funktion zur Sentiment-Analyse mit OpenAI API ---
 # (Code unverändert, gibt Liste von Scores zurück)
@@ -202,11 +189,7 @@ def analyze_headlines_openai_batch(headlines: list):
             total_numeric_sentiment_sum += score # Für Debugging/Logging
             analyzed_count += 1
 
-            if score > 0.85: strength = "sehr_positiv"
-            elif score > 0.2: strength = "positiv"
-            elif score < -0.85: strength = "sehr_negativ"
-            elif score < -0.2: strength = "negativ"
-            else: strength = "neutral"
+            strength = get_sentiment_category(score)
 
             sentiment_distribution[strength] += 1
 
