@@ -145,7 +145,7 @@ unsigned long moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
 unsigned long dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
 String apiUrl = DEFAULT_NEWS_API_URL;
 volatile bool ledUpdatePending = false;
-volatile uint32_t ledColors[DEFAULT_NUM_LEDS];
+volatile uint32_t ledColors[MAX_LEDS];
 volatile uint8_t ledBrightness = DEFAULT_LED_BRIGHTNESS;
 volatile bool ledClear = false;
 int currentLedIndex = 2;
@@ -204,7 +204,7 @@ int consecutiveSentimentFailures = 0;
 const int MAX_SENTIMENT_FAILURES = 5;
 
 // Status-LED
-const int STATUS_LED_INDEX = DEFAULT_NUM_LEDS - 1; // Letzte LED für Status
+int statusLedIndex = DEFAULT_NUM_LEDS - 1; // Dynamisch: wird nach numLeds-Load aktualisiert
 unsigned long statusLedBlinkStart = 0;
 bool statusLedState = false;
 int statusLedMode = 0; // 0=Normal, 1=WiFi-Verbindung, 2=API-Fehler, 3=Update, 4=MQTT-Verbindung, 5=AP-Modus
@@ -501,7 +501,7 @@ void setStatusLED(int mode) {
         }
 
         // Only update the status LED
-        ledColors[STATUS_LED_INDEX] = statusColor;
+        ledColors[statusLedIndex] = statusColor;
         ledUpdatePending = true;
         xSemaphoreGive(ledMutex);
     }
@@ -544,10 +544,10 @@ void updateStatusLED() {
                     case 5: statusColor = pixels.Color(255, 255, 0); break; // Gelb
                 }
                 
-                ledColors[STATUS_LED_INDEX] = statusColor;
+                ledColors[statusLedIndex] = statusColor;
             } else {
                 // LED ausschalten
-                ledColors[STATUS_LED_INDEX] = pixels.Color(0, 0, 0);
+                ledColors[statusLedIndex] = pixels.Color(0, 0, 0);
             }
             
             ledUpdatePending = true;
@@ -737,7 +737,8 @@ bool loadSettingsFromFile() {
     dhtPin = doc["dhtPin"] | DEFAULT_DHT_PIN;
     dhtEnabled = doc["dhtEnabled"] | true;
     ledPin = doc["ledPin"] | DEFAULT_LED_PIN;
-    numLeds = doc["numLeds"] | DEFAULT_NUM_LEDS;
+    numLeds = constrain(doc["numLeds"] | DEFAULT_NUM_LEDS, 1, MAX_LEDS);
+    statusLedIndex = numLeds - 1;
     mqttEnabled = doc["mqttEnabled"] | false;
 
     // Benutzerdefinierte Farben laden
@@ -829,7 +830,8 @@ void loadSettings()
         dhtPin = preferences.getInt("dhtPin", DEFAULT_DHT_PIN);
         dhtEnabled = preferences.getBool("dhtEnabled", true);
         ledPin = preferences.getInt("ledPin", DEFAULT_LED_PIN);
-        numLeds = preferences.getInt("numLeds", DEFAULT_NUM_LEDS);
+        numLeds = constrain(preferences.getInt("numLeds", DEFAULT_NUM_LEDS), 1, MAX_LEDS);
+        statusLedIndex = numLeds - 1;
         mqttEnabled = preferences.getBool("mqttEnabled", false);
 
         // Benutzerdefinierte Farben laden
@@ -3855,7 +3857,7 @@ void checkAndReconnectMQTT() {
                     statusLedState = true;
                     
                     if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                        ledColors[STATUS_LED_INDEX] = pixels.Color(0, 255, 255); // Cyan
+                        ledColors[statusLedIndex] = pixels.Color(0, 255, 255); // Cyan
                         ledUpdatePending = true;
                         xSemaphoreGive(ledMutex);
                     }
