@@ -6,7 +6,7 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 
 ## Core Value
 
-Das Moodlight läuft stabil und zuverlässig im Dauerbetrieb — ohne unerklärliches Blinken, Hänger oder unerwartete Neustarts.
+Ein einziger Klick baut ein Combined Update (UI + Firmware), bumpt die Version und committet — kein manuelles Versionieren, kein getrennter Upload.
 
 ## Requirements
 
@@ -32,16 +32,13 @@ Das Moodlight läuft stabil und zuverlässig im Dauerbetrieb — ohne unerklärl
 
 ### Active
 
-(Alle v1 Requirements abgeschlossen — Milestone complete)
-
-### Recently Validated
-
-- ✓ Backend: Gunicorn mit `-w 1` statt Flask Dev-Server — Phase 2
-- ✓ Backend: Per-Connection Timeouts via requests.get(timeout=15) — Phase 2
-- ✓ Backend: RSS-Feed-Liste in shared_config.py konsolidiert — Phase 2
-- ✓ Backend: Sentiment-Kategorie-Thresholds vereinheitlicht (0.30/0.10/-0.20/-0.50) — Phase 2
-- ✓ Tote Endpoints /api/dashboard und /api/logs entfernt — Phase 2
-- ✓ .env in .gitignore, tmp-Dateien und Binaries aus Git entfernt — Phase 2
+- [ ] Combined Update-Datei: Eine TGZ-Datei enthält UI-Dateien + firmware.bin, ESP32 verarbeitet beides sequentiell in einem Upload
+- [ ] Neuer Upload-Handler auf ESP32: Erkennt Combined-TGZ, extrahiert UI-Dateien nach LittleFS, flasht Firmware-BIN via Update-API
+- [ ] Unified Versionierung: Eine Versionsnummer für Firmware + UI (z.B. "10.0"), aus config.h gelesen
+- [ ] Build-Script: `./build-release.sh` bumpt Version in config.h, baut Firmware, packt Combined-TGZ, committet
+- [ ] Version-Bump-Logik: Major/Minor/Patch Bump als Argument (`./build-release.sh minor`)
+- [ ] Diagnostics-UI anpassen: Ein Upload-Feld statt zwei, zeigt eine Version
+- [ ] esp_task_wdt_init Fix: Pre-existing Build-Fehler beheben (Arduino ESP32 Core API-Kompatibilität)
 
 ### Out of Scope
 
@@ -57,10 +54,13 @@ Das Moodlight läuft stabil und zuverlässig im Dauerbetrieb — ohne unerklärl
 
 - Hardware: ESP32 dev board, 12 NeoPixel LEDs, DHT-Sensor, im Wohnzimmer unter http://192.168.0.140/
 - Backend: Docker Stack auf server.godsapp.de, erreichbar unter http://analyse.godsapp.de
-- Bekannte Symptome: Gelegentliches Blinken der LEDs (vermutlich bei WiFi/MQTT-Reconnects), manchmal hängt das System
-- Firmware ist ein 4500-Zeilen Monolith in einer Datei (moodlight.cpp)
-- Backend nutzt Flask Dev-Server in Produktion, hat duplizierte Konfiguration
-- Sentiment-Kategorie-Thresholds sind inkonsistent zwischen app.py und background_worker.py/moodlight_extensions.py
+- v1.0 Stabilisierung shipped: LED-Flicker, Buffer-Overflow, RAII, Health-Check, Gunicorn, shared_config
+- **Aktueller Build-Workflow**: `build-release.sh` liest Version aus `config.h`, baut UI-TGZ + Firmware-BIN getrennt in `releases/vX.X/`
+- **Aktueller Update-Workflow**: Zwei getrennte Uploads auf http://192.168.0.140/diagnostics.html — erst UI-TGZ, dann Firmware-BIN
+- **Versionsformat**: `MOODLIGHT_VERSION "9.0"` in config.h, UI-Version in `ui-version.txt` auf LittleFS
+- **Dateinamen-Konvention**: `UI-X.X-AuraOS.tgz` und `Firmware-X.X-AuraOS.bin`
+- **Bestehende Libraries**: ESP32-targz für TGZ-Extraktion, Arduino Update-API für Firmware-Flash
+- **Pre-existing Bug**: `esp_task_wdt_init(30, false)` inkompatibel mit Arduino ESP32 Core 3.x — verhindert `pio run`
 - Codebase-Map vorhanden in .planning/codebase/
 
 ## Constraints
@@ -79,6 +79,8 @@ Das Moodlight läuft stabil und zuverlässig im Dauerbetrieb — ohne unerklärl
 | Firmware-Splitting als eigener Milestone | Risiko für Regressionen zu hoch während Stabilitäts-Arbeiten | — Pending |
 | HTTPS als eigener Milestone | Gab vorher Probleme, braucht WiFiClientSecure + Zertifikate | — Pending |
 | Kein Auth | Privates Projekt im Heimnetz | ✓ Good |
+| Unified Version statt getrennte UI/Firmware-Versionen | Eine Combined-Datei = eine Version, weniger Verwirrung | — Pending |
+| Combined TGZ statt zwei Dateien | Ein Upload statt zwei, weniger Fehlerquellen | — Pending |
 
 ## Evolution
 
@@ -98,4 +100,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after Phase 2 completion (Milestone complete)*
+*Last updated: 2026-03-25 after v2.0 milestone initialization*
