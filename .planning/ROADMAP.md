@@ -41,9 +41,9 @@ Plans:
   2. POST an `/update/combined-firmware` streamt `firmware.ino.bin` direkt in den OTA-Flash ohne LittleFS-Kontakt
   3. Nach erfolgreichem Firmware-Flash enthält `/firmware-version.txt` auf LittleFS die neue Version
   4. Ein unterbrochener Upload hinterlässt keinen inkonsistenten State — erneuter Upload funktioniert
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 04-01-PLAN.md — ChunkStream-Wrapper + VERSION.txt ins Build-Script
+- [x] 04-01-PLAN.md — ChunkStream-Wrapper + VERSION.txt ins Build-Script
 - [ ] 04-02-PLAN.md — Combined-UI und Combined-Firmware Upload-Handler
 
 ### Phase 5: Diagnostics-UI
@@ -62,5 +62,5 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 3. Build-Fundament | v2.0 | 2/2 | Complete   | 2026-03-26 |
-| 4. Combined-Update-Handler | v2.0 | 0/2 | Planned | - |
+| 4. Combined-Update-Handler | v2.0 | 1/2 | In Progress|  |
 | 5. Diagnostics-UI | v2.0 | 0/? | Not started | - |
