@@ -22,8 +22,8 @@
 
 ### Qualität
 
-- [ ] **QUAL-01**: Tote/unreachable Code-Blöcke sind entfernt (erkannt beim Aufteilen)
-- [ ] **QUAL-02**: Magic Numbers sind durch benannte Konstanten in config.h ersetzt
+- [x] **QUAL-01**: Tote/unreachable Code-Blöcke sind entfernt (erkannt beim Aufteilen)
+- [x] **QUAL-02**: Magic Numbers sind durch benannte Konstanten in config.h ersetzt
 - [ ] **QUAL-03**: Duplizierter Code innerhalb der Module ist konsolidiert
 
 ## v2 Requirements
@@ -55,8 +55,8 @@
 | MOD-06 | Phase 7 | Complete |
 | ARCH-02 | Phase 8 | Pending |
 | ARCH-03 | Phase 8 | Pending |
-| QUAL-01 | Phase 8 | Pending |
-| QUAL-02 | Phase 8 | Pending |
+| QUAL-01 | Phase 8 | Complete |
+| QUAL-02 | Phase 8 | Complete |
 | QUAL-03 | Phase 8 | Pending |
 
 **Coverage:**

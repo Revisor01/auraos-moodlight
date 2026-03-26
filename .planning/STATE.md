@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 07-06-PLAN.md
-last_updated: "2026-03-26T13:55:10.630Z"
+status: Ready to execute
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-26T14:11:09.425Z"
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 11
+  completed_plans: 9
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und aenderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 07 — modul-extraktion
+**Current focus:** Phase 08 — konsolidierung-qualitaet
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 08 (konsolidierung-qualitaet) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Plan: Not started
 | Phase 07 P04 | 12min | 1 tasks | 3 files |
 | Phase 07 P05 | 8min | 1 tasks | 3 files |
 | Phase 07 P06 | 16min | 1 tasks | 3 files |
+| Phase 08 P01 | 8min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Recent decisions affecting current work:
 - [Phase 07]: MQTT_HEARTBEAT_INTERVAL als extern const in moodlight.cpp — C++ const hat interne Verlinkung, extern macht Konstante cross-TU sichtbar
 - [Phase 07]: extern const fuer REBOOT_DELAY/LOG_BUFFER_SIZE/STATUS_LOG_INTERVAL/SOFTWARE_VERSION — C++ const hat interne Verlinkung, extern macht Konstanten cross-TU sichtbar
 - [Phase 07]: initJsonPool() wrapper in web_server.h — JsonBufferPool struct bleibt intern in web_server.cpp, kein Struct-Typ im Header
+- [Phase 08]: SOFTWARE_VERSION bleibt als extern const String in moodlight.cpp — String-Literal-Concat-Makro MOODLIGHT_FULL_VERSION ergibt kein String-Objekt fuer direkten Ersatz
+- [Phase 08]: MAX_RECONNECT_DELAY #define benoetigt (unsigned long) Cast in min() — #define hat keinen Typ, Typ-Mismatch bei Template-Deduktion
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T13:49:03.979Z
-Stopped at: Completed 07-06-PLAN.md
+Last session: 2026-03-26T14:11:09.423Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
