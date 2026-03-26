@@ -70,8 +70,11 @@ Plans:
   1. mood.html auf dem ESP32 lädt beim Öffnen die letzten Headlines vom Backend und zeigt sie mit Einzel-Score und Feed-Zuordnung an
   2. Die GitHub Page listet Headlines mit Einzel-Scores und Feed-Namen neben dem aktuellen Sentiment-Score
   3. Beide Client-Ansichten funktionieren auch wenn der Backend-Endpoint kurzzeitig nicht erreichbar ist (Fallback/Fehlermeldung)
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — ESP32 mood.html: Headlines-Sektion mit fetch() gegen /api/moodlight/headlines, farbkodierte Scores, Fallback
+- [ ] 15-02-PLAN.md — GitHub Page docs/index.html: Neue Sektion zwischen Statistik und Screenshots, CSS-Erweiterung, farbkodierte Scores, Fallback
 
 ## Progress
 
@@ -80,4 +83,4 @@ Plans:
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
 | 13. Authentifizierung | 2/2 | Complete    | 2026-03-26 |
 | 14. Backend-Dashboard | 2/2 | Complete    | 2026-03-26 |
-| 15. Client-Erweiterungen | 0/? | Not started | - |
+| 15. Client-Erweiterungen | 0/2 | Not started | - |
