@@ -355,6 +355,29 @@ class Database:
             logger.error(f"Fehler beim Abrufen aktiver Geräte: {e}")
             return []
 
+    def get_active_feeds(self) -> List[Dict[str, Any]]:
+        """
+        Hole alle aktiven RSS-Feeds aus der Datenbank.
+
+        Returns:
+            Liste von Dicts mit 'id', 'name' und 'url' Feldern.
+            Leere Liste bei Fehler oder keinen aktiven Feeds.
+        """
+        query = """
+            SELECT id, name, url
+            FROM feeds
+            WHERE active = TRUE
+            ORDER BY name ASC;
+        """
+        try:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query)
+                results = cur.fetchall()
+                return [dict(row) for row in results]
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der aktiven Feeds: {e}")
+            return []
+
     def get_statistics(self) -> Dict[str, Any]:
         """
         Hole System-Statistiken
