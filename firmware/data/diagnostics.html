@@ -172,9 +172,9 @@
 
         function loadVersion() {
             fetch('/api/firmware-version')
-                .then(r => r.text())
-                .then(v => {
-                    const ver = v.trim();
+                .then(r => r.json())
+                .then(data => {
+                    const ver = data.version || '?.?';
                     document.getElementById('version').textContent = 'v' + ver;
                 })
                 .catch(() => {
