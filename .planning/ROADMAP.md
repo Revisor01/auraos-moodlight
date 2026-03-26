@@ -40,8 +40,11 @@ Plans:
   2. Nach korrekter Passworteingabe kann der Benutzer alle geschützten Seiten aufrufen
   3. POST- und DELETE-Endpunkte geben 401 zurück wenn kein gültiger Session-Cookie vorhanden ist
   4. GET /api/moodlight/current und /api/moodlight/history funktionieren ohne Authentifizierung (ESP32-Zugriff)
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Auth-Infrastruktur: login_required Decorator, /login + /logout Routen, login.html Template, docker-compose Umgebungsvariablen
+- [ ] 13-02-PLAN.md — Auth anwenden: @login_required auf /feeds, api_login_required auf POST/DELETE Endpoints, Abmelden-Link in feeds.html
 
 ### Phase 14: Backend-Dashboard
 **Goal**: Benutzer können im Browser alle relevanten Informationen zum System sehen — aktueller Score, Headlines mit Einzel-Scores, Feeds — in einer zusammenhängenden Oberfläche
@@ -72,6 +75,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
-| 13. Authentifizierung | 0/? | Not started | - |
+| 13. Authentifizierung | 0/2 | Not started | - |
 | 14. Backend-Dashboard | 0/? | Not started | - |
 | 15. Client-Erweiterungen | 0/? | Not started | - |
