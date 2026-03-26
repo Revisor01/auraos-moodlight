@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Combined Update + Build Automation
-status: Ready to execute
-stopped_at: Completed 03-build-fundament-01-PLAN.md
-last_updated: "2026-03-26T07:22:05.878Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 03-build-fundament-02-PLAN.md
+last_updated: "2026-03-26T07:28:05.770Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -42,6 +42,7 @@ Plan: 2 of 2
 
 *Updated after each plan completion*
 | Phase 03-build-fundament P01 | 5min | 1 tasks | 3 files |
+| Phase 03-build-fundament P02 | 222s | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -55,6 +56,7 @@ Recent decisions affecting current work:
 - [v2.0 Roadmap]: FIX-01 ist absoluter Blocker — Phase 3 muss mit `esp_task_wdt_init`-Fix beginnen
 - [Phase 03-build-fundament]: esp_task_wdt_reconfigure nicht verwendet — gibt ESP_ERR_INVALID_STATE im setup()-Kontext zurueck
 - [Phase 03-build-fundament]: Conditional-Compile-Pattern mit ESP_IDF_VERSION_VAL fuer ESP-IDF 5.x Rueckwaertskompatibilitaet
+- [Phase 03-build-fundament]: macOS BSD tar: --exclude Flags muessen vor Dateien stehen (GNU tar erlaubt beides)
 
 ### Pending Todos
 
@@ -67,6 +69,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T07:22:05.873Z
-Stopped at: Completed 03-build-fundament-01-PLAN.md
+Last session: 2026-03-26T07:28:05.768Z
+Stopped at: Completed 03-build-fundament-02-PLAN.md
 Resume file: None

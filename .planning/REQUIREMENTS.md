@@ -7,10 +7,10 @@
 
 ### Build & Versionierung
 
-- [ ] **BUILD-01**: `build-release.sh` akzeptiert Version-Bump-Typ als Argument (`major`, `minor`, `patch`) und erhöht die Version in `config.h` automatisch
-- [ ] **BUILD-02**: Build-Script erzeugt ein Combined-TGZ (`AuraOS-X.X.tgz`) das UI-Dateien + `firmware.ino.bin` enthält
-- [ ] **BUILD-03**: Build-Script committed Version-Bump + Combined-TGZ-Artefakt nach erfolgreichem Build (nicht bei Fehler)
-- [ ] **BUILD-04**: Build-Script bricht bei `pio run` Fehler ab — kein `|| true` das Compile-Fehler verschluckt
+- [x] **BUILD-01**: `build-release.sh` akzeptiert Version-Bump-Typ als Argument (`major`, `minor`, `patch`) und erhöht die Version in `config.h` automatisch
+- [x] **BUILD-02**: Build-Script erzeugt ein Combined-TGZ (`AuraOS-X.X.tgz`) das UI-Dateien + `firmware.ino.bin` enthält
+- [x] **BUILD-03**: Build-Script committed Version-Bump + Combined-TGZ-Artefakt nach erfolgreichem Build (nicht bei Fehler)
+- [x] **BUILD-04**: Build-Script bricht bei `pio run` Fehler ab — kein `|| true` das Compile-Fehler verschluckt
 
 ### ESP32 Combined Update Handler
 
@@ -58,10 +58,10 @@ Deferred to future milestones.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | FIX-01 | Phase 3 | Complete |
-| BUILD-01 | Phase 3 | Pending |
-| BUILD-02 | Phase 3 | Pending |
-| BUILD-03 | Phase 3 | Pending |
-| BUILD-04 | Phase 3 | Pending |
+| BUILD-01 | Phase 3 | Complete |
+| BUILD-02 | Phase 3 | Complete |
+| BUILD-03 | Phase 3 | Complete |
+| BUILD-04 | Phase 3 | Complete |
 | OTA-01 | Phase 4 | Pending |
 | OTA-02 | Phase 4 | Pending |
 | OTA-03 | Phase 4 | Pending |

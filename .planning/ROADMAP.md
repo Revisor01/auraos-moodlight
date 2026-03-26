@@ -12,7 +12,7 @@
 
 ## Phases
 
-- [ ] **Phase 3: Build-Fundament** - Build-Blocker fixen + Build-Script das ein verifiziertes Combined-TGZ erzeugt
+- [x] **Phase 3: Build-Fundament** - Build-Blocker fixen + Build-Script das ein verifiziertes Combined-TGZ erzeugt (completed 2026-03-26)
 - [ ] **Phase 4: Combined-Update-Handler** - ESP32 verarbeitet Combined-TGZ über zwei neue HTTP-Routen
 - [ ] **Phase 5: Diagnostics-UI** - Ein Upload-Feld, ein Button, eine Versionsanzeige
 
@@ -27,10 +27,10 @@
   2. `./build-release.sh minor` bumpt die Version in `config.h` und bricht bei Build-Fehler explizit ab
   3. Das erzeugte `Combined-X.X-AuraOS.tgz` enthält sowohl UI-Dateien als auch `firmware.ino.bin`
   4. Build-Script committed Version-Bump + Artefakt nur nach verifiziertem Build
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 03-01-PLAN.md — WDT-API-Fix (esp_task_wdt_init kompatibel mit ESP-IDF 5.x)
-- [ ] 03-02-PLAN.md — Build-Release-Script komplett ersetzen (Version-Bump + Combined-TGZ + Auto-Commit)
+- [x] 03-02-PLAN.md — Build-Release-Script komplett ersetzen (Version-Bump + Combined-TGZ + Auto-Commit)
 
 ### Phase 4: Combined-Update-Handler
 **Goal**: Der ESP32 verarbeitet ein Combined-TGZ vollständig: UI-Dateien werden nach LittleFS extrahiert, `firmware.ino.bin` wird direkt in den Flash gestreamt — ohne LittleFS-Staging der Firmware
@@ -58,6 +58,6 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 3. Build-Fundament | v2.0 | 1/2 | In Progress|  |
+| 3. Build-Fundament | v2.0 | 2/2 | Complete   | 2026-03-26 |
 | 4. Combined-Update-Handler | v2.0 | 0/? | Not started | - |
 | 5. Diagnostics-UI | v2.0 | 0/? | Not started | - |
