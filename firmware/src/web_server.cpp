@@ -29,9 +29,6 @@ extern Adafruit_NeoPixel pixels;
 extern Preferences preferences;
 extern WiFiClient wifiClientHTTP;
 extern const String SOFTWARE_VERSION;
-extern const int LOG_BUFFER_SIZE;
-extern const unsigned long REBOOT_DELAY;
-extern const unsigned long STATUS_LOG_INTERVAL;
 
 // === Externe Funktionen aus moodlight.cpp ===
 extern void debug(const String &message);

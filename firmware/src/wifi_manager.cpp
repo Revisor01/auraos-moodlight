@@ -24,11 +24,6 @@ extern void debug(const String &message);
 extern void debug(const __FlashStringHelper *message);
 extern void setStatusLED(int mode);
 
-extern const byte DNS_PORT;
-extern const unsigned long MAX_RECONNECT_DELAY;
-extern const unsigned long STATUS_LED_GRACE_MS;
-extern const unsigned long AP_TIMEOUT;
-
 // Captive Portal Redirect Handler — leitet alle unbekannten Anfragen zur Setup-Seite
 class CaptiveRequestHandler : public RequestHandler
 {
@@ -327,7 +322,7 @@ void checkAndReconnectWifi()
                 else
                 {
                     // Exponential backoff - with max limit
-                    appState.wifiReconnectDelay = min(appState.wifiReconnectDelay * 2, MAX_RECONNECT_DELAY);
+                    appState.wifiReconnectDelay = min(appState.wifiReconnectDelay * 2, (unsigned long)MAX_RECONNECT_DELAY);
                     debug(String(F("WiFi Reconnect fehlgeschlagen. Naechster Versuch in ")) + String(appState.wifiReconnectDelay / 1000) + "s");
                 }
             }
