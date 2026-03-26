@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Konfigurierbare RSS-Feeds
-status: Defining requirements
+status: Roadmap ready
 stopped_at: null
-last_updated: "2026-03-26T22:50:00.000Z"
+last_updated: "2026-03-26T23:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,14 +19,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Defining requirements for v4.0
+**Current focus:** Phase 9 — DB-Schema & Worker-Integration
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 9 — DB-Schema & Worker-Integration (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-03-26 — Milestone v4.0 started
+Status: Roadmap ready, awaiting phase planning
+Last activity: 2026-03-26 — Roadmap v4.0 created (3 phases, 9 requirements)
+
+```
+Progress: [░░░░░░░░░░] 0% (0/3 phases)
+```
 
 ## Performance Metrics
 
@@ -44,15 +48,15 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None yet.
+- Plan Phase 9: DB-Schema & Worker-Integration
 
 ### Blockers/Concerns
 
 - RSS-Feed-Liste ist aktuell in app.py und background_worker.py dupliziert — shared_config.py existiert als Zwischenlösung
-- Focus-Feed gibt 404 zurück — muss entfernt werden
+- Focus-Feed gibt 404 zurück — wird in Phase 9 entfernt
 
 ## Session Continuity
 
 Last session: 2026-03-26
-Stopped at: Milestone v4.0 initialized
+Stopped at: Roadmap v4.0 created
 Resume file: None

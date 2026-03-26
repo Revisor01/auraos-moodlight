@@ -46,21 +46,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEED-01 | — | Pending |
-| FEED-02 | — | Pending |
-| FEED-03 | — | Pending |
-| FEED-04 | — | Pending |
-| FEED-05 | — | Pending |
-| FEED-06 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
+| FEED-01 | Phase 9 | Pending |
+| FEED-06 | Phase 9 | Pending |
+| FEED-02 | Phase 10 | Pending |
+| FEED-03 | Phase 10 | Pending |
+| FEED-04 | Phase 10 | Pending |
+| FEED-05 | Phase 10 | Pending |
+| UI-01 | Phase 11 | Pending |
+| UI-02 | Phase 11 | Pending |
+| UI-03 | Phase 11 | Pending |
 
 **Coverage:**
 - v4.0 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 ⚠️
+- Mapped to phases: 9
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after initial definition*
+*Last updated: 2026-03-26 after roadmap v4.0 creation*
