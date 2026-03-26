@@ -181,6 +181,57 @@ class Database:
             logger.error(f"Fehler beim Speichern der Sentiment-Daten: {e}")
             raise
 
+    def save_headlines(
+        self,
+        sentiment_history_id: int,
+        results: list
+    ) -> int:
+        """
+        Speichere analysierte Headlines in der Datenbank.
+
+        Args:
+            sentiment_history_id: FK zu sentiment_history.id
+            results: Liste von Dicts (headline, source, feed_id, sentiment, strength, link optional)
+
+        Returns:
+            Anzahl gespeicherter Headlines (0 wenn results leer)
+        """
+        if not results:
+            return 0
+
+        query = """
+            INSERT INTO headlines
+            (sentiment_history_id, feed_id, headline, source_name, sentiment_score, strength, link)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        rows = [
+            (
+                sentiment_history_id,
+                r.get('feed_id'),
+                r['headline'],
+                r.get('source', 'unknown'),
+                r['sentiment'],
+                r.get('strength', 'neutral'),
+                r.get('link')
+            )
+            for r in results
+        ]
+
+        try:
+            with self.get_cursor() as cur:
+                cur.executemany(query, rows)
+                self.conn.commit()
+                logger.info(f"Headlines gespeichert: {len(rows)} Einträge für sentiment_history_id={sentiment_history_id}")
+                return len(rows)
+        except Exception as e:
+            if self.conn:
+                try:
+                    self.conn.rollback()
+                except Exception:
+                    pass
+            logger.error(f"Fehler beim Speichern der Headlines: {e}")
+            raise
+
     def get_latest_sentiment(self) -> Optional[Dict[str, Any]]:
         """
         Hole den letzten Sentiment-Wert aus der Datenbank
