@@ -42,7 +42,6 @@ SystemHealthCheck sysHealth;
 // === Arduino Setup ===
 void setup() {
     Serial.begin(115200);
-    initWatchdog();
 
     // Log-Level konfigurieren
     esp_log_level_set("*", ESP_LOG_INFO);

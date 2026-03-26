@@ -16,27 +16,28 @@ WatchdogManager::WatchdogManager() :
 }
 
 bool WatchdogManager::begin(uint32_t timeoutSeconds, bool panicOnTimeout) {
-    // Initialisiere Watchdog mit der angegebenen Timeout-Zeit
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-    // Arduino ESP32 Core 3.x (ESP-IDF >= 5.0): Config-Struktur erforderlich
     esp_task_wdt_config_t wdt_config = {
         .timeout_ms    = timeoutSeconds * 1000,
         .idle_core_mask = 0,
         .trigger_panic  = panicOnTimeout
     };
+    // Versuche init — wenn schon initialisiert, reconfigure stattdessen
     esp_err_t err = esp_task_wdt_init(&wdt_config);
+    if (err == ESP_ERR_INVALID_STATE) {
+        err = esp_task_wdt_reconfigure(&wdt_config);
+    }
 #else
-    // Aeltere Versionen: Parameter direkt
     esp_err_t err = esp_task_wdt_init(timeoutSeconds, panicOnTimeout);
 #endif
     if (err != ESP_OK) {
         debug(F("Fehler bei der Initialisierung des Watchdogs"));
         return false;
     }
-    
+
     _isEnabled = true;
     _lastFeedTime = millis();
-    debug(String(F("Watchdog initialisiert mit Timeout: ")) + timeoutSeconds + " Sekunden, Panic: " + (panicOnTimeout ? "Ja" : "Nein"));
+    debug(String(F("Watchdog initialisiert: ")) + timeoutSeconds + "s Timeout");
     return true;
 }
 
