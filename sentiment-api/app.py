@@ -192,6 +192,7 @@ def analyze_headlines_openai_batch(headlines: list):
             results.append({
                 "headline": original_headline_obj['headline'].strip(),
                 "source": original_headline_obj.get('source', 'unknown'),
+                "feed_id": original_headline_obj.get('feed_id'),  # durchgereicht für DB-Persistenz
                 "sentiment": score, # Der einzelne Score bleibt erhalten
                 "strength": strength
             })
