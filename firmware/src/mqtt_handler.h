@@ -26,3 +26,6 @@ void setupHA();
 void sendInitialStates();
 void sendHeartbeat();
 void checkAndReconnectMQTT();
+
+// MQTT beim Start einmalig verbinden (mit 5s Timeout)
+void connectMQTTOnStartup();

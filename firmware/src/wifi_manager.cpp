@@ -407,3 +407,41 @@ void startAPModeWithServer()
     // Merke Zeit fuer Timeout
     appState.apModeStartTime = millis();
 }
+
+// === WiFi verbinden + NTP + mDNS + Server starten ===
+bool connectWiFiAndStartServices() {
+    if (!appState.wifiConfigured || appState.wifiSSID.isEmpty()) {
+        debug(F("Keine WiFi-Konfiguration gefunden. Starte Access Point..."));
+        startAPModeWithServer();
+        return false;
+    }
+
+    debug(String(F("Vorhandene WiFi-Konfiguration gefunden: ")) + appState.wifiSSID);
+
+    bool wifiConnected = startWiFiStation();
+
+    if (!wifiConnected) {
+        debug(F("WiFi-Verbindung fehlgeschlagen. Starte Access Point..."));
+        startAPModeWithServer();
+        return false;
+    }
+
+    debug(F("WiFi verbunden. Deaktiviere explizit Power Save..."));
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    debug(F("ESP-IDF WiFi Power Save explicitly disabled (STA)."));
+
+    initTime();
+
+    debug(F("Starte Webserver..."));
+    server.begin();
+    debug(F("Webserver gestartet"));
+
+    if (MDNS.begin("moodlight")) {
+        MDNS.addService("http", "tcp", 80);
+        debug(F("mDNS responder gestartet"));
+    } else {
+        debug(F("mDNS start fehlgeschlagen"));
+    }
+
+    return true;
+}

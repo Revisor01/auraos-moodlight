@@ -600,3 +600,38 @@ void checkAndReconnectMQTT() {
         }
     }
 }
+
+// === MQTT beim Start einmalig verbinden ===
+void connectMQTTOnStartup() {
+    if (!appState.mqttEnabled || appState.mqttServer.isEmpty()) return;
+
+    debug(F("MQTT Konfiguration gefunden, starte verzögerte Initialisierung..."));
+    delay(500);
+
+    setupHA();
+
+    debug(F("Versuche MQTT zu initialisieren..."));
+    unsigned long mqttStartTime = millis();
+    bool mqttInitSuccess = false;
+
+    try {
+        mqtt.begin(appState.mqttServer.c_str(), appState.mqttUser.c_str(), appState.mqttPassword.c_str());
+
+        debug(F("Warte auf MQTT Verbindung (max 5s)..."));
+        while (!mqtt.isConnected() && (millis() - mqttStartTime < 5000)) {
+            mqtt.loop();
+            delay(100);
+        }
+        mqttInitSuccess = mqtt.isConnected();
+    } catch (...) {
+        debug(F("Exception bei MQTT-Initialisierung"));
+        mqttInitSuccess = false;
+    }
+
+    if (mqttInitSuccess) {
+        debug(F("MQTT erfolgreich initialisiert und verbunden."));
+        sendInitialStates();
+    } else {
+        debug(F("MQTT-Initialisierung/Verbindung fehlgeschlagen - Fahre ohne MQTT fort"));
+    }
+}
