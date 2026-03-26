@@ -7,7 +7,7 @@ import os
 import re
 import math
 from openai import OpenAI, OpenAIError
-from shared_config import RSS_FEEDS, get_sentiment_category
+from shared_config import get_sentiment_category
 
 app = Flask(__name__)
 
@@ -49,9 +49,6 @@ else:
     logging.error("Sentiment-Analyse über OpenAI API wird nicht funktionieren.")
     logging.error("############################################################")
 
-
-# Liste der RSS-Feeds (Single Source of Truth: shared_config.py)
-rss_feeds = RSS_FEEDS
 
 # --- Funktion zur Sentiment-Analyse mit OpenAI API ---
 # (Code unverändert, gibt Liste von Scores zurück)
@@ -329,6 +326,10 @@ def health_check():
 @app.route('/api/news', methods=['GET'])
 def get_news():
     if not openai_client: return jsonify({"status": "error", "message": "Sentiment-Analyse-Dienst nicht bereit (OpenAI Problem)."}), 503
+
+    # RSS-Feeds dynamisch aus DB laden (FEED-01)
+    from database import get_database
+    rss_feeds = {f['name']: f['url'] for f in get_database().get_active_feeds()}
 
     # Dynamische Anzahl der Headlines pro Quelle ermitteln
     num_headlines_per_source = get_headlines_per_source(DEFAULT_HEADLINES_PER_SOURCE_MAIN)

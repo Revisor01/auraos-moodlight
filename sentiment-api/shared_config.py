@@ -1,20 +1,6 @@
 # sentiment-api/shared_config.py
-# Einzige Quelle fuer RSS-Feed-Liste und Sentiment-Kategorisierung
-
-RSS_FEEDS = {
-    "Zeit": "https://newsfeed.zeit.de/index",
-    "Tagesschau": "https://www.tagesschau.de/xml/rss2",
-    "Sueddeutsche": "https://rss.sueddeutsche.de/rss/Alles",
-    "FAZ": "https://www.faz.net/rss/aktuell/",
-    "Die Welt": "https://www.welt.de/feeds/latest.rss",
-    "Handelsblatt": "https://www.handelsblatt.com/contentexport/feed/schlagzeilen",
-    "n-tv": "https://www.n-tv.de/rss",
-    "Focus": "https://rss.focus.de/fol/XML/rss_folnews.xml",
-    "Stern": "https://www.stern.de/feed/standard/alle-nachrichten/",
-    "Telekom": "https://www.t-online.de/feed.rss",
-    "TAZ": "https://taz.de/!p4608;rss/",
-    "Deutschlandfunk": "https://www.deutschlandfunk.de/nachrichten-100.rss"
-}
+# RSS_FEEDS wurde in Phase 9 entfernt — Feed-Liste liegt jetzt in PostgreSQL (feeds-Tabelle).
+# get_sentiment_category() wird noch von app.py und background_worker.py genutzt — NICHT entfernen.
 
 
 def get_sentiment_category(score: float) -> str:

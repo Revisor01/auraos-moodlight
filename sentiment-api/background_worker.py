@@ -9,7 +9,7 @@ import time
 from threading import Thread
 from datetime import datetime
 from database import get_database, get_cache
-from shared_config import RSS_FEEDS, get_sentiment_category
+from shared_config import get_sentiment_category
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,7 @@ class SentimentUpdateWorker:
         try:
             # 1. Headlines von Feeds abrufen
             headlines = self._fetch_headlines()
+            feed_count = len(get_database().get_active_feeds())
 
             if not headlines:
                 logger.warning("Keine Headlines gefunden - Update abgebrochen")
@@ -104,7 +105,7 @@ class SentimentUpdateWorker:
                 sentiment_score=sentiment_score,
                 category=category,
                 headlines_analyzed=headlines_analyzed,
-                source_count=12,  # Anzahl RSS-Feeds
+                source_count=feed_count,
                 api_response_time_ms=response_time_ms,
                 metadata={
                     'sentiment_distribution': stats.get('sentiment_distribution', {}),
@@ -129,20 +130,25 @@ class SentimentUpdateWorker:
 
     def _fetch_headlines(self):
         """
-        Hole Headlines von RSS-Feeds
-        (Nutzt die gleiche Logik wie in app.py)
+        Hole Headlines von RSS-Feeds (aus PostgreSQL-Datenbank)
         """
         import feedparser
         import requests
 
-        rss_feeds = RSS_FEEDS
+        db = get_database()
+        feeds = db.get_active_feeds()
+
+        if not feeds:
+            logger.warning("Keine aktiven Feeds in der Datenbank gefunden — Update übersprungen")
+            return []
 
         headlines = []
         processed_links = set()
         num_headlines_per_source = 1  # Für Background-Worker nur 1 Headline/Quelle
 
-        # Feeds abrufen
-        for source, url in rss_feeds.items():
+        for feed_row in feeds:
+            source = feed_row['name']
+            url = feed_row['url']
             try:
                 try:
                     response = requests.get(url, timeout=15, headers={'User-Agent': 'WorldMoodAnalyzer/2.0'})
