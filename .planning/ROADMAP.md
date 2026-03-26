@@ -25,7 +25,10 @@
   1. Ein `AppState`-Struct (oder globale Header-Datei `app_state.h`) existiert und enthält alle bisher verstreuten globalen Variablen
   2. `moodlight.cpp` referenziert globale Variablen ausschliesslich ueber AppState — keine losen `extern`-Deklarationen mehr
   3. `pio run` baut fehlerfrei durch — Firmware-Verhalten identisch zum Stand vor der Phase
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 06-01-PLAN.md — AppState-Struct in app_state.h definieren
+- [ ] 06-02-PLAN.md — Globale Variablen in moodlight.cpp durch appState.member ersetzen
 
 ### Phase 7: Modul-Extraktion
 **Goal**: Alle 6 funktionalen Bereiche (WiFi, LED, Web-Server, MQTT, Settings, Sensor) sind in eigene .h/.cpp-Dateien extrahiert — jedes Modul liest und aendert ausschliesslich seinen Teil des AppState
@@ -53,6 +56,6 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 6. Shared State Fundament | 0/? | Not started | - |
+| 6. Shared State Fundament | 0/2 | Planned | - |
 | 7. Modul-Extraktion | 0/? | Not started | - |
 | 8. Konsolidierung & Qualitaet | 0/? | Not started | - |
