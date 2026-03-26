@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Versionierung
-#define MOODLIGHT_VERSION "9.2"
+#define MOODLIGHT_VERSION "9.4"
 #define MOODLIGHT_NAME "AuraOS"
 #define MOODLIGHT_FULL_VERSION MOODLIGHT_VERSION " - " MOODLIGHT_NAME
 
