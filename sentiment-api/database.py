@@ -451,6 +451,49 @@ class Database:
             logger.error(f"Fehler beim Laden aller Feeds: {e}")
             return []
 
+    def get_recent_headlines(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Gibt die zuletzt analysierten Headlines mit Feed-Zuordnung zurück.
+
+        Args:
+            limit: Maximale Anzahl zurückgegebener Headlines (default: 50)
+
+        Returns:
+            Liste von Dicts mit id, headline, source_name, sentiment_score,
+            strength, link, analyzed_at (ISO-String), feed_name, feed_id.
+            Leere Liste bei Fehler.
+        """
+        query = """
+            SELECT
+                h.id,
+                h.headline,
+                h.source_name,
+                h.sentiment_score,
+                h.strength,
+                h.link,
+                h.analyzed_at,
+                f.name AS feed_name,
+                f.id AS feed_id
+            FROM headlines h
+            LEFT JOIN feeds f ON h.feed_id = f.id
+            ORDER BY h.analyzed_at DESC
+            LIMIT %s;
+        """
+        try:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, (limit,))
+                results = cur.fetchall()
+                rows = []
+                for row in results:
+                    d = dict(row)
+                    if isinstance(d.get('analyzed_at'), datetime):
+                        d['analyzed_at'] = d['analyzed_at'].isoformat()
+                    rows.append(d)
+                return rows
+        except Exception as e:
+            logger.error(f"Fehler beim Abrufen der Headlines: {e}")
+            return []
+
     def add_feed(self, name: str, url: str) -> Optional[Dict[str, Any]]:
         """
         Füge neuen RSS-Feed in die Datenbank ein.
