@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+from datetime import timedelta
 import feedparser
 import logging
 from collections import Counter
@@ -10,6 +13,27 @@ from openai import OpenAI, OpenAIError
 from shared_config import get_sentiment_category
 
 app = Flask(__name__)
+
+# --- Session-Konfiguration ---
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-schluessel-aendern')
+app.permanent_session_lifetime = timedelta(hours=24)
+
+# Admin-Passwort-Hash beim Start berechnen (einmal, nicht bei jedem Request)
+_admin_password_raw = os.environ.get('ADMIN_PASSWORD', '')
+_admin_password_hash = generate_password_hash(_admin_password_raw) if _admin_password_raw else None
+if not _admin_password_raw:
+    logging.warning("ADMIN_PASSWORD Umgebungsvariable nicht gesetzt — Login deaktiviert!")
+
+
+# --- Authentifizierungs-Decorator ---
+def login_required(f):
+    """Decorator: Leitet auf /login weiter wenn keine aktive Session vorhanden."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- Konfiguration & Standardwerte ---
 # Standardanzahl Headlines pro Quelle, wenn nichts anderes angegeben
@@ -458,6 +482,34 @@ from background_worker import start_background_worker
 
 # Neue Endpunkte registrieren
 register_moodlight_endpoints(app)
+
+# ===== LOGIN / LOGOUT =====
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    """Login-Seite für das Backend-Interface."""
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if _admin_password_hash and check_password_hash(_admin_password_hash, password):
+            session['authenticated'] = True
+            session.permanent = True
+            next_url = request.args.get('next') or url_for('feed_management')
+            logging.info("Admin-Login erfolgreich.")
+            return redirect(next_url)
+        else:
+            error = 'Falsches Passwort.'
+            logging.warning("Fehlgeschlagener Login-Versuch.")
+            return render_template('login.html', error=error), 401
+    return render_template('login.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    """Session beenden und auf Login-Seite weiterleiten."""
+    session.clear()
+    logging.info("Admin-Logout.")
+    return redirect(url_for('login_page'))
+
 
 # ===== FEED-MANAGEMENT WEB-INTERFACE =====
 @app.route('/feeds')
