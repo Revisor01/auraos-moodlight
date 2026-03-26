@@ -28,6 +28,7 @@
 #include "LittleFS.h"
 #define DEST_FS_USES_LITTLEFS
 #include <ESP32-targz.h>
+#include "ChunkStream.h"
 #include <time.h>
 #define DEBUG_MODE  // AKTIVIERT für besseres Debugging
 // #define CONFIG_FREERTOS_UNICORE
@@ -1310,6 +1311,184 @@ String getCurrentFirmwareVersion() {
     return String(SOFTWARE_VERSION);
 }
 
+// === Combined Update Handler (Phase 4) ===
+static bool combinedUiError = false;
+static bool combinedFwError = false;
+static ChunkStream* combinedStream = nullptr;
+static TaskHandle_t extractTaskHandle = nullptr;
+static SemaphoreHandle_t extractDoneSemaphore = nullptr;
+static bool extractTaskSuccess = false;
+
+// FreeRTOS-Task fuer UI-Extraktion (laeuft auf Core 0 parallel zum WebServer auf Core 1)
+void uiExtractTask(void* param) {
+    ChunkStream* stream = (ChunkStream*)param;
+
+    TarGzUnpacker *unpacker = new TarGzUnpacker();
+    unpacker->setTarVerify(false);
+    unpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
+    unpacker->setLoggerCallback(BaseUnpacker::targzPrintLoggerCallback);
+    unpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);
+    unpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
+
+    // Exclude-Filter: *.bin Dateien ueberspringen (OTA-01)
+    // Return true = SKIP diese Datei
+    unpacker->setTarExcludeFilter([](TAR::header_translated_t *header) -> bool {
+        return String(header->filename).endsWith(".bin");
+    });
+
+    // Extrahiere direkt nach / (Root von LittleFS)
+    extractTaskSuccess = unpacker->tarGzStreamExpander(stream, LittleFS, "/");
+
+    if (!extractTaskSuccess) {
+        Serial.printf("UI-Extraktion fehlgeschlagen, Error: %d\n", unpacker->tarGzGetError());
+    }
+
+    delete unpacker;
+
+    // Signalisiere Completion
+    xSemaphoreGive(extractDoneSemaphore);
+
+    // Task loescht sich selbst
+    extractTaskHandle = nullptr;
+    vTaskDelete(NULL);
+}
+
+void handleCombinedUiUpload() {
+    HTTPUpload& upload = server.upload();
+    static bool isValidFile = false;
+
+    if (upload.status == UPLOAD_FILE_START) {
+        // OTA-04: Expliziter State-Reset bei jedem Upload-Start
+        isValidFile = false;
+        combinedUiError = false;
+        extractTaskSuccess = false;
+
+        if (extractTaskHandle != nullptr) {
+            vTaskDelete(extractTaskHandle);
+            extractTaskHandle = nullptr;
+        }
+
+        if (!combinedStream) {
+            combinedStream = new ChunkStream(4096);
+        } else {
+            combinedStream->reset();
+        }
+
+        if (!extractDoneSemaphore) {
+            extractDoneSemaphore = xSemaphoreCreateBinary();
+        } else {
+            xSemaphoreTake(extractDoneSemaphore, 0); // Reset
+        }
+
+        String filename = upload.filename;
+        Serial.printf("Combined-UI Upload: %s\n", filename.c_str());
+        debug(String(F("Combined-UI Upload gestartet: ")) + filename);
+
+        isValidFile = filename.endsWith(".tgz") || filename.endsWith(".tar.gz");
+        if (!isValidFile) {
+            debug(F("Fehler: Keine TGZ-Datei"));
+            combinedUiError = true;
+            return;
+        }
+
+        // Watchdog fuer diesen Task deaktivieren (Extraktion kann >30s dauern)
+        esp_task_wdt_delete(NULL);
+
+        debug(String(F("Freier Heap: ")) + ESP.getFreeHeap());
+
+        // FreeRTOS-Task starten der tarGzStreamExpander ausfuehrt
+        BaseType_t result = xTaskCreatePinnedToCore(
+            uiExtractTask,       // Task-Funktion
+            "uiExtract",         // Name
+            8192,                // Stack-Groesse (8KB — Library braucht ~4KB Stack)
+            (void*)combinedStream,  // Parameter: ChunkStream
+            1,                   // Priority (niedrig, WebServer ist wichtiger)
+            &extractTaskHandle,  // Task-Handle
+            0                    // Core 0 (WebServer laeuft auf Core 1)
+        );
+
+        if (result != pdPASS) {
+            debug(F("FEHLER: Konnte Extract-Task nicht starten"));
+            combinedUiError = true;
+            isValidFile = false;
+            return;
+        }
+    }
+    else if (upload.status == UPLOAD_FILE_WRITE && isValidFile) {
+        // Chunks an den Stream weiterreichen — Library-Task verbraucht sie parallel
+        if (combinedStream) {
+            combinedStream->feed(upload.buf, upload.currentSize);
+        }
+    }
+    else if (upload.status == UPLOAD_FILE_END && isValidFile) {
+        debug(String(F("Combined-UI Upload abgeschlossen: ")) + upload.totalSize + F(" Bytes"));
+
+        // EOF signalisieren — Library-Task beendet sich
+        if (combinedStream) {
+            combinedStream->setEOF();
+        }
+
+        // Warten auf Task-Completion (max 60 Sekunden)
+        if (xSemaphoreTake(extractDoneSemaphore, pdMS_TO_TICKS(60000)) == pdTRUE) {
+            if (extractTaskSuccess) {
+                debug(F("Combined-UI Extraktion erfolgreich"));
+
+                // OTA-03: VERSION.txt lesen und in beide Version-Dateien schreiben
+                if (LittleFS.exists("/VERSION.txt")) {
+                    File vf = LittleFS.open("/VERSION.txt", "r");
+                    if (vf) {
+                        String version = vf.readStringUntil('\n');
+                        version.trim();
+                        vf.close();
+
+                        if (version.length() > 0) {
+                            debug(String(F("Version aus TGZ: ")) + version);
+
+                            File fw = LittleFS.open("/firmware-version.txt", "w");
+                            if (fw) { fw.print(version); fw.close(); }
+
+                            File uw = LittleFS.open("/ui-version.txt", "w");
+                            if (uw) { uw.print(version); uw.close(); }
+                        }
+
+                        LittleFS.remove("/VERSION.txt"); // Aufraeumen
+                    }
+                }
+
+                debug(String(F("Freier Heap nach Extraktion: ")) + ESP.getFreeHeap());
+            } else {
+                debug(F("Combined-UI Extraktion fehlgeschlagen"));
+                combinedUiError = true;
+            }
+        } else {
+            debug(F("TIMEOUT: Extract-Task nicht innerhalb von 60s beendet"));
+            if (extractTaskHandle != nullptr) {
+                vTaskDelete(extractTaskHandle);
+                extractTaskHandle = nullptr;
+            }
+            combinedUiError = true;
+        }
+
+        // Watchdog wieder aktivieren
+        esp_task_wdt_add(NULL);
+    }
+    else if (upload.status == UPLOAD_FILE_ABORTED) {
+        // OTA-04: Abbruch-Handling
+        debug(F("Combined-UI Upload abgebrochen — State zurueckgesetzt"));
+        isValidFile = false;
+        combinedUiError = true;
+
+        if (combinedStream) combinedStream->reset();
+        if (extractTaskHandle != nullptr) {
+            vTaskDelete(extractTaskHandle);
+            extractTaskHandle = nullptr;
+        }
+
+        // Watchdog wieder aktivieren (falls deaktiviert)
+        esp_task_wdt_add(NULL);
+    }
+}
+
 void handleUiUpload() {
     HTTPUpload& upload = server.upload();
     static String uploadPath;
@@ -2068,11 +2247,28 @@ server.on("/js/setup.js", HTTP_GET, []() { handleStaticFile("/js/setup.js"); });
     server.on("/api/stats/delete", HTTP_GET, handleApiDeleteDataPoint);
 server.on("/api/stats/reset", HTTP_GET, handleApiResetAllData);
 
-server.on("/ui-upload", HTTP_POST, 
+server.on("/ui-upload", HTTP_POST,
     []() {
         server.send(200, "text/html", "<html><body><h1>UI Update Complete</h1><a href='/setup'>Return to Setup</a></body></html>");
     },
     handleUiUpload
+);
+
+// Combined-Update-Routen (Phase 4)
+server.on("/update/combined-ui", HTTP_POST,
+    []() {
+        server.sendHeader("Connection", "close");
+        if (combinedUiError) {
+            server.send(500, "text/html",
+                "<html><body><h1>UI-Update fehlgeschlagen</h1>"
+                "<a href='/diagnostics.html'>Zurueck</a></body></html>");
+        } else {
+            server.send(200, "text/html",
+                "<html><body><h1>UI-Update erfolgreich</h1>"
+                "<a href='/diagnostics.html'>Zurueck</a></body></html>");
+        }
+    },
+    handleCombinedUiUpload
 );
 
 server.on("/api/ui-version", HTTP_GET, []() {
