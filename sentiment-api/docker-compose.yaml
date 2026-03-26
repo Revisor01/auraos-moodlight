@@ -13,6 +13,8 @@ services:
       - DATABASE_URL=postgresql://moodlight:${POSTGRES_PASSWORD}@postgres:5432/moodlight
       - REDIS_URL=redis://redis:6379/0
       - DEFAULT_HEADLINES_PER_SOURCE=1
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - postgres
       - redis
