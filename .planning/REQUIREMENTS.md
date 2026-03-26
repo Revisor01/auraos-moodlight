@@ -11,14 +11,14 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
 - [x] **HEAD-01**: Backend speichert bei jeder Analyse die einzelnen Headlines mit ihren Einzel-Scores in der DB
 - [x] **HEAD-02**: API-Endpoint liefert die letzten analysierten Headlines mit Einzel-Scores, Feed-Zuordnung und Zeitstempel
-- [ ] **HEAD-03**: Visualisierung zeigt wie der Gesamt-Score aus den Einzelwerten berechnet wird
+- [x] **HEAD-03**: Visualisierung zeigt wie der Gesamt-Score aus den Einzelwerten berechnet wird
 
 ### Backend-Dashboard
 
-- [ ] **DASH-01**: Übersichtsseite zeigt aktuellen Sentiment-Score, Anzahl Feeds, letzten Analyse-Zeitpunkt
-- [ ] **DASH-02**: Headlines-Ansicht zeigt letzte analysierte Schlagzeilen mit Einzel-Scores und Feed-Zuordnung
-- [ ] **DASH-03**: Feed-Verwaltung ist ins Dashboard integriert (bestehende /feeds Funktionalität)
-- [ ] **DASH-04**: Navigation zwischen Dashboard-Bereichen (Übersicht, Headlines, Feeds)
+- [x] **DASH-01**: Übersichtsseite zeigt aktuellen Sentiment-Score, Anzahl Feeds, letzten Analyse-Zeitpunkt
+- [x] **DASH-02**: Headlines-Ansicht zeigt letzte analysierte Schlagzeilen mit Einzel-Scores und Feed-Zuordnung
+- [x] **DASH-03**: Feed-Verwaltung ist ins Dashboard integriert (bestehende /feeds Funktionalität)
+- [x] **DASH-04**: Navigation zwischen Dashboard-Bereichen (Übersicht, Headlines, Feeds)
 
 ### Authentifizierung
 
@@ -56,11 +56,11 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 |-------------|-------|--------|
 | HEAD-01 | Phase 12 | Complete |
 | HEAD-02 | Phase 14 | Complete |
-| HEAD-03 | Phase 14 | Pending |
-| DASH-01 | Phase 14 | Pending |
-| DASH-02 | Phase 14 | Pending |
-| DASH-03 | Phase 14 | Pending |
-| DASH-04 | Phase 14 | Pending |
+| HEAD-03 | Phase 14 | Complete |
+| DASH-01 | Phase 14 | Complete |
+| DASH-02 | Phase 14 | Complete |
+| DASH-03 | Phase 14 | Complete |
+| DASH-04 | Phase 14 | Complete |
 | AUTH-01 | Phase 13 | Complete |
 | AUTH-02 | Phase 13 | Complete |
 | AUTH-03 | Phase 13 | Complete |

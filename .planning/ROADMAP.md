@@ -13,7 +13,7 @@
 
 - [x] **Phase 12: Headline-Persistenz** - DB-Schema + Headline-Speicherung im Backend (completed 2026-03-26)
 - [x] **Phase 13: Authentifizierung** - Einfacher Passwort-Login für Backend-Interface (completed 2026-03-26)
-- [ ] **Phase 14: Backend-Dashboard** - Volles Dashboard mit Headlines, Scores, Feeds und Visualisierung
+- [x] **Phase 14: Backend-Dashboard** - Volles Dashboard mit Headlines, Scores, Feeds und Visualisierung (completed 2026-03-26)
 - [ ] **Phase 15: Client-Erweiterungen** - ESP32 mood.html und GitHub Page mit Headline-Darstellung
 
 ## Phase Details
@@ -60,7 +60,7 @@ Plans:
 
 Plans:
 - [x] 14-01-PLAN.md — Headlines-API: get_recent_headlines() in database.py, GET /api/moodlight/headlines in moodlight_extensions.py
-- [ ] 14-02-PLAN.md — Dashboard-Template: dashboard.html (SPA, 3 Tabs, Score-Visualisierung, Feed-CRUD), /dashboard Route in app.py
+- [x] 14-02-PLAN.md — Dashboard-Template: dashboard.html (SPA, 3 Tabs, Score-Visualisierung, Feed-CRUD), /dashboard Route in app.py
 
 ### Phase 15: Client-Erweiterungen
 **Goal**: Sowohl das ESP32 mood.html als auch die GitHub Page zeigen Headlines mit Einzel-Scores an
@@ -79,5 +79,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
 | 13. Authentifizierung | 2/2 | Complete    | 2026-03-26 |
-| 14. Backend-Dashboard | 1/2 | In Progress|  |
+| 14. Backend-Dashboard | 2/2 | Complete   | 2026-03-26 |
 | 15. Client-Erweiterungen | 0/? | Not started | - |

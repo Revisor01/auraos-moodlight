@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Schlagzeilen-Transparenz & Dashboard
-status: executing
-stopped_at: Completed 14-backend-dashboard-01-PLAN.md
-last_updated: "2026-03-26T23:37:47.638Z"
+status: verifying
+stopped_at: Completed 14-backend-dashboard-02-PLAN.md
+last_updated: "2026-03-26T23:42:24.095Z"
 last_activity: 2026-03-26
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 
 Phase: 14 (backend-dashboard) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-26
 
 ```
@@ -53,6 +53,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 13-authentifizierung]: api_login_required statt login_required für API-Endpoints — REST-Clients erwarten 401 JSON, kein HTML-Redirect
 - [Phase 14-backend-dashboard]: Endpoint /api/moodlight/headlines ist öffentlich ohne @api_login_required — ESP32 und Dashboard können ohne Session abrufen
 - [Phase 14-backend-dashboard]: max limit=500 für /api/moodlight/headlines — verhindert überlastende DB-Queries
+- [Phase 14-backend-dashboard]: /dashboard als primärer Einstiegspunkt: / und /login POST leiten dorthin; feeds.html bleibt separat erreichbar
+- [Phase 14-backend-dashboard]: Roh-Durchschnitt in Formelzeile via atanh(score)/2 näherungsweise angezeigt — echter Wert nicht in API verfügbar
 
 ### Pending Todos
 
@@ -65,6 +67,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-26T23:37:47.636Z
-Stopped at: Completed 14-backend-dashboard-01-PLAN.md
+Last session: 2026-03-26T23:42:24.092Z
+Stopped at: Completed 14-backend-dashboard-02-PLAN.md
 Resume file: None
