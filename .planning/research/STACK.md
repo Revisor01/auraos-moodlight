@@ -1,155 +1,355 @@
-# Stack Research
+# Technology Stack: Combined OTA Update (UI + Firmware)
 
-**Domain:** ESP32 IoT firmware stabilization + Flask backend hardening
-**Researched:** 2026-03-25
-**Confidence:** MEDIUM — ESP32 patterns from community sources + official Espressif docs; Flask/Gunicorn from PyPI + Flask docs
+**Project:** AuraOS Moodlight
+**Milestone:** Combined Update File (v2.x milestone)
+**Researched:** 2026-03-26
+**Confidence:** HIGH — verified from local installed library source + partition table + actual release file sizes
 
 ---
 
-## Recommended Stack
+## The Central Question: Can ESP32-targz Process a TGZ with firmware.bin Inside?
+
+**Yes — but only via streaming, not via two-stage extraction.**
+
+The answer has a hard constraint from the partition table that must drive the entire architecture.
+
+### The 128 KB Wall
+
+`min_spiffs.csv` (verified at `/Users/simonluthe/.platformio/packages/framework-arduinoespressif32/tools/partitions/min_spiffs.csv`):
+
+```
+spiffs, data, spiffs, 0x3D0000, 0x20000
+```
+
+`0x20000 = 128 KB` for the entire LittleFS partition. Current firmware.bin is **1.2 MB** (verified from `releases/v9.0/Firmware-9.0-AuraOS.bin`). Writing firmware.bin to LittleFS — even as a temporary file — is physically impossible. Any approach that stages the firmware on LittleFS before flashing will always fail with `ESP32_TARGZ_FS_FULL_ERROR (-100)`.
+
+This rules out the naive two-stage approach (extract TGZ fully, then flash firmware.bin from LittleFS).
+
+---
+
+## Verified Library API
+
+**Source verified from local installation:**
+`firmware/.pio/libdeps/esp32dev/ESP32-targz/src/libunpacker/LibUnpacker.hpp`
+
+### TarGzUnpacker — available methods
+
+```cpp
+// Extract TGZ to filesystem (used by current UI handler)
+bool tarGzExpanderNoTempFile(fs::FS sourceFS, const char* sourceFile,
+                             fs::FS destFS, const char* destFolder="/tmp");
+
+// Stream TGZ directly to filesystem — no LittleFS temp file for the source
+bool tarGzStreamExpander(Stream *stream, fs::FS &destFs,
+                         const char* destFolder = "/", int64_t streamSize = -1);
+
+// Stream TGZ directly to OTA flash partition (ESP32 only, requires HAS_OTA_SUPPORT)
+// Naming convention: entries ending in ".ino.bin" -> U_FLASH partition
+//                    entries ending in ".spiffs.bin" -> LittleFS partition image (full replace)
+bool tarGzStreamUpdater(Stream *stream);
+```
+
+### Filter callbacks on TarUnpacker
+
+```cpp
+// Return true from the callback to SKIP that entry during extraction
+void setTarExcludeFilter(tarExcludeFilter cb);  // tarExcludeFilter: (header_translated_t*) -> bool
+void setTarIncludeFilter(tarIncludeFilter cb);  // tarIncludeFilter: (header_translated_t*) -> bool
+```
+
+These filters control whether a file is written to the destination filesystem. They cannot
+redirect output to a different target (no per-entry routing). An excluded entry is simply skipped.
+
+---
+
+## The Only Viable Architecture: Per-Pass Streaming from HTTP Upload
+
+Since firmware.bin cannot be staged on LittleFS, the combined TGZ must be processed in streaming
+mode during the HTTP upload itself — not after `UPLOAD_FILE_END`. The upload stream is fed to the
+unpacker as bytes arrive.
+
+### What "streaming mode" means for ESP8266WebServer
+
+The `HTTPUpload` structure provides a `buf` (uint8_t*) and `currentSize` on each `UPLOAD_FILE_WRITE`
+call. This is a chunk-by-chunk push model. `tarGzStreamExpander` and `tarGzStreamUpdater` both
+accept a `Stream*`. The handler must present the incoming chunks as a `Stream` to the unpacker.
+
+The project already receives uploads in chunks (see `handleUiUpload()` lines 1400–1413 in
+`moodlight.cpp`). The combined handler replaces the write-to-file loop with a stream feed.
+
+### Single-pass vs. two-pass
+
+The combined TGZ contains both UI files and firmware. A single pass can only route to one
+destination. Two passes require reading the archive twice — but the source archive would need to
+be stored somewhere first for the second read. Since storing it on LittleFS is impossible (1.2 MB
+> 128 KB), two-pass is only viable if the archive is small enough to store. It is not.
+
+**Conclusion: One pass is required. The archive must be designed so one pass handles both.**
+
+---
+
+## Recommended Architecture: tarGzStreamUpdater with Naming Convention
+
+`tarGzStreamUpdater` is purpose-built for this. From the source (verified):
+
+- Entries ending in `".ino.bin"` → streamed directly to `U_FLASH` via `Update.write()`. No intermediate storage. ~32 KB gzip dictionary RAM only.
+- Entries ending in `".spiffs.bin"` → written as a binary image to the LittleFS OTA partition (full partition replace). **Not used in this project** since the existing file-by-file LittleFS update model must be preserved.
+
+**The approach:** Pack the combined TGZ with:
+- UI files at the root (normal paths: `index.html`, `css/style.css`, etc.)
+- Firmware named `firmware.ino.bin`
+
+Then use **two separate upload endpoints** (or a detection-based single endpoint) using two
+different unpacker passes over the same stream:
+
+```
+Pass 1: tarGzStreamExpander — exclude *.bin — writes UI files to LittleFS
+Pass 2: tarGzStreamUpdater  — detects firmware.ino.bin — flashes via Update API
+```
+
+But this still requires reading the stream twice. For a streaming-only model, a second read of
+the same upload is not possible once the HTTP connection is gone.
+
+### Resolution: Two Separate Routes Within One Upload Handler
+
+The practical solution is to split the upload into two HTTP requests from the browser, but use
+a **single combined TGZ file** for both:
+
+1. `/update/ui` — client uploads the combined TGZ; server runs `tarGzStreamExpander` with exclude filter for `*.bin`
+2. `/update/firmware` — client uploads the same combined TGZ again; server runs `tarGzStreamUpdater`
+
+This is equivalent to the current two-upload workflow but with one file instead of two. The user
+picks the same `.tgz` file twice. The UX is simplified (one file, two clicks) rather than the
+goal of one file, one click.
+
+### True Single-Upload Solution
+
+To achieve one file, one click, the handler must buffer or process the stream in one pass while
+routing based on filename. Since ESP32-targz does not support per-entry routing, this requires
+a custom tar reader. The implementation path:
+
+1. During `UPLOAD_FILE_WRITE`, feed chunks to `TarGzUnpacker::tarGzStreamExpander` for UI files
+   while intercepting the firmware entry via a custom write callback
+2. Override `tarStreamWriteCallback` — but this is a static method on `TarUnpacker` and is not
+   user-overridable without modifying the library
+
+The library does expose `gzStreamWriter` as a settable callback on `GzUnpacker`:
+
+```cpp
+void setStreamWriter(gzStreamWriter cb);  // gzStreamWriter: (unsigned char* buff, size_t buffsize) -> bool
+```
+
+This allows routing the decompressed output of a `.gz` file to any destination. However, this
+only works for single-file `.gz`, not for multi-entry `.tar.gz`.
+
+**Bottom line:** True single-pass, single-upload combined processing is not achievable with
+ESP32-targz v1.2.7 without forking the library. The recommended approach is two-route with
+one combined TGZ file.
+
+---
+
+## Recommended Stack (No New Dependencies)
 
 ### Core Technologies
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| Adafruit NeoPixel | 1.15.4 | LED strip (WS2812B) | Already in use; keep for now — see LED Stabilization note below for migration path |
-| NeoPixelBus (Makuna) | 2.8.4 | LED strip alternative with DMA/RMT/I2S | I2S-DMA method sends data via hardware with no CPU interrupt pressure — WiFi coexistence is the primary motivation for migrating away from Adafruit NeoPixel |
-| FreeRTOS (built-in) | ESP-IDF bundled | Task management, mutexes | Already present in Arduino ESP32; `xSemaphoreCreateMutex()` + RAII wrapper is the fix for the JSON buffer pool leak |
-| Gunicorn | 25.2.0 | Production WSGI server | Replaces Flask dev server (`app.run()`); multi-process, signals-based graceful shutdown, stable since 2010, Flask docs recommend it explicitly |
-| requests | 2.32.3+ | HTTP client for RSS fetch with per-connection timeout | feedparser's maintainer documented that `socket.setdefaulttimeout()` is the only timeout feedparser natively supports — the correct fix is to fetch via `requests` with a `timeout=` parameter, then pass raw content to `feedparser.parse()` |
+| Component | Technology | Version | Rationale |
+|---|---|---|---|
+| TGZ extraction (UI pass) | ESP32-targz `tarGzStreamExpander` | 1.2.7 (installed) | Already used; streaming mode avoids LittleFS staging |
+| Firmware flash pass | ESP32-targz `tarGzStreamUpdater` | 1.2.7 (installed) | Purpose-built for streaming TGZ → OTA flash |
+| Filesystem | LittleFS | built-in | Already configured |
+| Upload transport | ESP8266WebServer | built-in | Already used; chunk-based `UPLOAD_FILE_WRITE` compatible |
 
-### Supporting Libraries
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| esp_task_wdt (built-in) | ESP-IDF bundled | Watchdog timer | Already in use via WatchdogManager; keep, no change needed |
-| ArduinoHA | 2.1.0 | MQTT + Home Assistant integration | Already in use; keep |
-| ArduinoJson | 7.4.0 | JSON parsing | Already in use; the buffer pool RAII fix does not require a version bump |
-| feedparser | 6.0.11 | Parse RSS XML after fetch | Keep as the parsing layer only; remove it as the HTTP layer |
-
-### Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| PlatformIO | Build, flash, filesystem upload | No change; current workflow is correct |
-| Docker Compose + Gunicorn | Backend container entrypoint | Change `CMD` in Dockerfile from `python app.py` to `gunicorn -w 2 -b 0.0.0.0:6237 app:app` |
+No new library dependencies required. Zero changes to `platformio.ini` (beyond the pre-existing
+`esp_task_wdt_init` build fix).
 
 ---
 
-## Installation
+## Build Script: Creating the Combined TGZ (macOS bash)
 
-### Backend (add to `sentiment-api/requirements.txt`)
+macOS `tar` does not support `--transform` or append (`-r`) to compressed archives.
+The correct macOS-compatible approach is uncompressed `.tar` first, then `gzip`:
+
+```bash
+VERSION=$(grep '^#define MOODLIGHT_VERSION' firmware/src/config.h | cut -d'"' -f2)
+RELEASE_DIR="releases/v${VERSION}"
+mkdir -p "$RELEASE_DIR"
+
+# Step 1: Create uncompressed tar from UI files
+cd firmware/data
+tar -cf "/tmp/combined.tar" \
+    --exclude="*.tmp.*" \
+    --exclude="*.tgz" \
+    --exclude="*.tar" \
+    index.html setup.html mood.html diagnostics.html js/ css/
+cd ../..
+
+# Step 2: Rename firmware.bin and append to the uncompressed tar
+# Name must end in .ino.bin for tarGzStreamUpdater to flash it to U_FLASH
+cp firmware/.pio/build/esp32dev/firmware.bin /tmp/firmware.ino.bin
+tar -rf /tmp/combined.tar -C /tmp firmware.ino.bin
+
+# Step 3: Gzip the combined tar
+gzip -c /tmp/combined.tar > "${RELEASE_DIR}/AuraOS-${VERSION}-Combined.tgz"
+
+# Cleanup
+rm -f /tmp/combined.tar /tmp/firmware.ino.bin
+```
+
+**Version bump logic** (add before the build steps):
+
+```bash
+BUMP_TYPE=${1:-patch}  # major | minor | patch
+
+bump_version() {
+    local current=$1
+    local type=$2
+    IFS='.' read -r major minor patch <<< "$current"
+    patch=${patch:-0}
+    case $type in
+        major) echo "$((major+1)).0" ;;
+        minor) echo "${major}.$((minor+1))" ;;
+        patch) echo "${major}.${minor}" ;;  # AuraOS uses major.minor only
+    esac
+}
+
+NEW_VERSION=$(bump_version "$VERSION" "$BUMP_TYPE")
+sed -i '' "s/#define MOODLIGHT_VERSION \"${VERSION}\"/#define MOODLIGHT_VERSION \"${NEW_VERSION}\"/" \
+    firmware/src/config.h
+```
+
+---
+
+## Upload Handler Design (ESP32 side)
+
+### Route 1: `/update/combined-ui` (new)
+
+```cpp
+server.on("/update/combined-ui", HTTP_POST, /* response handler */, []() {
+    HTTPUpload& upload = server.upload();
+    static TarGzUnpacker *unpacker = nullptr;
+
+    if (upload.status == UPLOAD_FILE_START) {
+        unpacker = new TarGzUnpacker();
+        unpacker->setTarVerify(false);
+        unpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
+        // Exclude firmware.bin — prevents trying to write 1.2MB to 128KB LittleFS
+        unpacker->setTarExcludeFilter([](TAR::header_translated_t *h) -> bool {
+            return String(h->filename).endsWith(".bin");
+        });
+        // NOTE: tarGzStreamExpander must be called here, not at UPLOAD_FILE_END
+        // The Stream* approach requires the stream to be active during extraction
+    }
+    // ... feed upload.buf chunks to the stream
+});
+```
+
+### Route 2: `/update/combined-firmware` (new)
+
+```cpp
+server.on("/update/combined-firmware", HTTP_POST, /* response + restart */, []() {
+    HTTPUpload& upload = server.upload();
+    static TarGzUnpacker *unpacker = nullptr;
+
+    if (upload.status == UPLOAD_FILE_START) {
+        unpacker = new TarGzUnpacker();
+        unpacker->setTarVerify(false);
+        unpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
+        // tarGzStreamUpdater streams .ino.bin entries directly to U_FLASH
+    }
+    // ... feed upload.buf chunks to the stream
+    // At UPLOAD_FILE_END: Update.end(true); ESP.restart();
+});
+```
+
+---
+
+## Diagnostics UI Change
+
+Replace two upload sections (UI upload + Firmware upload) with two upload buttons that
+both target the same combined `.tgz` file:
 
 ```
-gunicorn==25.2.0
+[ Choose file: AuraOS-10.0-Combined.tgz ]
+[ Update UI ]  [ Update Firmware ]
 ```
 
-`requests` is already present (`requests==2.32.2`) — bump to `2.32.3` when convenient, not a blocker.
+Each button POSTs the file to a different endpoint. The user selects the file once; both buttons
+are visible. To do a full update: click "Update UI", wait for completion, then click
+"Update Firmware", wait for restart.
 
-### Firmware (PlatformIO — migration path, not required for initial stabilization)
+A single "Full Update" button that uploads the file twice sequentially (one AJAX per endpoint)
+is the cleanest UX and fully achievable with the existing HTML/JS pattern in `diagnostics.html`.
 
-If the Adafruit NeoPixel timing/WiFi issues persist after the mutex + core-pinning fixes, migrate in `platformio.ini`:
+---
 
-```ini
-lib_deps =
-    ; Replace: adafruit/Adafruit NeoPixel@^1.12.5
-    makuna/NeoPixelBus@^2.8.4
-```
+## Memory Budget
+
+| During UI extraction pass | RAM usage |
+|---|---|
+| gzip dictionary | ~32 KB |
+| tar entry buffer | ~4 KB (GZIP_BUFF_SIZE defined in library) |
+| LittleFS write buffer | ~4 KB |
+| ESP8266WebServer upload buf | ~1–4 KB |
+| **Total additional** | **~40–44 KB** |
+| Available heap (typical idle) | ~100–150 KB |
+| **Verdict** | Comfortable |
+
+| During firmware flash pass | RAM usage |
+|---|---|
+| gzip dictionary | ~32 KB |
+| tar entry buffer | ~4 KB |
+| Update.write buffer | ~512 B (loop buffer in handler) |
+| **Total additional** | **~37 KB** |
+| **Verdict** | Comfortable |
+
+No PSRAM required. Heap stays well above the ~50 KB danger zone.
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| Gunicorn (`sync` workers) | uWSGI | uWSGI has more configuration knobs (Emperor mode, etc.) — only worth it if you need per-request resource limits or uWSGI-specific routing. Overkill for a single-service Flask app. |
-| Gunicorn (`sync` workers) | `gevent` async workers | Only when the Flask app has long-blocking I/O and many concurrent clients. This backend has one client (the ESP32) plus periodic background I/O — sync workers are simpler and correct. |
-| `requests` + `feedparser.parse(content)` | global `socket.setdefaulttimeout()` | The global timeout is a thread-unsafe hack. Keep the existing call only if library migration is not yet scheduled; replace it as part of the "global socket timeout" fix. |
-| NeoPixelBus I2S-DMA | Adafruit NeoPixel (keep) | Adafruit NeoPixel is simpler; keep it if core-pinning + mutex eliminates the flicker. Migrate to NeoPixelBus only if Adafruit NeoPixel's interrupt-based output continues causing WiFi-correlation flicker. |
-| FreeRTOS mutex + RAII wrapper | `taskENTER_CRITICAL` / `portDISABLE_INTERRUPTS` | Disabling interrupts is appropriate for very short critical sections (microseconds). The JSON buffer pool's critical section is longer; mutex with RAII is safer and does not starve the WiFi stack. |
+| Approach | Why Rejected |
+|---|---|
+| Store combined TGZ on LittleFS, then two-pass extract | firmware.bin (1.2 MB) > entire LittleFS (128 KB) — physically impossible |
+| Single HTTP upload, one-pass processing via custom TAR write callback | `tarStreamWriteCallback` is a static method, not user-settable without forking ESP32-targz |
+| `tarGzStreamUpdater` with `.spiffs.bin` for UI | Replaces entire LittleFS partition as binary image; incompatible with file-by-file update model |
+| Two-file upload (keep current UI-TGZ + Firmware-BIN) | Explicitly out of scope per PROJECT.md Core Value |
+| Custom gzip streaming with manual TAR header parsing | Valid but ~200 lines of low-level C++; tarGzStreamUpdater with naming convention achieves the same for the firmware path with ~5 lines |
+| ElegantOTA / AsyncElegantOTA | Would require migrating from ESP8266WebServer to AsyncWebServer — large refactor, not warranted for this feature |
 
 ---
 
-## What NOT to Use
+## Pre-existing Bug: esp_task_wdt_init
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `app.run(debug=True)` in production | Flask's dev server is single-threaded, reloads on every file change, not signal-safe, explicitly documented as not for production | Gunicorn 25.x |
-| `socket.setdefaulttimeout()` in a multi-threaded Flask/Gunicorn context | Global process-wide side effect; race condition between Gunicorn workers and background thread | `requests.get(url, timeout=15)` per call |
-| `feedparser.parse(url)` for URL fetching (without external timeout) | feedparser does not expose a timeout parameter on `parse()`; the HTTP request can hang indefinitely | `feedparser.parse(requests.get(url, timeout=15).content)` — separate fetch from parse |
-| Adafruit NeoPixel with `portDISABLE_INTERRUPTS()` workaround | Disabling interrupts during `strip.show()` pauses the WiFi/MQTT stack for ~300µs per LED; at 12 LEDs this is ~3.6ms of WiFi blackout per update | NeoPixelBus with I2S-DMA method (`NeoEsp32I2s0800KbpsMethod`) |
-| `xTaskCreate` without core pinning for LED tasks | Both cores share the interrupt table; without pinning, the scheduler may place the LED task on Core 0 (WiFi core), causing timing collisions | `xTaskCreatePinnedToCore(..., 1)` — pin LED task to Core 1 |
-| Gunicorn `--workers $(nproc)` formula blindly | Formula is for general web servers; this Flask instance has one active client + one background worker thread, not concurrent web traffic | `-w 2` is sufficient and avoids unnecessary process overhead on a shared Hetzner server |
+From `PROJECT.md`: `esp_task_wdt_init(30, false)` is incompatible with Arduino ESP32 Core 3.x API.
+This blocks `pio run`. The combined update milestone **cannot ship** without fixing this first.
 
----
+Fix (in `MoodlightUtils.cpp` or wherever called):
 
-## Stack Patterns by Variant
-
-**For the LED timing / WiFi coexistence fix (ESP32 firmware):**
-
-- Keep Adafruit NeoPixel for now
-- Pin the LED update task to Core 1 via `xTaskCreatePinnedToCore`
-- Protect the `strip.show()` call and the `ledColors[]` array with a FreeRTOS mutex
-- Suppress status-LED blink during reconnects by checking connection state before triggering any LED side-effects
-- If flicker persists after the above: migrate to NeoPixelBus with `NeoEsp32I2s0800KbpsMethod` on Core 1
-
-**For the JSON buffer pool memory leak (ESP32 firmware):**
-
-- Implement a RAII guard class (stack-allocated, destructor calls `release()` unconditionally):
-  ```cpp
-  struct JsonBufferGuard {
-      JsonBufferPool& pool;
-      char* buf;
-      JsonBufferGuard(JsonBufferPool& p) : pool(p), buf(p.acquire()) {}
-      ~JsonBufferGuard() { if (buf) pool.release(buf); }
-  };
-  ```
-- This ensures `release()` is always called even if mutex acquisition in the original `release()` path times out
-
-**For the LED array bounds fix (ESP32 firmware):**
-
-- Define `MAX_LEDS` constant (e.g., 50) in `config.h`
-- Declare `ledColors[MAX_LEDS]` statically; validate `numLeds` against `MAX_LEDS` on write
-- No dynamic allocation — heap fragmentation on ESP32 is worse than a slightly oversized static array
-
-**For the Flask backend hardening:**
-
-- Replace `CMD ["python", "app.py"]` with `CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:6237", "--timeout", "120", "app:app"]`
-  - `--timeout 120` covers slow OpenAI API calls that may block a sync worker
-- For feed fetching, wrap `feedparser.parse(url)` calls:
-  ```python
-  import requests, feedparser
-  response = requests.get(feed_url, timeout=15, headers={"User-Agent": "AuraOS/1.0"})
-  feed = feedparser.parse(response.content)
-  ```
-- Remove both `socket.setdefaulttimeout()` calls after the above is in place
-
----
-
-## Version Compatibility
-
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| Gunicorn 25.2.0 | Python 3.10+ | Confirmed; Python 3.12-slim in Dockerfile is compatible |
-| Flask 3.1.0 | Gunicorn 25.x | Flask 3.x is fully WSGI-compatible; no adapter needed |
-| NeoPixelBus 2.8.4 | Arduino ESP32 (esp32dev) | I2S method requires GPIO pin capable of I2S data output; pin 26 is compatible |
-| Adafruit NeoPixel 1.15.4 | ArduinoHA 2.1.0 | No known conflict; they operate on different peripherals |
-| requests 2.32.x | feedparser 6.0.11 | `feedparser.parse(bytes_content)` accepts raw bytes from `response.content` — confirmed in feedparser docs |
+```cpp
+// Arduino ESP32 Core 3.x changed the API to require esp_task_wdt_config_t
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    esp_task_wdt_config_t wdt_config = {
+        .timeout_ms = 30000,
+        .idle_core_mask = 0,
+        .trigger_panic = false
+    };
+    esp_task_wdt_init(&wdt_config);
+#else
+    esp_task_wdt_init(30, false);
+#endif
+```
 
 ---
 
 ## Sources
 
-- PyPI gunicorn — confirmed version 25.2.0 (released 2026-03-24), Production/Stable classifier — HIGH confidence
-- Flask official docs (deploying/gunicorn) — recommends Gunicorn, 2+ workers — MEDIUM confidence (403 on fetch, content from search snippets)
-- feedparser GitHub Issue #76, #263, maintainer blog — confirmed no native timeout parameter, recommends requests-first pattern — HIGH confidence
-- NeoPixelBus GitHub releases — confirmed version 2.8.4 (May 2025) — HIGH confidence
-- NeoPixelBus Wiki (ESP32-NeoMethods) — RMT uses ISR-heavy interrupt filling vs. I2S-DMA hardware path — MEDIUM confidence (wiki content verified via WebFetch)
-- Adafruit NeoPixel GitHub releases — confirmed version 1.15.4 (Feb 2025) — HIGH confidence
-- ESP32 Forum + Adafruit NeoPixel Issue #139 — confirmed 5µs/ms interrupt delay from WiFi corrupts NeoPixel timing — MEDIUM confidence (community sources)
-- Espressif docs (xTaskCreatePinnedToCore) + ESP32 Forum WiFi/Core0 threads — confirmed WiFi task runs on Core 0, user tasks default to Core 1 — MEDIUM confidence
-
----
-
-*Stack research for: ESP32 firmware stabilization + Flask backend hardening*
-*Researched: 2026-03-25*
+| Source | Confidence | Used For |
+|---|---|---|
+| `firmware/.pio/libdeps/esp32dev/ESP32-targz/src/libunpacker/LibUnpacker.hpp` (local) | HIGH | All API signatures |
+| `firmware/.pio/libdeps/esp32dev/ESP32-targz/src/types/esp32_targz_types.h` (local) | HIGH | Callback types, error codes |
+| `/Users/simonluthe/.platformio/packages/framework-arduinoespressif32/tools/partitions/min_spiffs.csv` (local) | HIGH | 128 KB LittleFS partition size |
+| `releases/v9.0/Firmware-9.0-AuraOS.bin` (local) | HIGH | 1.2 MB firmware size |
+| `releases/v9.0/UI-9.0-AuraOS.tgz` (local) | HIGH | 35 KB UI archive size |
+| [ESP32-targz GitHub](https://github.com/tobozo/ESP32-targz) | MEDIUM | tarGzStreamUpdater naming convention confirmed |
+| [ESP32-targz Update_from_gz_stream example](https://github.com/tobozo/ESP32-targz/blob/master/examples/ESP32/Update_from_gz_stream/Update_from_gz_stream.ino) | MEDIUM | `.ino.bin` / `.spiffs.bin` suffix requirement |

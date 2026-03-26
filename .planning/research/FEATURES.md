@@ -1,169 +1,170 @@
-# Feature Research
+# Feature Landscape: OTA Update + Build Automation
 
-**Domain:** ESP32 IoT Firmware Stabilization + Flask API Hardening
-**Researched:** 2026-03-25
-**Confidence:** HIGH (derived from direct codebase analysis + known defects in CONCERNS.md)
+**Domain:** ESP32 Embedded OTA + Build-Release Automation
+**Researched:** 2026-03-26
+**Confidence:** HIGH (derived from direct codebase analysis + clear project context)
 
 ---
 
 ## Context
 
-This is a stabilization milestone for an existing, running system — not a greenfield build.
-"Features" here are stability and correctness behaviors, not new user-facing capabilities.
-The question is: what does a production-stable embedded device and backend API actually need?
+This is a milestone that adds two tightly coupled capabilities to an existing, running system:
+
+1. **Combined Update:** One TGZ file replaces two separate uploads (UI-TGZ first, then Firmware-BIN). The ESP32 receives a single archive, extracts UI files to LittleFS, then flashes firmware — sequentially in one handler.
+2. **Build Automation:** `./build-release.sh` gains version-bump logic, packages the Combined TGZ, and commits. "One click" from developer intent to release artifact + commit.
+
+This is not a greenfield feature design. The existing handlers (`handleUiUpload`, firmware upload via `Update.begin`) already work. The question is: what must change to make the combined flow reliable, and what is explicitly out of scope?
 
 ---
 
-## Feature Landscape
+## Current State Baseline
 
-### Table Stakes (Must Have for Stability)
+**What exists today:**
 
-Features that production IoT firmware and Flask APIs are expected to have. Their absence causes
-the specific symptoms already observed: unexplained blinking, system hangs, inconsistent data.
+| Component | Current State | Gap |
+|-----------|--------------|-----|
+| `handleUiUpload()` | Receives TGZ, writes to `/temp/`, extracts to `/extract/`, copies files, saves version from filename | Works standalone; knows nothing about an embedded firmware blob |
+| Firmware upload handler | Uses Arduino `Update.begin()` / `Update.write()` / `Update.end()` streaming; extracts version from filename | Works standalone; triggered by separate form field |
+| `build-release.sh` | Reads version from `config.h`, packs UI-TGZ, compiles firmware, copies BIN, creates checksums and README | No version-bump logic; produces two files, not one combined file |
+| `diagnostics.html` | Full diagnostics page; no update UI section present at all | Two separate upload forms need to be replaced with one |
+| Version state | `MOODLIGHT_VERSION` in `config.h` (firmware), `ui-version.txt` on LittleFS (UI, written during upload) | Two separate version files; milestone goal is one unified version |
 
-| Feature | Why Expected | Complexity | Notes |
+---
+
+## Table Stakes
+
+Features that must exist for this milestone to ship. Missing any one of these leaves the core value ("one click builds and deploys") unfulfilled.
+
+### ESP32-side: New Combined Upload Handler
+
+| Feature | Why Required | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **[FW] LED updates never flicker due to WiFi/MQTT reconnects** | NeoPixel timing (800kHz bit-bang or RMT) is disrupted by WiFi interrupt latency. This is the #1 reported symptom. | MEDIUM | Root fix: ensure LED writes happen with interrupts in a clean state, or use RMT peripheral with DMA. The current `ledMutex` helps but doesn't fully solve WiFi interrupt interference. Needs event-driven suppression: no LED transition during active reconnect. |
-| **[FW] LED array sized to `numLeds`, not compile-time constant** | Buffer overflow when user configures >12 LEDs is undefined behavior, can corrupt memory and cause random crashes. | LOW | Fix: introduce `MAX_LEDS` constant (e.g. 30), validate `numLeds` against it at write time, or use static array at MAX_LEDS. Dynamic allocation risks heap fragmentation on ESP32. |
-| **[FW] JSON buffer pool RAII — no heap leak on mutex timeout** | Mutex timeout during `release()` currently orphans a 16KB heap allocation. Accumulated leaks trigger watchdog resets. | LOW | Fix: `wasPooled` flag on the buffer wrapper; `release()` calls `delete[]` unconditionally when buffer was heap-allocated, regardless of mutex outcome. |
-| **[FW] Single consolidated health-check routine** | Two overlapping health-check timers (1h + 5min) with independent restart logic can trigger conflicting resets. One clear interval with explicit severity thresholds is the standard pattern. | LOW | Merge into one routine. Recommended: 5min interval, with counters to escalate from warn → restart at defined thresholds. Remove 1h duplicate. |
-| **[FW] Status LED blink debounced — no blink on transient (<30s) reconnects** | A brief WiFi dropout that self-heals within seconds should not light up the living room LED strip in error red. Expected behavior: blink only if disconnected for sustained period. | LOW | Fix: track `disconnectStartMs`, only set status color if `millis() - disconnectStartMs > BLINK_DEBOUNCE_MS` (e.g. 30000). Clear on reconnect. |
-| **[FW] Credentials not returned via API** | Returning WiFi password and MQTT password over HTTP GET is a security regression. Even in a home network, this is not acceptable in a stable production device. | LOW | Fix: replace password fields in `/api/export/settings` and `/api/settings/mqtt` responses with `"****"`. Passwords should only flow inward (POST) never outward (GET). |
-| **[BE] Flask behind Gunicorn, not dev server** | Flask dev server is single-threaded, prints warnings on every request, is not signal-safe, and is explicitly documented as not for production. The background worker + Flask request handler already share a process — Gunicorn worker model provides proper isolation. | LOW | Replace `CMD ["python", "app.py"]` with `CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:6237", "app:app"]`. Add `gunicorn` to `requirements.txt`. Keep worker count at 2 — one for requests, one headroom. |
-| **[BE] Per-connection socket timeouts, not global** | `socket.setdefaulttimeout()` is process-global. In a multi-threaded environment (Flask + background worker), this is a race condition: one thread's timeout setting silently affects another's connection. Per-connection timeouts via `feedparser`'s `agent` parameter or `requests(timeout=)` are the correct fix. | LOW | Remove all `socket.setdefaulttimeout()` calls. Pass `timeout=10` directly to each feed fetch call. |
-| **[BE] Single source-of-truth for RSS feed list** | Two identical feed dicts in `app.py` and `background_worker.py` will drift. The background worker (which actually runs sentiment updates) currently has its own hardcoded copy that `feedconfig` POST never touches — making the config endpoint effectively a no-op. | LOW | Extract to `feeds.py` or a top-level constant in `app.py`. Background worker imports from there. |
-| **[BE] Single source-of-truth for sentiment category thresholds** | Three different threshold definitions (`app.py`: 0.85/0.2, `background_worker.py` and `moodlight_extensions.py`: 0.30/0.10/-0.20/-0.50) produce inconsistent category labels depending on which code path executes. The ESP32 displays the category string — so a "neutral" from one path and "positiv" from another for the same score is a visible defect. | LOW | Consolidate into one function in `database.py` or a shared `sentiment_utils.py`. Use the `background_worker`/`extensions` thresholds (0.30/0.10/-0.20/-0.50) as they are consistent with each other. The `app.py` thresholds appear to be a legacy mistake. |
-| **[BE] Dead endpoints removed** | `/api/dashboard` and `/api/logs` return literal `{...}` Python ellipsis syntax. Calling them raises a `500`. These endpoints do not exist functionally and must not exist in a production API. | LOW | Delete the two route handlers. |
-| **[BE] `.env` in `.gitignore`** | `OPENAI_API_KEY` and `POSTGRES_PASSWORD` must not accidentally land in git. The absence of `.env` from `.gitignore` is an active risk on every commit. | LOW | Add `.env` and `sentiment-api/.env` to `.gitignore`. |
-| **[REPO] Temp files and binary releases out of git** | `setup.html.tmp.html` is an editing artifact. Binary `.bin`/`.tgz` files in `releases/` bloat the repository and should live in GitHub Releases. | LOW | Delete the tmp file. Add `releases/`, `*.tmp.html`, `*.bin`, `*.tgz` to `.gitignore`. |
+| **Detect combined vs. plain TGZ by filename convention** | Handler must decide: is this a combined update or a plain UI-only TGZ? Filename-based routing (`Combined-X.X-AuraOS.tgz`) is the simplest contract — no magic bytes parsing needed. | LOW | Existing `handleUiUpload` already reads filename. Extend to branch on `Combined-` prefix. Plain `UI-` TGZ must still work (backward compat). |
+| **Stream combined TGZ to LittleFS, extract, separate UI files from firmware.bin** | The combined archive contains `firmware.bin` + UI files. Extraction via ESP32-targz places everything in `/extract/`. The handler then installs UI files as today, plus finds `/extract/firmware.bin` for the next step. | MEDIUM | LittleFS space constraint: min_spiffs partition is small. The combined archive + extraction temp files + existing UI files must all fit simultaneously. This is the highest-risk point of the whole milestone — see PITFALLS.md. |
+| **Flash `/extract/firmware.bin` via `Update` API after UI install** | After UI files are copied from `/extract/` to `/`, the handler calls `Update.begin(fwSize)`, streams the binary, calls `Update.end(true)`, then triggers restart. This is the second phase of the sequential operation. | MEDIUM | Must happen after UI copy completes, not concurrently. Update must be the last operation before restart — no LittleFS writes after `Update.end()` because ESP restarts. |
+| **Single unified version written to `/firmware-version.txt` (or config.h-derived)** | The milestone goal is "one version for everything." After a combined update, one version identifier should be readable via `/api/firmware-version`. The separate `/ui-version.txt` can be removed or unified. | LOW | Simplest approach: combined handler writes the version (from filename) once to `/firmware-version.txt`. Firmware's compile-time `MOODLIGHT_VERSION` is the authoritative source; written file is a runtime readback for the UI. |
+| **Single upload field in diagnostics.html** | Replace two separate upload sections (UI first, firmware second) with one combined upload section. Must display one current version. | LOW | The existing diagnostics.html has no update UI at all — this section must be added from scratch. |
+| **Graceful error handling: rollback or clear state on failure** | If extraction succeeds but firmware flash fails, the device must not be left with new UI files and old firmware that may be incompatible. Minimum: restore `/backup/` files on flash failure, or restart with old firmware (which it will, since failed `Update.end()` doesn't commit). | MEDIUM | Arduino `Update` API already handles failed flash by not committing — device reboots into old firmware. UI files however ARE already overwritten by this point. The safest pattern: do UI install last, firmware first — but that conflicts with normal memory layout. Alternative: install UI to `/backup/` first, only move to `/` after firmware flashes successfully. |
 
-### Differentiators (Nice to Have — Not This Milestone)
+### Build Script: Version Bump + Combined Package
 
-Improvements that are valuable but do not address the current core stability problems.
-They belong in a subsequent milestone after the system is stable.
+| Feature | Why Required | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **`./build-release.sh [major\|minor\|patch]` bumps version in `config.h`** | The core value is "one click, no manual versioning." The script must parse the current `MAJOR.MINOR` (or `MAJOR.MINOR.PATCH`) from `#define MOODLIGHT_VERSION`, increment the appropriate component, and write it back with `sed`. | LOW | Current version format is `"9.0"` — simple MAJOR.MINOR. Script needs to handle at least `major` and `minor`; `patch` is optional. Must error if no bump type given and no explicit version passed. |
+| **Build combined TGZ: UI files + `firmware.bin` in one archive** | Replaces the current two-file output. One `tar -czf` that includes both the UI files (HTML/CSS/JS) and `firmware/.pio/build/esp32dev/firmware.bin` as `firmware.bin`. | LOW | Filename convention: `Combined-X.X-AuraOS.tgz`. Existing `UI-X.X-AuraOS.tgz` and `Firmware-X.X-AuraOS.bin` generation can be removed or kept for backward compat (decision point — see below). |
+| **Checksums cover the combined file** | SHA256 checksum for the combined TGZ. Consistent with existing `checksums.txt` approach. | LOW | Trivially extend existing checksum step. |
+| **Git commit after successful build** | The "one click" contract includes committing the version bump. Script should `git add firmware/src/config.h && git commit -m "Bump: vX.X"`. The releases/ directory stays out of git (`.gitignore`). | LOW | Must not commit binary release files. Only `config.h` changes. |
+| **Fix pre-existing `esp_task_wdt_init` build error before any of the above works** | `pio run` fails due to `esp_task_wdt_init(30, false)` being incompatible with Arduino ESP32 Core 3.x API. Without this fix, the build script's `pio run` step will always fail. This is a blocker, not an enhancement. | LOW | Fix: replace with `esp_task_wdt_config_t` struct initialization. See PITFALLS.md for exact fix. |
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **[FW] Firmware modularization** | Splitting `moodlight.cpp` (4500 lines) into `wifi_manager.cpp`, `led_controller.cpp`, etc. would make the codebase maintainable and testable. | HIGH | Explicitly deferred in PROJECT.md as a separate milestone. Risk of regression during stabilization is too high. |
-| **[FW] HTTPS for backend communication** | Encrypts ESP32 → API traffic; prevents passive interception on local network. | HIGH | Deferred in PROJECT.md due to prior `WiFiClientSecure` issues. Requires cert pinning or CA bundle management on device. |
-| **[FW] GPIO input validation** | Prevents hardware damage from invalid pin values set via web UI. | LOW | Valuable but not causing the current instability symptoms. Add a `valid_gpio_pins[]` whitelist. |
-| **[BE] Backend health endpoint** | A `GET /health` that returns Postgres connectivity, Redis connectivity, last sentiment update timestamp, and worker liveness. Enables uptime monitoring integration. | LOW | Useful for Uptime Kuma monitoring. Not blocking stability of the current device. |
-| **[BE] OpenAI API call counter / budget guard** | Prevents runaway cost if the background worker loop misbehaves. | LOW | Nice to have for cost safety. The 30-minute interval makes runaway unlikely in practice. |
-| **[FW] Setup AP with random password on first boot** | Prevents anyone nearby from connecting to the open `Moodlight-Setup` AP. | MEDIUM | Relevant for physical security, but the device is on a private home network. Out of scope per PROJECT.md (no auth milestone). |
+---
 
-### Anti-Features (Things to Deliberately NOT Build in This Milestone)
+## Differentiators
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Automated test suite** | CONCERNS.md flags the absence of tests | Adding a test suite during a stabilization push introduces scope risk and delays shipping the actual fixes. Tests for embedded firmware (non-host-executable) are a significant infrastructure effort. | Fix the known bugs first. Add tests in a dedicated quality milestone once the codebase is stable. PROJECT.md explicitly defers this. |
-| **Firmware modularization** | 4500-line monolith is hard to maintain | Refactoring during bug-fixing is how regressions get introduced. The current structure, while messy, is understood and working. | Complete all bug fixes in the current structure, then split in a dedicated milestone. |
-| **Authentication / authorization** | Security-conscious instinct | PROJECT.md explicitly out-of-scopes auth. This is a private home network device. Adding auth mid-stabilization adds scope and can break the existing web UI flows. | Mask credentials in API responses (table stakes fix, low effort). Full auth is a future milestone decision. |
-| **HTTPS on ESP32** | Security-conscious instinct | Previous attempt had problems per PROJECT.md. `WiFiClientSecure` with cert management on 320KB RAM device requires careful memory handling. Wrong milestone. | Fix the stability bugs under HTTP first. HTTPS is its own milestone. |
-| **Multi-device support** | Generalization instinct | One device is deployed. Designing for N devices adds DB schema changes, API routing complexity, and frontend work that is out of scope. | The existing device tracking (`X-Device-ID` headers) is sufficient for the single-device use case. |
-| **feedconfig persistence** | The `/api/feedconfig` POST endpoint suggests runtime feed reconfiguration | The endpoint is currently a no-op (modifies in-memory state lost on restart, background worker ignores it). Making it persistent requires DB schema changes and is a new feature, not a stability fix. | Remove the endpoint in this milestone (dead weight) or leave it broken but documented. Do not implement persistence for it now. |
+Nice to have for this milestone, but not required for the core value. Defer unless implementation is trivial.
+
+| Feature | Value Proposition | Complexity | Decision |
+|---------|-------------------|------------|----------|
+| **Keep separate UI-TGZ and Firmware-BIN as additional outputs** | Backward compatibility: if combined update has issues, fallback to two-step still works | LOW | Keep for first iteration. Remove in a later milestone once combined flow is proven stable. |
+| **Progress feedback in upload UI** | Show bytes received / extraction progress during upload | MEDIUM | The HTTP upload is chunked; progress events are available in JS via `XMLHttpRequest.upload.onprogress`. Nice UX but not blocking. |
+| **Pre-flight LittleFS space check before accepting upload** | Reject upload early if insufficient space, with clear error message | LOW | Worth adding — prevents a confusing mid-extraction failure. Small addition to the upload handler's `UPLOAD_FILE_START` branch. |
+| **Build script: `--dry-run` flag** | Show what version would be bumped to without actually changing anything | LOW | Useful for CI but not needed for solo hobby use. |
+| **Build script: automatic `git tag vX.X`** | Tags the commit for easier navigation in git history | LOW | One line addition. Useful but not core. |
+| **Version shown in diagnostics.html header** | Display current firmware version prominently, fetched from `/api/firmware-version` | LOW | The `<span class="version" id="version">v1.0</span>` is already in the header but never populated. Wire it up. |
+
+---
+
+## Anti-Features
+
+Explicitly NOT building in this milestone.
+
+| Anti-Feature | Why It Will Be Requested | Why Not Now | What Instead |
+|--------------|--------------------------|-------------|--------------|
+| **Pull-based OTA (device polls a server for updates)** | Standard IoT update pattern for production devices | This is a single home device on a LAN. Push via browser is simpler, faster, and has no infrastructure cost. Pull-based OTA requires an update server, version manifest endpoint, and scheduled polling. | Continue with push-based browser upload. |
+| **Signed/verified firmware images** | Security best practice — prevents flashing arbitrary code | Requires a signing key infrastructure, verification in the bootloader or pre-flash, and build pipeline changes. Overkill for a private home device with no external attack surface. | Out of scope per PROJECT.md (no auth). |
+| **Delta/incremental firmware updates** | Reduces upload size | ESP32 delta update tools (e.g., `esp_delta_ota`) require a patching step on-device that consumes significant RAM. On a 4MB flash / 320KB RAM device with `min_spiffs`, this is a memory constraint risk. | Full image OTA is fine for a ~800KB firmware. |
+| **Rollback to previous firmware via web UI** | Recovery without serial access | Requires a dual-partition OTA scheme (OTA0/OTA1 swap). The current partition table is `min_spiffs.csv` which maximizes app partition size but leaves no room for a second app partition. Partition table changes are a separate infrastructure milestone. | The existing backup of UI files + Arduino `Update` API's automatic "don't commit on failure" is sufficient recovery for hobby use. |
+| **Build script runs OTA upload automatically** | End-to-end automation: build → deploy | Network-dependent step in a build script makes CI fragile. On a home network, the device IP may change. Separating build from deploy is the correct pattern. | Build produces the artifact; deploy is a manual browser upload or a separate `deploy.sh` if desired. |
+| **GitHub Actions CI build** | Automated CI/CD for firmware | Firmware CI requires cross-compilation toolchain setup in Actions, which adds significant setup complexity. The backend already has CI. Firmware builds are fast locally. | Local `./build-release.sh` is sufficient for a one-device hobby project. |
+| **Semantic versioning (MAJOR.MINOR.PATCH with semver rules)** | Proper versioning discipline | The current `MAJOR.MINOR` format (`"9.0"`) is simpler and sufficient. Full semver adds script complexity for no user-visible benefit on a single-device project. | Keep MAJOR.MINOR. Support `major` and `minor` bump arguments. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[BE] Single source-of-truth for category thresholds
-    └──enables──> consistent category labels on ESP32 web UI and HA
+[BUG] esp_task_wdt_init fix
+    └──blocks──> all firmware builds
+    └──must be first task in milestone
 
-[BE] Gunicorn replaces dev server
-    └──requires──> gunicorn in requirements.txt
-    └──enables──> safe [BE] per-connection timeouts (thread isolation now reliable)
+[SCRIPT] Version bump in build-release.sh
+    └──requires──> working pio build (depends on wdt fix)
+    └──produces──> updated config.h with new MOODLIGHT_VERSION
 
-[FW] LED array sized to numLeds
-    └──blocks-if-absent──> [FW] LED update stability
-    (buffer overflow can corrupt ledMutex state itself)
+[SCRIPT] Combined TGZ packaging
+    └──requires──> UI files + firmware.bin both exist after build
+    └──produces──> Combined-X.X-AuraOS.tgz
 
-[FW] JSON buffer pool RAII fix
-    └──prevents──> heap fragmentation over time
-    └──which prevents──> random watchdog resets during normal operation
+[ESP32] Combined upload handler
+    └──reads──> Combined-X.X-AuraOS.tgz (filename prefix detection)
+    └──uses──> existing ESP32-targz library for extraction
+    └──uses──> existing Arduino Update API for firmware flash
+    └──writes──> UI files to LittleFS (as today)
+    └──writes──> firmware via OTA
 
-[FW] Status LED debounce
-    └──requires──> [FW] LED updates stable (no point debouncing if LED itself flickers)
+[UI] diagnostics.html update section
+    └──calls──> combined upload endpoint (new handler)
+    └──displays──> version from /api/firmware-version
 
-[FW] Credentials masked in API
-    └──independent──> all other fixes (safe to do in any order)
-
-[REPO] .env in .gitignore
-    └──independent──> all other fixes (must be done before any commit with .env present)
+[VERSION] Unified version state
+    └──source of truth──> MOODLIGHT_VERSION in config.h (compile-time)
+    └──runtime readback──> /firmware-version.txt on LittleFS
+    └──eliminates──> separate /ui-version.txt
 ```
 
-### Dependency Notes
+### Critical Ordering Constraint
 
-- **LED buffer fix must precede LED debounce work:** A buffer overflow corrupting `ledMutex` or adjacent memory makes any higher-level LED behavior fix unreliable.
-- **Gunicorn before per-connection timeout fix:** The global `socket.setdefaulttimeout()` is only truly dangerous in a multi-threaded server context. With Gunicorn, worker isolation reduces (but does not eliminate) the risk — fix both together.
-- **Category threshold consolidation is independent:** Can be done in any order, but should be done before any LED color behavior testing to avoid confusion about what score maps to what category.
+The combined handler must decide: flash firmware first, then install UI — or UI first, then firmware.
 
----
+**Recommendation: UI files first, firmware flash second.**
 
-## MVP Definition (This Milestone)
+Rationale: If firmware flash fails, Arduino `Update` API does not commit — device reboots into old firmware. The UI files are already overwritten, but old firmware can serve old UI from backup (since backup is created before overwrite). If firmware flash succeeds, device reboots into new firmware that serves the new UI.
 
-### Ship With (Stabilization Complete)
-
-These are the minimum changes that make the device "stable in production" as defined by PROJECT.md's core value.
-
-- [ ] **[FW] LED array bounds fix** — eliminates undefined behavior that can corrupt anything
-- [ ] **[FW] JSON buffer pool RAII** — eliminates slow memory leak causing watchdog resets
-- [ ] **[FW] Health check consolidation** — eliminates conflicting restart decisions
-- [ ] **[FW] Status LED debounce** — eliminates the most visible symptom (blink on transient reconnects)
-- [ ] **[FW] LED timing during reconnects** — eliminates NeoPixel flicker caused by WiFi interrupt interference
-- [ ] **[FW] Credentials masked in API responses** — eliminates credential exposure, low effort
-- [ ] **[BE] Gunicorn replaces dev server** — eliminates single-threaded bottleneck and dev warnings
-- [ ] **[BE] Per-connection socket timeouts** — eliminates race condition in multi-threaded backend
-- [ ] **[BE] RSS feed list deduplicated** — eliminates drift risk
-- [ ] **[BE] Category thresholds unified** — eliminates inconsistent category labels
-- [ ] **[BE] Dead endpoints removed** — eliminates 500 errors on `/api/dashboard`, `/api/logs`
-- [ ] **[REPO] `.env` in `.gitignore`** — eliminates secret exposure risk
-- [ ] **[REPO] Temp files + binary releases removed from git** — eliminates repo clutter
-
-### Defer to Next Milestone
-
-- [ ] **Firmware modularization** — only after stabilization is confirmed stable in production
-- [ ] **HTTPS** — dedicated milestone with proper cert management strategy
-- [ ] **Test suite** — dedicated quality milestone
-- [ ] **Auth** — future decision, explicitly out of scope
+Reverse order (firmware first, then UI) would leave new firmware running old UI if the UI copy step fails — harder to detect and recover from.
 
 ---
 
-## Feature Prioritization Matrix
+## MVP for This Milestone
 
-| Feature | Stability Impact | Implementation Cost | Priority |
-|---------|-----------------|---------------------|----------|
-| LED array bounds fix | HIGH (UB/crash risk) | LOW | P1 |
-| JSON buffer pool RAII | HIGH (slow leak → crash) | LOW | P1 |
-| Health check consolidation | HIGH (conflicting restarts) | LOW | P1 |
-| Gunicorn replaces dev server | HIGH (production correctness) | LOW | P1 |
-| Category thresholds unified | MEDIUM (visible data inconsistency) | LOW | P1 |
-| LED flicker during reconnects | HIGH (primary user symptom) | MEDIUM | P1 |
-| Status LED debounce | MEDIUM (visible annoyance) | LOW | P1 |
-| Per-connection socket timeouts | MEDIUM (thread race condition) | LOW | P1 |
-| RSS feed list deduplicated | MEDIUM (drift risk) | LOW | P1 |
-| Dead endpoints removed | LOW (latent 500 errors) | LOW | P2 |
-| Credentials masked | MEDIUM (security hygiene) | LOW | P1 |
-| `.env` in `.gitignore` | HIGH (secret leak prevention) | LOW | P1 |
-| Temp/binary files from git | LOW (repo hygiene) | LOW | P2 |
-| Firmware modularization | LOW for stability | HIGH | P3 (next milestone) |
-| HTTPS | MEDIUM for security | HIGH | P3 (own milestone) |
-| Test suite | LOW for immediate stability | HIGH | P3 (own milestone) |
+### Must Ship
+
+- [ ] Fix `esp_task_wdt_init` build error (blocker for everything)
+- [ ] `build-release.sh [major|minor]` bumps version in `config.h`
+- [ ] `build-release.sh` produces `Combined-X.X-AuraOS.tgz` (UI + firmware.bin)
+- [ ] `build-release.sh` commits version bump (`git add config.h && git commit`)
+- [ ] ESP32 combined upload handler: detects `Combined-` prefix, extracts, installs UI, flashes firmware
+- [ ] Single upload form in `diagnostics.html` with version display
+- [ ] Unified version: one version number, one file on LittleFS
+
+### Defer
+
+- Pull-based OTA — wrong pattern for this use case
+- Signed firmware — out of scope per PROJECT.md
+- GitHub Actions firmware CI — unnecessary overhead
+- Rollback via UI — requires partition table changes, separate milestone
 
 ---
 
 ## Sources
 
-- Direct codebase analysis: `/Users/simonluthe/Documents/auraos-moodlight/.planning/codebase/CONCERNS.md`
-- Direct codebase analysis: `/Users/simonluthe/Documents/auraos-moodlight/.planning/codebase/ARCHITECTURE.md`
-- Project requirements: `/Users/simonluthe/Documents/auraos-moodlight/.planning/PROJECT.md`
-- [ESP32 NeoPixel + WiFi RMT interference (esp32.com forum)](https://esp32.com/viewtopic.php?t=3980)
-- [FastLED issue: random colors with WiFi enabled](https://github.com/FastLED/FastLED/issues/507)
-- [ESP32 Watchdog Timer production guidance (Zbotic)](https://zbotic.in/esp32-watchdog-timer-prevent-system-freeze-in-production/)
-- [Gunicorn production deployment guide (Better Stack)](https://betterstack.com/community/guides/scaling-python/gunicorn-explained/)
-- [Flask performance optimization (DigitalOcean)](https://www.digitalocean.com/community/tutorials/how-to-optimize-flask-performance)
+- Direct codebase analysis: `firmware/src/moodlight.cpp` (lines 1312–1520: `handleUiUpload`, lines 2930–2977: firmware upload handler)
+- Direct codebase analysis: `build-release.sh` (current two-file release flow)
+- Direct codebase analysis: `firmware/data/diagnostics.html` (no update UI present)
+- Project requirements: `.planning/PROJECT.md` (active requirements list, constraints, out-of-scope items)
+- ESP32 Arduino `Update` API behavior on failure: does not commit if `Update.end()` fails — device reboots into previous partition
+- ESP32-targz library: `tarGzExpanderNoTempFile()` in current use; streams directly to LittleFS
+- LittleFS space constraint: `min_spiffs.csv` partition — confirmed constraint in PROJECT.md
 
 ---
 
-*Feature research for: ESP32 IoT firmware stabilization + Flask API hardening*
-*Researched: 2026-03-25*
+*Feature research for: Combined OTA Update + Build Automation milestone*
+*Researched: 2026-03-26*

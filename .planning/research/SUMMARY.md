@@ -1,159 +1,176 @@
 # Project Research Summary
 
-**Project:** AuraOS Moodlight — Stabilization Milestone
-**Domain:** ESP32 IoT Firmware Stabilization + Flask Backend Hardening
-**Researched:** 2026-03-25
+**Project:** AuraOS Moodlight — Combined OTA Update + Build Automation Milestone
+**Domain:** ESP32 Embedded Firmware, OTA Update Architecture, Build Automation
+**Researched:** 2026-03-26
 **Confidence:** HIGH
 
 ## Executive Summary
 
-AuraOS Moodlight ist ein laufendes, produktives System — kein Greenfield-Projekt. Das Ziel dieser Milestone-Runde ist ausschliesslich Stabilisierung: bekannte Fehler beheben, technische Schulden der kritischen Art abbauen, ohne die Architektur zu veraendern. Die Research-Ergebnisse basieren auf direkter Codeanalyse und sind entsprechend praezise: Alle identifizierten Probleme haben konkrete Zeilennummern, reproduzierbare Symptome und eindeutige Loesungspfade. Es gibt kein exploratives Element — die Ursachen sind bekannt, die Loesungen dokumentiert.
+Dieses Milestone fuegt dem laufenden AuraOS-Moodlight-Projekt zwei eng gekoppelte Faehigkeiten hinzu: eine kombinierte OTA-Update-Datei (eine TGZ enthaelt sowohl UI-Dateien als auch Firmware) und ein automatisiertes Build-Release-Skript mit Version-Bump. Die kritische Erkenntnis aus der Forschung ist, dass die `min_spiffs`-Partitionstabelle dem ESP32 nur 128 KB LittleFS-Speicher gibt — waehrend die kompilierte Firmware bereits 1,2 MB gross ist. Das macht jeden Ansatz, der firmware.bin in LittleFS zwischenspeichert, physisch unmoeglich. Die einzig tragfaehige Architektur ist Streaming: die kombinierte TGZ wird entweder ueber `tarGzStreamUpdater` (naming-convention-basiert) oder einen verschachtelten TGZ-Ansatz mit direktem `Update.write()`-Aufruf verarbeitet.
 
-Der empfohlene Ansatz teilt sich in zwei parallele Arbeitstraenge: Firmware-Fixes (ESP32, `moodlight.cpp`) und Backend-Hardening (Flask, `sentiment-api/`). Beide Traenge sind weitgehend unabhaengig voneinander und koennen parallel bearbeitet werden. Die einzige kritische Abhaengigkeit ist die Gunicorn-Migration im Backend, bei der der Background-Worker genau einmal (`-w 1`) laufen muss — ein Fehler hier verdoppelt OpenAI-Kosten und erzeugt Race Conditions in PostgreSQL. Alle anderen Fixes sind isolierte In-Place-Korrekturen ohne Refactoring-Risiko.
+Der empfohlene Implementierungsweg nutzt ausschliesslich bereits installierte Bibliotheken (ESP32-targz 1.2.7, Arduino `Update` API, LittleFS) ohne neue Dependencies. Der Handler empfaengt die kombinierte TGZ und verarbeitet sie ueber zwei separate HTTP-Routen: `/update/combined-ui` nutzt `tarGzStreamExpander` mit Exclude-Filter fuer `*.bin`, `/update/combined-firmware` nutzt `tarGzStreamUpdater` mit `.ino.bin`-Naming-Convention. Ein "Full Update"-Button im Browser postet die Datei sequentiell an beide Endpunkte. Das ist die sauberste Loesung ohne Library-Modifikationen und ohne LittleFS-Staging der Firmware.
 
-Das primaere Risiko dieser Milestone ist nicht technischer Natur, sondern organisatorisch: Der Monolith (`moodlight.cpp`, ~4500 Zeilen) verleitet dazu, Refactoring mit Bug-Fixing zu vermischen. Research und Projektplan sind darin einig — kein Splitting in diesem Milestone. Alle Fixes sollen inline vorgenommen werden. Firmware-Modularisierung, HTTPS und Test-Suite sind explizit auf nachfolgende Milestones verschoben.
+Das wichtigste Risiko ist der `esp_task_wdt_init`-Build-Blocker: die aktuelle Codebasis kompiliert nicht mit Arduino ESP32 Core 3.x. Dieser Bug muss als allererster Schritt behoben werden, da ohne funktionierendes `pio run` kein Build-Skript und kein Combined-TGZ erstellt werden kann. Darueber hinaus erfordert die LittleFS-Raumbegrenzung exzellentes Ressourcenmanagement: Cleanup-Funktionen muessen rekursiv arbeiten, Heap-Checks muessen vor Upload-Annahme stattfinden, und das Build-Skript muss Build-Fehler explizit erkennen und abbrechen statt stilles Failure zu schlucken.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-Der bestehende Stack bleibt nahezu unveraendert. Adafruit NeoPixel, ArduinoHA, ArduinoJson und FreeRTOS bleiben in Verwendung. Die zwei relevanten Stack-Aenderungen sind: (1) Gunicorn 25.2.0 ersetzt den Flask Dev-Server als WSGI-Layer — eine Konfigurationsaenderung in Dockerfile und requirements.txt. (2) Das Fetch-Pattern fuer RSS-Feeds wechselt von `feedparser.parse(url)` zu `requests.get(url, timeout=15)` + `feedparser.parse(response.content)`, um per-Connection-Timeouts statt des prozessglobalen `socket.setdefaulttimeout()` zu verwenden. NeoPixelBus als Adafruit-Ersatz ist als Fallback dokumentiert, aber erst relevant wenn Core-Pinning + Mutex die Flicker-Probleme nicht loesen.
+Das Projekt benoetigt keine neuen Bibliotheken. Alle benoetigen Komponenten sind bereits installiert und funktionieren. Die zwei Kernmethoden aus ESP32-targz 1.2.7 sind: `tarGzStreamExpander` (UI-Dateien aus TGZ-Stream in LittleFS) und `tarGzStreamUpdater` (firmware.ino.bin aus TGZ-Stream direkt in U_FLASH-Partition). Die Naming Convention ist unveraenderlich: Eintraege muessen auf `.ino.bin` enden, damit `tarGzStreamUpdater` sie als Flash-Ziel erkennt.
 
 **Core technologies:**
-- FreeRTOS (built-in): Task-Management, Mutexes — RAII-Wrapper fuer JsonBufferPool loest Heap-Leak
-- Adafruit NeoPixel 1.15.4: LED-Strip — Core-Pinning (Core 1) und konsequenter Mutex-Schutz beheben WiFi-Interferenz
-- Gunicorn 25.2.0: WSGI-Server — ersetzt Flask Dev-Server, `-w 1 --threads 4` vermeidet Background-Worker-Duplikation
-- requests 2.32.3: HTTP-Client fuer RSS-Fetch — loest globalen Socket-Timeout-Problem
-- NeoPixelBus 2.8.4 (Fallback): I2S-DMA LED-Ausgabe — nur migrieren wenn Adafruit NeoPixel nach Fixes weiterhin Probleme macht
+- `tarGzStreamExpander` (ESP32-targz 1.2.7): UI-Extraktion aus TGZ-Stream — Streaming avoids LittleFS staging for firmware
+- `tarGzStreamUpdater` (ESP32-targz 1.2.7): Firmware-Flashing aus TGZ-Stream — Purpose-built for OTA, routes `.ino.bin` entries directly to U_FLASH
+- Arduino `Update` API: Firmware-Flash-Endpunkt — Already used in existing firmware upload handler
+- LittleFS (built-in): Dateisystem fuer UI-Dateien — Already configured, 128 KB hard limit drives all architecture decisions
+- ESP8266WebServer (built-in): HTTP-Upload in Chunks — Already used, chunk-based `UPLOAD_FILE_WRITE` compatible
+
+**Kritische Version-Constraint:**
+`esp_task_wdt_init()` ist mit Arduino ESP32 Core 3.x inkompatibel — Build schlaegt fehl. Fix: Conditional compile mit `#if ESP_ARDUINO_VERSION_MAJOR >= 3` auf `esp_task_wdt_config_t`-Struct-API.
 
 ### Expected Features
 
-Dieses Milestone liefert keine neuen Nutzer-Features — es behebt Stabilitaetsprobleme, die als Fehler wahrgenommen werden. Alle Items in der "Must Have"-Liste sind Korrektheitsprobleme (Undefined Behavior, Memory Leaks, Race Conditions) oder sichtbare Fehler (unerklaerliches Blinken, falsche Kategorie-Labels).
+Die Features dieses Milestones sind klar eingegrenzt: kein Greenfield-Design, sondern gezielte Erweiterung eines laufenden Systems.
 
-**Must have (table stakes — Stabilisierung):**
-- [FW] LED-Array auf MAX_LEDS begrenzt — verhindert Buffer-Overflow bei numLeds > 12
-- [FW] JSON Buffer Pool RAII — schliesst Heap-Leak bei Mutex-Timeout in `release()`
-- [FW] Health-Check-Konsolidierung — beseitigt konfliktierendes Restart-Verhalten zweier Timer
-- [FW] Status-LED Debounce — unterdrueckt Blinken bei kurzen (<5s) WiFi-Unterbrechungen
-- [FW] LED-Task auf Core 1 pinnen — verhindert WiFi-Interrupt-Interferenz mit NeoPixel-Timing
-- [FW] Credentials in API-Responses maskieren — entfernt WiFi/MQTT-Passwort aus GET-Responses
-- [BE] Gunicorn ersetzt Flask Dev-Server — produktionstauglicher WSGI-Layer
-- [BE] Per-Connection Socket-Timeouts — entfernt prozessglobales `socket.setdefaulttimeout()`
-- [BE] RSS-Feed-Liste dedupliziert (`shared_config.py`) — eine Source of Truth fuer app.py und background_worker.py
-- [BE] Sentiment-Thresholds konsolidiert — ein `get_sentiment_category()` fuer alle drei Dateien
-- [BE] Tote Endpoints entfernt (`/api/dashboard`, `/api/logs`)
-- [REPO] `.env` in `.gitignore` — verhindert versehentliches Committen von Secrets
-- [REPO] Temp-Dateien und Binary-Releases aus Git entfernen
+**Must have (table stakes):**
+- Fix `esp_task_wdt_init` Build-Blocker — Voraussetzung fuer alles andere
+- `build-release.sh [major|minor]` bumpt Version in `config.h` und baut Combined TGZ
+- ESP32-Handler fuer Combined Upload: zwei Routen (`/update/combined-ui`, `/update/combined-firmware`)
+- Single Upload Form in `diagnostics.html` mit "Full Update"-Button und Version-Anzeige
+- Build-Script committet Version-Bump nach verifiziertem Build (Artifact-Existenz-Pruefung)
+- Unified Version: eine Versionsnummer, eine Datei auf LittleFS (`/firmware-version.txt`)
 
-**Should have (differentiators — naechste Milestone):**
-- Firmware-Modularisierung (`moodlight.cpp` aufsplitten)
-- Backend Health-Endpoint (`GET /health`) fuer Uptime-Kuma-Integration
-- GPIO-Input-Validierung im Web-UI
+**Should have (differentiator, low effort):**
+- Backward-compat: Legacy-Routen `/ui-upload` und `/update` bleiben registriert als Recovery-Pfad
+- Pre-flight LittleFS-Space-Check vor Upload-Annahme
+- Separate UI-TGZ und Firmware-BIN als zusaetzliche Build-Outputs fuer Fallback-Faelle
+- Version-Anzeige im `diagnostics.html`-Header (bereits vorhandener `<span>` wird nur noch bevoelkert)
 
 **Defer (v2+):**
-- HTTPS fuer ESP32-Backend-Kommunikation
-- Test-Suite (embedded firmware + backend)
-- Authentifizierung / Authorization
-- Multi-Device-Support
+- Pull-based OTA (falsch fuer diesen Use Case: ein Geraet im LAN)
+- Signed/verified firmware images (kein Sicherheitsrisiko bei privatem Home-Device)
+- GitHub Actions CI fuer Firmware (lokales Build-Skript genuegt)
+- Rollback via Web-UI (erfordert Dual-Partition-Schema, separates Infrastruktur-Milestone)
+- Delta/inkrementelle Firmware-Updates (RAM-Constraints auf 4 MB ESP32)
 
 ### Architecture Approach
 
-Die Architektur bleibt unveraendert — Monolith auf dem ESP32, Flask-Monolith im Backend. Die einzige neue Datei ist `sentiment-api/shared_config.py` fuer RSS-Feed-Dict und Sentiment-Thresholds. Alle anderen Aenderungen sind In-Place-Korrekturen. Gunicorn laeuft mit `-w 1 --threads 4`, da der Background-Worker als Daemon-Thread innerhalb des Flask-Prozesses laeuft und mit mehreren Workers mehrfach gestartet wuerde.
+Der Combined-Update-Handler ergaenzt das bestehende Two-Route-Muster (ein Lambda fuer Response, ein Lambda fuer Upload) um zwei neue Routen. Beide Routes nutzen denselben TGZ-Stream, aber unterschiedliche Unpacker-Methoden. Der Browser-Client postet die gleiche Datei zweimal — der Nutzer waehlt die Datei einmal; ein "Full Update"-Button triggert beide Uploads sequentiell per JS. Das ist aequivalent zum bisherigen Two-Step-Workflow, aber mit einer einzigen Datei statt zweier.
 
 **Major components:**
-1. `firmware/src/moodlight.cpp` — ESP32-Monolith; alle Firmware-Fixes inline (LED-Core-Pinning, RAII, Health-Check, Debounce)
-2. `firmware/src/config.h` — erhaelt `MAX_LEDS`-Konstante
-3. `sentiment-api/shared_config.py` (NEU) — RSS_FEEDS-Dict + `get_sentiment_category()`-Funktion; von app.py, background_worker.py und moodlight_extensions.py importiert
-4. `sentiment-api/Dockerfile` — CMD auf Gunicorn umgestellt
-5. `sentiment-api/requirements.txt` — gunicorn 25.2.0 hinzugefuegt
+1. `/update/combined-ui` Handler — `tarGzStreamExpander` mit `*.bin`-Exclude-Filter; schreibt UI-Dateien nach LittleFS
+2. `/update/combined-firmware` Handler — `tarGzStreamUpdater`; erkennt `firmware.ino.bin` und streamt in U_FLASH
+3. `build-release.sh` (erweitert) — Version-Bump in `config.h`, Firmware-Build, Combined-TGZ-Packaging, Git-Commit
+4. `diagnostics.html` (erweitert) — Single-File-Input, "Full Update"-Button, Version-Anzeige
+5. `config.h` — Single Source of Truth fuer Version zur Compile-Zeit
+6. `/firmware-version.txt` auf LittleFS — Runtime-Readback (loest `/ui-version.txt` ab)
+
+**Drei Aenderungsstellen in `moodlight.cpp`:**
+- Nach `handleUiUpload()` (~Line 1530): neue `handleCombinedUi()` Funktion
+- Nach `handleCombinedUi()`: neue `handleCombinedFirmware()` Funktion
+- Nach bestehender `/ui-upload`-Registrierung (~Line 2075): zwei neue `server.on()` Aufrufe
 
 ### Critical Pitfalls
 
-1. **Gunicorn `-w 2+` verdoppelt Background-Worker** — immer `-w 1 --threads 4` verwenden; Verifikation: Docker-Logs zeigen genau einen "Sentiment update" alle 30 Minuten, nie zwei parallel
-2. **NeoPixel `show()` crasht unter WiFi-Last** — LED-Task auf Core 1 pinnen (`xTaskCreatePinnedToCore(..., 1)`); niemals `strip.show()` aus WiFi-Event-Callbacks oder MQTT-Callbacks aufrufen
-3. **JSON Buffer Pool Heap-Leak** — RAII-Guard implementieren; `release()` muss Buffer auch bei Mutex-Timeout freigeben; Verifikation: `ESP.getFreeHeap()` bleibt nach 24h stabil
-4. **Buffer-Overflow bei numLeds > 12** — `numLeds` beim Laden cappen: `numLeds = constrain(loaded, 1, MAX_LEDS)`; nicht erst beim Schreiben pruefen, da andere Codestellen `numLeds` direkt verwenden
-5. **Inkonsistente Sentiment-Thresholds** — alle drei Threshold-Definitionen durch eine `shared_config.py`-Funktion ersetzen; Verifikation: Score 0.35 ergibt "positiv" ueberall, Score 0.80 ergibt "sehr positiv" ueberall
+1. **LittleFS 128 KB Limit macht firmware.bin-Staging unmoeglich (OTA-1, KRITISCH)** — firmware.bin (1,2 MB) darf niemals in LittleFS geschrieben werden. Loesung: `tarGzStreamUpdater` mit `.ino.bin`-Entry streamt direkt in OTA-Flash ohne LittleFS-Kontakt.
+
+2. **`esp_task_wdt_init` Build-Blocker (OTA-5)** — Kein Build ohne diesen Fix. Als allererstes umsetzen: `#if ESP_ARDUINO_VERSION_MAJOR >= 3` mit `esp_task_wdt_config_t`-Struct.
+
+3. **Build-Script schluckt `pio run`-Fehler still (OTA-7)** — `|| true` nach dem `pio`-Call verhindert dass `set -e` bei Build-Fehler abbricht; altes firmware.bin wird als neues deployed. Loesung: `if ! pio run; then exit 1; fi` und Artifact-Existenz-Pruefung vor Git-Commit.
+
+4. **Static-State-Bug bei Upload-Abbruch (OTA-6)** — Static-Variablen im Handler behalten Zustand zwischen Requests. Loesung: Alle State-Variablen explizit bei `UPLOAD_FILE_START` resetten; Error-Flag `combinedUpdateError = false` am Request-Start.
+
+5. **Nicht-atomares Update bei Single-Route-Ansatz (OTA-4)** — Beim Two-Route-Ansatz kein Problem, da jede Route unabhaengig ist. Bei moeglicher kuenftiger Single-Route-Implementierung: Firmware zuerst flashen, dann UI installieren.
+
+---
 
 ## Implications for Roadmap
 
-Basierend auf der Research-Synthese ergeben sich zwei klar getrennte Arbeitsphasen mit parallelen Untergruppen:
+Basierend auf der Forschung ergibt sich eine klare lineare Abhaengigkeitskette mit drei Phasen:
 
-### Phase 1: Firmware-Stabilitaet
-**Rationale:** Die Firmware-Fixes sind vollstaendig unabhaengig vom Backend und verhindern aktive Crashes sowie Undefined Behavior. Der Buffer-Overflow (Pitfall 4) kann die `ledMutex`-Variable korrumpieren — er muss vor allen anderen Firmware-Fixes behoben werden.
-**Delivers:** Stabiler ESP32-Betrieb ohne Watchdog-Resets, ohne Heap-Leaks, ohne NeoPixel-Flicker durch WiFi-Interrupts
-**Addresses:** LED-Array-Bounds-Fix, RAII JsonBufferGuard, Health-Check-Konsolidierung, Status-LED-Debounce, LED-Core-Pinning, Credential-Masking in Firmware
-**Avoids:** Pitfall 2 (NeoPixel-Crash), Pitfall 3 (Heap-Leak), Pitfall 4 (Buffer-Overflow)
-**Build-Reihenfolge:** MAX_LEDS-Fix (1) → RAII JsonBufferGuard (2) → LED-Core-Pinning (3) → Health-Check-Konsolidierung (4) → Status-LED-Debounce (5) → Credential-Masking (6)
+### Phase 1: Build-Blocker und Script-Grundlage
 
-### Phase 2: Backend-Hardening
-**Rationale:** Backend-Fixes sind untereinander ebenfalls weitgehend unabhaengig, aber Gunicorn-Migration muss vor dem Socket-Timeout-Fix getestet werden (Thread-Isolation begruendet den Fix). `shared_config.py` muss vor Threshold-Konsolidierung existieren.
-**Delivers:** Produktionstauglicher Flask-Stack, keine Race Conditions, konsistente Sentiment-Daten, keine Secret-Leaks im Repository
-**Uses:** Gunicorn 25.2.0, requests 2.32.3, feedparser 6.0.11
-**Implements:** `shared_config.py` als neue Architekturkomponente
-**Avoids:** Pitfall 1 (doppelter Background-Worker), Pitfall 5 (inkonsistente Thresholds)
-**Build-Reihenfolge:** Housekeeping (.gitignore, tmp-Dateien) (1) → shared_config.py (2) → Threshold-Konsolidierung (3) → Tote Endpoints entfernen (4) → Gunicorn requirements + Dockerfile (5) → Socket-Timeout entfernen (6) → Deploy + Logs pruefen (7)
+**Rationale:** `pio run` schlaegt mit aktuellem Code fehl. Kein anderer Schritt ist moeglich bevor der Compiler laeuft. Das Build-Skript muss vor der ESP32-Implementierung fehlerfrei und vertrauenswuerdig sein, damit ein verifiziertes Combined-TGZ zum Testen vorliegt.
+**Delivers:** Kompilierbares Projekt + `build-release.sh` das ein verifiziertes `Combined-X.X-AuraOS.tgz` mit `firmware.ino.bin` und `ui.tgz` produziert
+**Addresses:**
+- Fix `esp_task_wdt_init` (OTA-5, Blocker)
+- Build-Script: `pio run`-Fehlerbehandlung reparieren (OTA-7, Integrity)
+- Build-Script: Version-Bump-Logik (`major|minor`) hinzufuegen
+- Build-Script: Combined TGZ erzeugen (UI-Dateien + `firmware.ino.bin`)
+- Build-Script: Artifact-Pruefung + Git-Commit
+**Avoids:** OTA-5 (Build-Blocker), OTA-7 (stilles Build-Failure)
 
-### Phase 3: Deferred (Eigenstaendige Folge-Milestones)
-**Rationale:** Firmware-Modularisierung und HTTPS erfordern eigene Milestones mit dedizierter Planung. Test-Suite benoetigt Infrastructure-Entscheidungen fuer Embedded-Tests. Keines dieser Items behebt aktuelle Stabilitaetsprobleme.
-**Delivers:** Maintainability (Modularisierung), Security (HTTPS), Quality-Assurance (Test-Suite)
+### Phase 2: ESP32 Combined-Update-Handler
+
+**Rationale:** Erfordert ein real existierendes Combined-TGZ aus Phase 1 zum Testen. Die Two-Route-Architektur ist die sicherste Loesung fuer die LittleFS-Constraints ohne Library-Modifikationen.
+**Delivers:** Zwei neue HTTP-Routen die zusammen ein Combined-TGZ vollstaendig verarbeiten; Legacy-Routen bleiben erhalten
+**Uses:** `tarGzStreamExpander` (mit `*.bin`-Exclude-Filter), `tarGzStreamUpdater` (mit `.ino.bin`-Entry)
+**Implements:** State-Reset bei `UPLOAD_FILE_START`, Heap-Check-Guard, Error-Flag-Pattern, Cleanup via `removeDirRecursive()`
+**Avoids:** OTA-1 (LittleFS-Limit), OTA-2 (Heap-Minimum), OTA-6 (Static-State), OTA-8 (Cleanup-Bug)
+
+### Phase 3: Diagnostics-UI und Unified Version
+
+**Rationale:** UI-Aenderungen sind unabhaengig von Handler-Implementierung, koennen aber erst sinnvoll getestet werden wenn die Routen aus Phase 2 existieren. Version-Unification ist der finale Aufraeum-Schritt.
+**Delivers:** `diagnostics.html` mit Single-File-Input, "Full Update"-Button (sequentielle AJAX-Posts an beide Endpunkte), Version-Anzeige; `/firmware-version.txt` als unified Version-Source
+**Implements:** JS-Sequential-Upload-Logic, Version-Anzeige via `/api/firmware-version`-Endpunkt
+**Avoids:** OTA-3 (Versions-Parsing-Fragilitaet — Dateiname-Parse bleibt minimal, Version kommt aus Firmware-Binary)
 
 ### Phase Ordering Rationale
 
-- Phase 1 und 2 koennen parallel entwickelt werden — keine Abhaengigkeiten zwischen Firmware und Backend in diesem Milestone
-- Innerhalb Phase 1: MAX_LEDS-Fix zuerst, da Buffer-Overflow benachbarte Variablen korrumpieren kann und andere Fixes unzuverlaessig macht
-- Innerhalb Phase 2: `shared_config.py` als erste Aktion, da Threshold-Konsolidierung davon abhaengt
-- Gunicorn-Migration (-w 1) muss als Entscheidung vor dem Deployment feststehen — Pitfall 1 (Worker-Duplikation) hat sofortige und sichtbare Konsequenzen (OpenAI-Kosten, DB-Race-Conditions)
+- Phase 1 vor Phase 2: Kein testbares TGZ ohne funktionierenden Build. Der wdt-Fix ist der einzige Weg um `pio run` zu ermoeglichen.
+- Phase 2 vor Phase 3: Die Route-URLs muessen feststehen bevor der JS-Upload-Code geschrieben wird. UI-Buttons muessen gegen echte Endpunkte testen koennen.
+- Innerhalb Phase 1: wdt-Fix zuerst (absoluter Blocker), dann Build-Script-Fehlerbehandlung (Integrity-Gate), dann Version-Bump (Feature), dann TGZ-Packaging (Artefakt), dann Git-Commit-Logik.
+- Innerhalb Phase 2: Route-Registrierung und State-Machine-Geruest zuerst, dann UI-Extraktion validieren (kein Firmware-Teil), dann Firmware-Flash hinzufuegen. Legacy-Routen bleiben erhalten.
 
 ### Research Flags
 
-Phasen, die waehrend der Planung keine zusaetzliche Research benoetigen:
-- **Phase 1 (Firmware):** Alle Fixes sind durch direkte Codeanalyse vollstaendig spezifiziert. Implementierungsdetails liegen in ARCHITECTURE.md.
-- **Phase 2 (Backend):** Alle Fixes sind durch direkte Codeanalyse vollstaendig spezifiziert. Gunicorn-Konfiguration ist dokumentiert.
+Phasen die keine weitere Forschung benoetigen (Standard-Patterns gut dokumentiert):
+- **Phase 1:** Alle Aenderungen sind One-Liner-Fixes oder direkte Shell-Script-Erweiterungen. Kein neues Terrain.
+- **Phase 3:** HTML/JS-Upload-Pattern ist Standard; Version-Anzeige via bestehendem API-Endpunkt.
 
-Phasen, die bei der Planung Aufmerksamkeit benoetigen:
-- **Phase 2 — Gunicorn-Deployment:** Die `-w 1`-Entscheidung schliesst horizontales Skalieren aus. Falls der Load jemals steigt (mehr Geraete), muss Background-Worker in separaten Container ausgelagert werden. Fuer den aktuellen Single-Device-Use-Case ist `-w 1` korrekt.
-- **Phase 1 — NeoPixel-Fallback:** Wenn Core-Pinning + Mutex-Fix den Flicker nicht beseitigen, ist NeoPixelBus-Migration der naechste Schritt. Dies ist kein eigenstaendiger Roadmap-Punkt, sondern ein Fallback innerhalb Phase 1.
+Phasen die Vorsicht erfordern (kein externes Research noetig, aber Test-Iteration):
+- **Phase 2:** Die genaue Interaktion von `tarGzStreamUpdater` mit dem Chunk-Upload-Pattern des ESP8266WebServer muss bei der Implementierung verifiziert werden. Die Bibliothek erwartet einen kontinuierlichen `Stream*`; der Upload-Handler liefert Chunks. Ein minimaler `ChunkStream`-Wrapper ist notwendig. Empfehlung: zuerst mit einem Test-TGZ ohne `firmware.ino.bin` validieren, dann schrittweise erweitern.
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Gunicorn, requests, feedparser aus verifizierten Sources; NeoPixelBus aus GitHub-Releases bestaetigt |
-| Features | HIGH | Direkte Codeanalyse mit Zeilennummern; keine Spekulationen ueber Nutzererwartungen noetig |
-| Architecture | HIGH | Vollstaendig auf Codeanalyse basierend; jeder Fix hat konkrete Implementierungsanleitung |
-| Pitfalls | HIGH | Community-Quellen fuer ESP32/NeoPixel-Timing; direkte Codeanalyse fuer alle anderen Pitfalls |
+| Stack | HIGH | Alle API-Signaturen aus lokaler Library-Installation verifiziert; Partition-Groesse aus tatsaechlicher CSV-Datei gemessen; Firmware-Groesse aus realem Release-Binary |
+| Features | HIGH | Direkte Codebase-Analyse; alle Gaps aus bestehendem Code abgeleitet; keine Vermutungen |
+| Architecture | HIGH | Vollstaendig aus Live-Codebase; Handler-Pattern in `moodlight.cpp` direkt inspiziert; Build-Script-Logik direkt gelesen |
+| Pitfalls | HIGH | Mix aus Code-Analyse und verifizierten Community-Quellen; Partition-Constraint ist physikalisch, nicht spekulativ |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **`sysHealth.isRestartRecommended()`-Kriterien:** CONCERNS.md markiert die Restart-Kriterien als unklar. Vor der Health-Check-Konsolidierung sollte der Code in `MoodlightUtils.cpp` gelesen werden, um sicherzustellen, dass die Konsolidierung keine Restart-Schwellenwerte veraendert.
-- **Arduino ESP32 Core-Version:** STACK.md empfiehlt eine explizit gepinnte Core-Version in platformio.ini (z.B. 2.0.17) fuer NeoPixel-Stabilitaet. Die aktuell verwendete Version und ob sie mit den bekannten Regressions-Versionen (3.0.x) kollidiert, sollte geprueft werden.
-- **feedparser Timeout-Parameter:** STACK.md und ARCHITECTURE.md empfehlen leicht unterschiedliche Ansaetze (requests-first vs. urllib). Bei der Implementierung sollte der requests-Ansatz bevorzugt werden (`feedparser.parse(requests.get(url, timeout=15).content)`), da er im feedparser-Maintainer-Blog explizit empfohlen wird.
+- **ChunkStream-Wrapper fuer tarGzStreamUpdater:** Die Bibliothek erwartet einen kontinuierlichen `Stream*`. Die Implementierung eines minimalen Wrappers der `UPLOAD_FILE_WRITE`-Chunks als Stream prasentiert ist notwendig aber nicht dokumentiert. In Phase 2 durch Prototyp validieren bevor der volle Handler implementiert wird.
+
+- **LittleFS Ist-Nutzung vor Upload:** Die UI-Dateien belegen laut Forschung ca. 35 KB (komprimierte TGZ). Unkomprimiert auf LittleFS sind es mehr. Der tatsaechliche `LittleFS.usedBytes()`-Wert vor dem ersten Combined-Upload sollte im Serial-Log ausgegeben werden, um den verfuegbaren Puffer fuer `/temp/combined.tgz` (~35 KB) zu kennen.
+
+- **`.ino.bin`-Naming-Convention muss im Build-Skript dokumentiert sein:** Die Entscheidung fuer `.ino.bin` statt `.bin` (wegen `tarGzStreamUpdater`-Routing) muss als Kommentar im Build-Skript erklaert werden. Andernfalls wird das Suffix bei zukuenftigen Aenderungen versehentlich entfernt, was den Firmware-Flash-Pass stilll brechen wuerde.
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `.planning/codebase/CONCERNS.md` — vollstaendige Problemliste mit Zeilennummern
-- `.planning/codebase/ARCHITECTURE.md` — bestehendes Architektur-Dokument
-- `.planning/PROJECT.md` — Projektkontext und explizite Constraints
-- PyPI gunicorn 25.2.0 (released 2026-03-24, Production/Stable) — Stack-Entscheidung
-- feedparser GitHub Issues #76, #263 — bestaetigen kein nativen Timeout-Parameter
-- NeoPixelBus GitHub Releases (v2.8.4, Mai 2025) — Version bestaetigt
+- `firmware/.pio/libdeps/esp32dev/ESP32-targz/src/libunpacker/LibUnpacker.hpp` (lokal) — Alle API-Signaturen fuer `tarGzStreamExpander`, `tarGzStreamUpdater`, Filter-Callbacks
+- `/Users/simonluthe/.platformio/packages/framework-arduinoespressif32/tools/partitions/min_spiffs.csv` (lokal) — 128 KB LittleFS-Partition-Bestaetigung (0x20000)
+- `releases/v9.0/Firmware-9.0-AuraOS.bin` (lokal) — 1,2 MB Firmware-Groesse (bestaetigtes physisches Limit)
+- `firmware/src/moodlight.cpp` (lokal) — Bestehende Handler-Implementierung (Lines 1312-1530, 2914-2977)
+- `build-release.sh` (lokal) — Bestehender Build-Flow mit `|| true`-Bug
+- `.planning/PROJECT.md` (lokal) — Aktive Anforderungen und Constraints
 
 ### Secondary (MEDIUM confidence)
-- Flask Official Docs (deploying/gunicorn) — Gunicorn-Empfehlung (403 beim Fetch, via Search-Snippets)
-- NeoPixelBus Wiki (ESP32-NeoMethods) — RMT vs. I2S-DMA Vergleich
-- ESP32 Forum + Adafruit NeoPixel Issue #139 — 5µs/ms Interrupt-Delay bestaetigt
-- Espressif Docs (xTaskCreatePinnedToCore) — WiFi-Task auf Core 0 bestaetigt
-
-### Tertiary (MEDIUM-LOW confidence)
-- ESP32-S3 NeoPixel/WiFi Crash (GitHub Issue #429) — Crash-Pattern bestaetigt
-- Gunicorn pre-fork global state (Medium) — Background-Worker-Duplikation erklaert
-- Gunicorn Issue #2800 — Background Thread Zuverlaessigkeit
-- Miguel Grinberg Blog — Flask Background Worker Best Practices
+- [ESP32-targz GitHub](https://github.com/tobozo/ESP32-targz) — `tarGzStreamUpdater` Naming Convention (`.ino.bin` / `.spiffs.bin`)
+- [ESP32-targz Update_from_gz_stream Example](https://github.com/tobozo/ESP32-targz/blob/master/examples/ESP32/Update_from_gz_stream/Update_from_gz_stream.ino) — `.ino.bin`-Suffix-Anforderung bestaetigt
 
 ---
-*Research completed: 2026-03-25*
+*Research completed: 2026-03-26*
 *Ready for roadmap: yes*

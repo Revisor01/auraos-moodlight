@@ -1,406 +1,376 @@
-# Architecture Research
+# Architecture Patterns
 
-**Domain:** ESP32 IoT firmware stabilization + Flask backend hardening
-**Researched:** 2026-03-25
-**Confidence:** HIGH (basiert auf direkter Codeanalyse)
-
-## Standard Architecture
-
-### System Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ESP32 Firmware (Monolith)                     │
-│                   firmware/src/moodlight.cpp                     │
-├──────────────┬──────────────┬──────────────┬────────────────────┤
-│  LED Control │  WiFi/MQTT   │  Web Server  │  Sentiment Fetch   │
-│  (mutex-     │  (Reconnect  │  (HTTP:80,   │  (HTTP GET alle    │
-│  protected)  │  Backoff)    │  LittleFS)   │  30 Min)           │
-├──────────────┴──────────────┴──────────────┴────────────────────┤
-│              MoodlightUtils (Watchdog, Memory, File I/O)         │
-│              firmware/src/MoodlightUtils.h/.cpp                  │
-├──────────────────────────────────────────────────────────────────┤
-│              Hardware: NeoPixel (Pin 26), DHT (Pin 17), LittleFS │
-└──────────────────────────────────────────────────────────────────┘
-                               │ HTTP GET (analyse.godsapp.de)
-                               ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                    Flask Backend (Docker)                         │
-├──────────────┬──────────────┬──────────────────────────────────┤
-│  app.py      │  moodlight_  │  background_worker.py             │
-│  (API Layer) │  extensions  │  (30 Min RSS + OpenAI)            │
-│              │  .py         │                                    │
-├──────────────┴──────────────┴──────────────────────────────────┤
-│              database.py (PostgreSQL + Redis Singletons)         │
-├─────────────────────┬───────────────────────────────────────────┤
-│  PostgreSQL 16      │  Redis 7 (256MB LRU, AOF, 5 Min TTL)      │
-└─────────────────────┴───────────────────────────────────────────┘
-```
-
-### Component Boundaries (Stabilisierungsfokus)
-
-| Komponente | Verantwortung | Berührt von Fixes |
-|------------|--------------|-------------------|
-| `ledColors[]` Array | Shared State zwischen Sentiment-Update und processLEDUpdates() | Buffer-Overflow Fix, RAII-Fix |
-| `JsonBufferPool` | Heap-schonendes JSON-Parsing | RAII Memory Leak Fix |
-| `processLEDUpdates()` | Entkoppelter LED-Schreibzugriff via Mutex + 50ms-Rate-Limit | LED/WiFi Timing Fix |
-| `setStatusLED()` | Status-Blink über die letzte LED | Blink-Unterdrückung bei Reconnects |
-| Health-Check-Block (1h) | Systemstats, Restart-Empfehlung (Zeilen 4364-4472) | Health-Check-Konsolidierung |
-| Health-Check-Block (5min) | sysHealth.update() + Restart (Zeilen 4489-4499) | Health-Check-Konsolidierung |
-| `app.run()` in `app.py` | Flask Dev-Server-Einstiegspunkt | Gunicorn-Migration |
-| `socket.setdefaulttimeout()` | Globaler Timeout in app.py + background_worker.py | Per-Connection Timeout Fix |
-| `rss_feeds`-Dict | Dupliziert in app.py (Zeile 55) und background_worker.py (Zeile 137) | RSS-Deduplizierung |
-| Kategorie-Thresholds | Dreifach definiert, inkonsistent (app.py vs. extensions vs. worker) | Threshold-Konsolidierung |
-| `/api/export/settings` | Gibt `wifiPass`/`mqttPass` im Klartext zurück | Credential-Masking |
+**Domain:** ESP32 Combined OTA Update Handler + Build Automation
+**Researched:** 2026-03-26
+**Confidence:** HIGH — based entirely on direct codebase inspection
 
 ---
 
-## Recommended Project Structure
+## Existing Update Architecture (Baseline)
 
-Kein Refactoring des Monolithen in diesem Milestone (explizit Out of Scope). Alle Fixes sind
-**in-place Korrekturen** innerhalb der bestehenden Dateistruktur.
+Two independent, sequential upload routes exist in `firmware/src/moodlight.cpp`:
+
+| Route | Handler | Registered at | Response pattern |
+|-------|---------|--------------|-----------------|
+| `POST /ui-upload` | `handleUiUpload()` (~line 1312-1530) | ~line 2070 | inline HTML, no reboot |
+| `POST /update` | inline lambda (~line 2914-2977) | ~line 2915 | inline HTML + `ESP.restart()` |
+
+Both routes use Arduino WebServer's two-argument `server.on()` upload pattern: the first lambda sends the HTTP response, the second lambda streams the upload data. This is the only supported upload pattern with the ESP32 WebServer library and must be preserved in the new handler.
+
+### Existing UI upload flow (handleUiUpload)
 
 ```
-firmware/src/
-├── config.h              # MAX_LEDS-Konstante hinzufuegen (Buffer-Overflow Fix)
-├── moodlight.cpp         # Alle Firmware-Fixes inline (kein Split)
-└── MoodlightUtils.h/.cpp # Unveraendert (Hilfsfunktionen bleiben stabil)
+UPLOAD_FILE_START
+  - Validate .tgz extension
+  - Parse version from filename (UI-X.X-AuraOS.tgz -> "X.X")
+  - Create /temp/, /extract/, /extract/css/, /extract/js/ if absent
+  - Clean /temp/ and /extract/ contents
+  - Open /temp/<filename>.tgz for write
 
-sentiment-api/
-├── app.py                # socket.setdefaulttimeout entfernen, tote Endpoints entfernen
-│                         # rss_feeds nach shared_config.py auslagern
-├── shared_config.py      # NEU: RSS_FEEDS dict + CATEGORY_THRESHOLDS (einzige neue Datei)
-├── moodlight_extensions.py # Import von shared_config statt lokaler Definition
-├── background_worker.py  # Import von shared_config statt lokaler Definition
-├── requirements.txt      # gunicorn hinzufuegen
-└── Dockerfile            # CMD auf gunicorn umstellen
+UPLOAD_FILE_WRITE (repeated chunks)
+  - Append chunk to /temp/<filename>.tgz
+
+UPLOAD_FILE_END
+  - TARGZUnpacker->tarGzExpanderNoTempFile(LittleFS, uploadPath, LittleFS, "/extract")
+  - If success:
+      copyFile() each HTML/CSS/JS from /extract/ to live root
+      Write version to /ui-version.txt
+  - If fail: log error code
+  - LittleFS.remove(uploadPath)
+  - delete TARGZUnpacker
 ```
 
-### Structure Rationale
+### Existing firmware flash flow (inline lambda)
 
-- `shared_config.py` ist die einzige neue Datei: minimale Invasivitaet, loest aber zwei der
-  kritischsten Duplikationsprobleme (RSS-Feeds + Thresholds) auf einmal.
-- Alle anderen Aenderungen sind direkte Korrekturen im bestehenden Code, kein struktureller Umbau.
+```
+UPLOAD_FILE_START
+  - Parse version from filename (Firmware-X.X-AuraOS.bin -> "X.X")
+  - setStatusLED(3)
+  - Update.begin(UPDATE_SIZE_UNKNOWN)
+
+UPLOAD_FILE_WRITE
+  - Update.write(upload.buf, upload.currentSize)
+
+UPLOAD_FILE_END
+  - Update.end(true)
+  - Write version to /firmware-version.txt
+
+POST response lambda
+  - Send success/error HTML
+  - delay(1000)
+  - ESP.restart()
+```
 
 ---
 
-## Architectural Patterns
+## Combined Update Handler Architecture
 
-### Pattern 1: RAII fuer JsonBufferPool (Heap-Leak Fix)
+### Design Principle
 
-**Was:** Scope-gebundenes Acquire/Release statt manueller `release()`-Aufrufe.
-**Wann:** Immer wenn `jsonPool.acquire()` verwendet wird — der Mutex-Timeout-Pfad in `release()`
-  laesst Heap-Allokationen unbefreit, wenn der Mutex nach 100ms nicht verfuegbar ist.
-**Trade-offs:** Minimale ROM-Kosten (~40 Bytes fuer die Wrapper-Klasse), eliminiert die
-  Leckmoeglichkeit vollstaendig.
+The combined TGZ contains all UI files plus `firmware.bin` at the archive root. The ESP32 handler:
 
-**Minimal-Implementation:**
+1. Receives the streaming upload and writes it to `/temp/combined.tgz` (identical to existing UI upload)
+2. Extracts the full archive to `/extract/` using `TARGZUnpacker->tarGzExpanderNoTempFile()`
+3. Installs UI files by copying from `/extract/` to live root (identical to existing UI install logic)
+4. Flashes firmware by reading `/extract/firmware.bin` and piping it through `Update.begin()/write()/end()`
+5. Cleans up and reboots
+
+This approach reuses every existing code path and requires no new library knowledge.
+
+### Memory Safety: The /extract/firmware.bin Problem
+
+**Critical constraint:** With `min_spiffs` partition, LittleFS has approximately 1.5 MB total. After extraction, `/extract/firmware.bin` (~1 MB compiled ESP32 binary) plus the UI HTML/CSS/JS files (~200-400 KB) will likely exhaust LittleFS entirely.
+
+**Resolution options in order of preference:**
+
+1. **Streaming TAR callback (ideal, uncertain feasibility):** ESP32-targz supports per-entry callbacks. If the library exposes a file-write intercept that can redirect a named entry to `Update.write()` instead of LittleFS, the firmware binary never touches the filesystem. Requires investigation against the specific ESP32-targz version in use.
+
+2. **Sequential extraction with cleanup (safe fallback):** Extract UI files first. Before extracting `firmware.bin`, delete all UI files from `/extract/` to free LittleFS space. Then extract only `firmware.bin`. Since `tarGzExpanderNoTempFile()` extracts the entire archive in one call, this would require two separate extraction passes with different file filters — which the library may not support directly.
+
+3. **Separate combined TGZ structure (practical, recommended for initial implementation):** The combined TGZ contains the UI TGZ nested inside as a single file (`ui.tgz`), plus `firmware.bin`. First extract pass unpacks the outer TGZ (two entries: `ui.tgz` + `firmware.bin`). Both are small enough to coexist on LittleFS because the outer TGZ compression means the inner `ui.tgz` is only ~50-100 KB. Then extract `ui.tgz` in a second pass. Then flash firmware from `/extract/firmware.bin`. Clean up after each phase.
+
+**Recommended for implementation:** Start with approach 3 (nested TGZ) as it is implementable without library internals knowledge and keeps LittleFS pressure manageable. Investigate approach 1 as an optimization.
+
+### Processing Sequence (Implementation-Ready)
+
+```
+POST /combined-update (multipart upload)
+  |
+  v
+UPLOAD_FILE_START
+  - Validate filename: must be Combined-X.X-AuraOS.tgz
+  - Parse version string from filename
+  - Reset static error flag: combinedUpdateError = false
+  - Create /temp/, /extract/ directories if absent
+  - Clean /temp/ and /extract/
+  - Open /temp/combined.tgz for write
+
+UPLOAD_FILE_WRITE (repeated)
+  - Append chunk to /temp/combined.tgz
+  - (identical pattern to existing handleUiUpload)
+
+UPLOAD_FILE_END
+  Phase 1 — Extract outer archive:
+    TARGZUnpacker->tarGzExpanderNoTempFile(LittleFS, "/temp/combined.tgz", LittleFS, "/extract")
+    If fail: combinedUpdateError = true; return
+
+  Phase 2 — Install UI files:
+    If /extract/ui.tgz exists:
+      TARGZUnpacker->tarGzExpanderNoTempFile(LittleFS, "/extract/ui.tgz", LittleFS, "/extract")
+    copyFile() for each HTML/CSS/JS from /extract/ to live root
+    Write version string to /ui-version.txt
+    (identical to existing UI install logic)
+
+  Phase 3 — Flash firmware:
+    If /extract/firmware.bin exists:
+      Update.begin(UPDATE_SIZE_UNKNOWN)
+      Open /extract/firmware.bin
+      Read in chunks (1 KB): Update.write(buf, bytesRead)
+      Update.end(true)
+      If Update.hasError(): combinedUpdateError = true
+      LittleFS.remove("/extract/firmware.bin")
+
+  Phase 4 — Cleanup:
+    Remove /temp/ contents
+    Remove /extract/ contents
+    delete TARGZUnpacker
+
+POST response lambda
+  - server.sendHeader("Connection", "close")
+  - If combinedUpdateError: send error HTML; return (no reboot)
+  - Else: send success HTML with 10s redirect countdown
+  - delay(1000)
+  - ESP.restart()
+```
+
+**Critical ordering rule:** UI files must be installed (Phase 2) before firmware is flashed (Phase 3). `ESP.restart()` is called immediately after `Update.end()`. Reversing the order would leave the device with new firmware but old UI after reboot.
+
+### Route Registration Pattern
+
 ```cpp
-class JsonBufferGuard {
-public:
-    char* buf;
-    JsonBufferGuard() : buf(jsonPool.acquire()) {}
-    ~JsonBufferGuard() { if (buf) jsonPool.release(buf); }
-    // Nicht kopierbar
-    JsonBufferGuard(const JsonBufferGuard&) = delete;
-    JsonBufferGuard& operator=(const JsonBufferGuard&) = delete;
+static bool combinedUpdateError = false;
+
+server.on("/combined-update", HTTP_POST,
+    []() {
+        // Response handler — runs AFTER upload callback
+        server.sendHeader("Connection", "close");
+        if (combinedUpdateError) {
+            server.send(200, "text/html",
+                "<html><body><h1>Combined Update Failed!</h1>"
+                "<a href='/diagnostics.html'>Return</a></body></html>");
+        } else {
+            server.send(200, "text/html",
+                "<html><body><h1>Combined Update Successful!</h1>"
+                "<p>Device restarting...</p>"
+                "<script>setTimeout(function(){window.location.href='/';}, 10000);</script>"
+                "</body></html>");
+            delay(1000);
+            ESP.restart();
+        }
+    },
+    handleCombinedUpdate   // upload callback function
+);
+```
+
+The `combinedUpdateError` flag must be reset to `false` at `UPLOAD_FILE_START`, not at declaration time, to prevent state leakage across multiple requests.
+
+---
+
+## Build Script Architecture
+
+### Target Behavior
+
+`./build-release.sh [major|minor]` is the single command that:
+
+1. Reads current version from `firmware/src/config.h`
+2. Computes bumped version
+3. Writes new version back to `config.h`
+4. Builds firmware via `pio run`
+5. Creates combined TGZ in a staging directory
+6. Writes checksums
+7. Stages and commits to git
+
+### Version Bump Logic
+
+Current format: `#define MOODLIGHT_VERSION "9.0"` — MAJOR.MINOR, no patch component.
+
+```bash
+CURRENT=$(grep '^#define MOODLIGHT_VERSION' firmware/src/config.h | cut -d'"' -f2)
+MAJOR=$(echo "$CURRENT" | cut -d'.' -f1)
+MINOR=$(echo "$CURRENT" | cut -d'.' -f2)
+
+case "${1:-none}" in
+  major) NEW_VERSION="$((MAJOR + 1)).0" ;;
+  minor) NEW_VERSION="${MAJOR}.$((MINOR + 1))" ;;
+  *)     NEW_VERSION="$CURRENT" ;;
+esac
+
+# Write back (portable: macOS and GNU)
+sed -i '' "s/#define MOODLIGHT_VERSION \"${CURRENT}\"/#define MOODLIGHT_VERSION \"${NEW_VERSION}\"/" \
+    firmware/src/config.h 2>/dev/null || \
+sed -i  "s/#define MOODLIGHT_VERSION \"${CURRENT}\"/#define MOODLIGHT_VERSION \"${NEW_VERSION}\"/" \
+    firmware/src/config.h
+```
+
+### Combined TGZ Creation via Staging Directory
+
+The staging approach avoids the tar-repack problem (gzip archives cannot be directly appended to):
+
+```bash
+STAGING=$(mktemp -d)
+
+# Copy UI files into staging root
+cp firmware/data/index.html firmware/data/setup.html \
+   firmware/data/mood.html firmware/data/diagnostics.html "$STAGING/"
+cp -r firmware/data/css firmware/data/js "$STAGING/"
+
+# Create nested ui.tgz inside staging
+(cd "$STAGING" && tar -czf ui.tgz index.html setup.html mood.html diagnostics.html css/ js/)
+rm "$STAGING"/*.html
+rm -rf "$STAGING"/css "$STAGING"/js
+
+# Copy firmware binary into staging root
+cp firmware/.pio/build/esp32dev/firmware.bin "$STAGING/firmware.bin"
+
+# Pack combined TGZ from staging
+tar -czf "${RELEASE_DIR}/Combined-${NEW_VERSION}-AuraOS.tgz" -C "$STAGING" .
+rm -rf "$STAGING"
+```
+
+This produces an archive with two entries at root: `ui.tgz` and `firmware.bin`.
+
+### Git Commit Step
+
+```bash
+git add firmware/src/config.h
+git add "releases/v${NEW_VERSION}/"
+git commit -m "Bump: Release v${NEW_VERSION}"
+```
+
+No automatic `git push` — the push remains a manual step for inspection before OTA deployment.
+
+### Build Failure Guard
+
+Before the commit step, verify both artifacts were actually created:
+
+```bash
+if [ ! -f "firmware/.pio/build/esp32dev/firmware.bin" ]; then
+    echo "ERROR: firmware.bin not found — build failed"
+    exit 1
+fi
+
+if [ ! -f "${RELEASE_DIR}/Combined-${NEW_VERSION}-AuraOS.tgz" ]; then
+    echo "ERROR: Combined TGZ not created"
+    exit 1
+fi
+```
+
+---
+
+## Integration Points with Existing Firmware
+
+Three locations in `moodlight.cpp` require changes. All other existing code is untouched.
+
+| Integration Point | Location | Change |
+|-------------------|----------|--------|
+| New upload handler function | After `handleUiUpload()` (~line 1530) | Add `handleCombinedUpdate()` function |
+| Route registration | After existing `/ui-upload` route (~line 2075) | Add `server.on("/combined-update", ...)` |
+| Version display (optional) | `handleApiStatus()` and `/api/firmware-version` endpoint | No code change needed; both endpoints already read from version files — UI change only |
+
+The legacy `/ui-upload` and `/update` routes stay registered. They serve as recovery paths if the combined handler has a bug and must not be removed in this milestone.
+
+### Version File Unification
+
+After a combined update, both `/ui-version.txt` and `/firmware-version.txt` on LittleFS will contain the same version string (written from the combined TGZ filename). The diagnostics UI currently shows two version fields; it can be updated to show one. The two API endpoints (`/api/ui-version`, `/api/firmware-version`) are backward-compatible and require no firmware changes.
+
+---
+
+## esp_task_wdt_init Build Blocker
+
+`esp_task_wdt_init(30, false)` in `MoodlightUtils.cpp` is incompatible with Arduino ESP32 Core 3.x, which changed the function signature to accept `const esp_task_wdt_config_t*`. This prevents `pio run` from completing and blocks the entire build script.
+
+Fix: replace with the Core 3.x struct-based API:
+```cpp
+// Arduino ESP32 Core 3.x
+const esp_task_wdt_config_t wdt_config = {
+    .timeout_ms = 30000,
+    .idle_core_mask = 0,
+    .trigger_panic = false
 };
-// Verwendung: JsonBufferGuard guard; JsonDocument doc(guard.buf, JSON_BUFFER_SIZE);
-// Freigabe automatisch am Ende des Scope, auch bei fruehzeitigem return.
+esp_task_wdt_init(&wdt_config);
 ```
 
-### Pattern 2: MAX_LEDS-Begrenzung fuer ledColors[] (Buffer-Overflow Fix)
-
-**Was:** Statisch allokiertes `ledColors`-Array hat Groesse 12 (`DEFAULT_NUM_LEDS`), aber
-  `numLeds` ist zur Laufzeit konfigurierbar. Schreibzugriff in `processLEDUpdates()` und
-  `updateLEDs()` mit `numLeds` als Schleifengrenze = Out-of-bounds-Schreiben moeglich.
-**Wann:** `numLeds > 12` via Web-Interface gesetzt.
-**Loesung:** `MAX_LEDS`-Konstante in `config.h`, `numLeds` beim Laden per `constrain()` kappen.
-
+Or conditionally compile based on `ESP_ARDUINO_VERSION_MAJOR`:
 ```cpp
-// config.h
-#define MAX_LEDS 64  // Absolutes Maximum, Array-Groesse
-
-// moodlight.cpp (Global)
-volatile uint32_t ledColors[MAX_LEDS];  // Statt DEFAULT_NUM_LEDS
-
-// beim Laden der Settings:
-numLeds = constrain(loadedNumLeds, 1, MAX_LEDS);
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+    const esp_task_wdt_config_t wdt_config = { .timeout_ms = 30000, .idle_core_mask = 0, .trigger_panic = false };
+    esp_task_wdt_init(&wdt_config);
+#else
+    esp_task_wdt_init(30, false);
+#endif
 ```
 
-### Pattern 3: Konsolidierter Health-Check (Doppelte Timer Fix)
-
-**Was:** Zwei separate Timer-Bloecke in `loop()` mit ueberlappender Funktionalitaet:
-- Block 1 (1h): Stats schreiben, Restart-Planung, Filesystem-Check
-- Block 2 (5min): `sysHealth.update()`, sofortiger Restart bei kritischen Problemen
-
-Der 5-Minuten-Block kann einen sofortigen Restart ausloesen, der 1-Stunden-Block plant ihn nur
-fuer die Nacht — inkonsistentes Verhalten, moegliche Race-Condition.
-
-**Loesung:** Einen einzigen Block mit zwei Intervallen, explizit priorisiert:
-
-```cpp
-// Einzige sysHealth-Variable:
-static unsigned long lastFastHealthCheck = 0;
-static unsigned long lastFullHealthCheck = 0;
-
-// Fast Check (5 Min): Nur kritische Erkennung, KEIN sofortiger Restart
-if (millis() - lastFastHealthCheck > 300000) {
-    sysHealth.update();
-    lastFastHealthCheck = millis();
-    // Kein direktes rebootNeeded=true hier
-}
-
-// Full Check (1h): Entscheidet ueber Restart (Nacht-Logik bleibt)
-if (millis() - lastFullHealthCheck > HEALTH_CHECK_INTERVAL) {
-    // Stats schreiben, restart-Planung wie bisher...
-    if (sysHealth.isRestartRecommended()) { /* Nacht-Logik */ }
-    lastFullHealthCheck = millis();
-}
-```
-
-### Pattern 4: Status-LED Blink-Unterdrückung (Reconnect-Blinken Fix)
-
-**Was:** `setStatusLED(1)` (blau blinkend) wird bei jedem WiFi-Reconnect sofort aufgerufen,
-  auch bei kurzen Verbindungsunterbruechen < 5 Sekunden. Das Blinken stoert den normalen
-  LED-Betrieb.
-**Loesung:** Grace-Period vor dem Status-LED-Aktivieren:
-
-```cpp
-// Nur Status setzen wenn Disconnect laenger als GRACE (z.B. 5s)
-unsigned long wifiLostTime = 0;
-const unsigned long STATUS_LED_GRACE = 5000; // ms
-
-// Im WiFi-Disconnect-Handler:
-if (wifiLostTime == 0) wifiLostTime = millis();
-if (millis() - wifiLostTime > STATUS_LED_GRACE) {
-    setStatusLED(1); // Nur dann blinken
-}
-// Bei Reconnect:
-wifiLostTime = 0;
-setStatusLED(0);
-```
-
-### Pattern 5: Gunicorn fuer Flask (WSGI-Migration)
-
-**Was:** `CMD ["python", "app.py"]` startet Flask Dev-Server (single-threaded, nicht
-  produktionstauglich). Der Background Worker laeuft als Daemon-Thread innerhalb dieses Prozesses.
-**Wichtig:** `start_background_worker()` wird am Ende von `app.py` aufgerufen, BEVOR `app.run()`.
-  Bei Gunicorn mit mehreren Workers wuerde der Background Worker in JEDEM Worker-Prozess laufen.
-  Loesung: 1 Worker (`-w 1`) oder Gunicorn `post_fork`-Hook der verhindert, dass Worker 2+ den
-  Background-Thread starten.
-
-**Empfehlung: `-w 1` (sicher, ausreichend fuer einen ESP32):**
-```dockerfile
-CMD ["gunicorn", "-w", "1", "--threads", "4", "-b", "0.0.0.0:6237", \
-     "--timeout", "120", "--access-logfile", "-", "app:app"]
-```
-
-Hintergrund: Das Projekt hat einen einzelnen ESP32 als Client. Mehrere Workers wuerden den
-Background-Worker duplizieren und zu Race-Conditions beim PostgreSQL-Schreiben fuehren.
-`--threads 4` gibt Concurrency ohne Prozess-Duplikation.
-
-### Pattern 6: Per-Connection Timeouts (Socket-Timeout Fix)
-
-**Was:** `socket.setdefaulttimeout(10)` in `app.py` Zeile 373 und `background_worker.py`
-  Zeile 164 aendert den GLOBALEN Prozess-Timeout. In Multi-Thread-Umgebungen (Gunicorn + Background
-  Worker) kann das andere Verbindungen (PostgreSQL, Redis) beeinflussen.
-**Loesung:** feedparser-eigenen Timeout nutzen oder urllib via feedparser-Parameter.
-
-```python
-# Statt socket.setdefaulttimeout(10):
-feed = feedparser.parse(
-    url,
-    request_headers={'User-Agent': 'WorldMoodAnalyzer/1.0'},
-    agent='WorldMoodAnalyzer/1.0',
-    # feedparser unterstuetzt kein direktes timeout-Keyword,
-    # aber requests-Handler kann verwendet werden:
-)
-# Alternativ: urllib.request mit timeout:
-import urllib.request
-req = urllib.request.Request(url, headers={'User-Agent': '...'})
-with urllib.request.urlopen(req, timeout=10) as response:
-    feed = feedparser.parse(response.read())
-```
+This is a prerequisite for everything else. Without it, `pio run` fails and no combined TGZ can be built.
 
 ---
 
-## Data Flow
+## Component Boundaries
 
-### Primärer Flow: Sentiment -> LED (unveraendert, Fixes sind orthogonal)
-
-```
-Background Worker (30 Min)
-    ↓ RSS fetch (12 Feeds, je 1 Headline)
-    ↓ OpenAI GPT-4o-mini batch
-    ↓ tanh(avg * 2.0)
-    ↓ INSERT sentiment_history (PostgreSQL)
-    ↓ Redis-Cache invalidieren
-
-ESP32 loop() (alle 30 Min)
-    ↓ GET /api/moodlight/current
-    ↓ Redis-Cache-Hit (5 Min TTL) oder PostgreSQL-Fallback
-    ↓ JSON parse (via JsonBufferPool -> nach Fix: RAII-gesichert)
-    ↓ mapSentimentToLED() -> Index 0-4
-    ↓ updateLEDs() -> ledColors[i] (nach Fix: i < constrain(numLeds, 1, MAX_LEDS))
-    ↓ processLEDUpdates() -> pixels.show() (nach Fix: nur wenn kein WiFi-Reconnect aktiv)
-```
-
-### Wie Fixes den Data Flow veraendern
-
-| Fix | Flow-Aenderung |
-|-----|---------------|
-| RAII JsonBufferPool | `acquire()` und `release()` werden scope-gebunden. Kein neuer Datenpfad. |
-| MAX_LEDS Buffer Fix | `numLeds` wird beim Laden gecapped. Loop-Bound in `processLEDUpdates()` und `updateLEDs()` kann unveraendert bleiben (numLeds ist jetzt sicher). |
-| Health-Check Konsolidierung | Zwei parallele Timer werden zu einem sequentiellen Block. Restart-Entscheidung geht nur noch durch die Nacht-Logik. |
-| Status-LED Grace Period | Grace-Timer wird VOR `setStatusLED()` eingefuegt. LED-Mutex-Pfad unveraendert. |
-| Gunicorn Migration | WSGI-Layer aendert sich, aber Flask-Routen und Background Worker bleiben identisch. |
-| RSS-Feed Deduplizierung | `rss_feeds` wird aus `shared_config.py` importiert. Beide Codepfade (app.py + background_worker.py) nutzen dasselbe Objekt. |
-| Threshold-Konsolidierung | `get_sentiment_category(score)` in `shared_config.py`, Imports ersetzen die drei lokalen Definitionen. |
-| Credential Masking | `/api/export/settings` und `/api/settings/mqtt` geben `"****"` statt Passwort zurueck. Kein Einfluss auf interne Speicherung. |
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `handleCombinedUpdate()` | Stream upload to LittleFS, orchestrate extract/install/flash sequence, set error flag | `TARGZUnpacker`, `Update` API, `LittleFS`, `copyFile()` |
+| `build-release.sh` | Version bump in `config.h`, firmware build, combined TGZ packaging, git commit | PlatformIO CLI, filesystem, git |
+| `diagnostics.html` | Single upload form targeting `/combined-update`, version display | `POST /combined-update`, `GET /api/ui-version` |
+| `config.h` | Single source of truth for version string at compile time | Read by `build-release.sh`, compiled into firmware binary |
+| `/ui-version.txt` on LittleFS | Runtime source of truth for version (survives firmware updates) | Written by `handleCombinedUpdate()`, read by `/api/ui-version` endpoint |
 
 ---
 
-## Build Order (Abhaengigkeiten zwischen Fixes)
+## Suggested Build Order for Implementation
 
-### Gruppe 1: Unabhaengige Backend-Fixes (parallel ausfuehrbar)
+Order is determined by hard dependencies:
 
-Diese Fixes beruehren sich nicht gegenseitig und koennen in beliebiger Reihenfolge gemacht werden:
+1. **Fix `esp_task_wdt_init` build error** — blocks `pio run`; must be first. Zero risk, one-line change with version guard.
 
-1. **`shared_config.py` erstellen + RSS-Feeds zentralisieren** — Voraussetzung fuer
-   Threshold-Konsolidierung, aber selbst von nichts abhaengig.
-2. **Threshold-Konsolidierung** — benoetigt `shared_config.py` (haengt von Fix 1 ab).
-3. **Tote Endpoints entfernen** (`/api/dashboard`, `/api/logs`) — isoliert.
-4. **Credential Masking** — isoliert, beruehrt nur `moodlight.cpp` und `moodlight_extensions.py`.
-5. **`.env` in `.gitignore` + `setup.html.tmp.html` loeschen** — reine Housekeeping-Aufgabe.
+2. **Update `build-release.sh`** — add version bump + combined TGZ packaging. Test independently by inspecting the output archive with `tar -tzf`. No device needed.
 
-### Gruppe 2: Gunicorn-Migration (nach Gruppe 1, wegen Background-Worker-Interaktion)
+3. **Implement `handleCombinedUpdate()`** — start with UI-only extraction to validate the route and LittleFS space usage. Add firmware flash step once extraction is confirmed working.
 
-6. **`gunicorn` in `requirements.txt`** hinzufuegen.
-7. **`Dockerfile` CMD aendern** auf `gunicorn -w 1 --threads 4 ...`.
-8. **Global-Socket-Timeout entfernen** — nach Gunicorn-Migration, damit der Testlauf
-   das neue Threading-Verhalten validiert.
-9. **Docker-Stack neu deployen** und Logs pruefen.
+4. **Update `diagnostics.html`** — replace two upload forms with one; update version display. Can happen in parallel with step 3 once the route URL is finalized.
 
-### Gruppe 3: Firmware-Fixes (unabhaengig vom Backend, parallel zu Gruppe 1+2)
-
-10. **`MAX_LEDS`-Konstante in `config.h`** + Array-Groesse anpassen — einfachster Fix, keine
-    Logik-Aenderung.
-11. **RAII `JsonBufferGuard`** — isolierter Fix, beruehrt nur `JsonBufferPool` und dessen
-    Aufrufstellen. Empfohlen VOR anderen Firmware-Fixes, da er das Grundproblem der
-    Heap-Fragmentierung adressiert.
-12. **Health-Check Konsolidierung** — benoetigt kein anderes Fix, aber sollte nach gruendlicher
-    Lektuere des `sysHealth.isRestartRecommended()`-Codes gemacht werden (Kriterien unklar laut
-    CONCERNS.md).
-13. **Status-LED Grace Period** — isoliert, kann nach Fix 12 gemacht werden (teilt `loop()`-Block).
-
-### Abhaengigkeitsgraph
-
-```
-shared_config.py (1)
-    └── Threshold-Konsolidierung (2)
-
-gunicorn requirements (6)
-    └── Dockerfile CMD (7)
-        └── Socket-Timeout entfernen (8)
-            └── Deploy + Test (9)
-
-MAX_LEDS Fix (10) -- isoliert
-RAII JsonBufferGuard (11) -- isoliert, empfohlen zuerst
-Health-Check (12) -- isoliert
-Status-LED Grace (13) -- nach (12) empfohlen
-Housekeeping (3,4,5) -- jederzeit
-```
+5. **End-to-end test** — build combined TGZ, upload via diagnostics page, verify version strings, LED behavior, and stability after reboot.
 
 ---
 
-## Anti-Patterns
+## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Status-LED direkt aus WiFi-Event-Handler aktualisieren
+### Writing firmware.bin to LittleFS before flash check
+**Why bad:** With `min_spiffs`, a ~1 MB binary can fill LittleFS and silently fail mid-copy. The `copyFile()` helper returns void and does not surface errors, so the failure is invisible until the handler tries to open the file.
+**Instead:** Check available LittleFS space before extraction. Use `ESP.getFlashChipSize()` / `LittleFS.totalBytes()` / `LittleFS.usedBytes()` to gate the operation.
 
-**Was Leute tun:** `setStatusLED(1)` direkt im WiFi-Disconnect-Callback aufrufen.
-**Warum es falsch ist:** WiFi-Events koennen auf einem anderen FreeRTOS-Task-Kontext laufen.
-  Der Mutex-Zugriff von `setStatusLED()` auf `ledMutex` kann dort zu Deadlocks fuehren.
-**Stattdessen:** Flag setzen (`statusLedUpdatePending = true`) und im `loop()` auswerten.
-  Der bestehende Code nutzt bereits dieses Muster in Teilen — konsequent beibehalten.
+### Flashing firmware before installing UI files
+**Why bad:** `ESP.restart()` is called immediately after `Update.end()`. If firmware is flashed first, the UI copy loop is unreachable and the device reboots with mismatched UI.
+**Instead:** UI install is always Phase 2, firmware flash is always Phase 3. This ordering is non-negotiable.
 
-### Anti-Pattern 2: Mehrere Gunicorn-Worker mit Background-Thread
+### Reusing the `combinedUpdateError` static without reset
+**Why bad:** A failed upload followed by a retried successful one would still report failure because the static bool was set during the previous attempt and never cleared.
+**Instead:** Reset `combinedUpdateError = false` at `UPLOAD_FILE_START`, not at variable declaration.
 
-**Was Leute tun:** `CMD ["gunicorn", "-w", "4", ...]` fuer bessere Performance.
-**Warum es falsch ist:** `start_background_worker()` wird in `app.py` vor `app.run()` aufgerufen
-  und wuerde in JEDEM der 4 Worker-Prozesse starten. 4 parallele Background-Worker schreiben
-  gleichzeitig in PostgreSQL und rufen OpenAI 4x oefter auf.
-**Stattdessen:** `-w 1 --threads 4` — ein Prozess, mehrere Threads, Background-Worker einmalig.
-  Oder: Background-Worker in separaten Container auslagern (eigenstaendiger Milestone).
+### Removing legacy /ui-upload and /update routes
+**Why bad:** If the combined handler fails silently (e.g., LittleFS full, TAR extraction error), there is no recovery path without physical USB access.
+**Instead:** Keep both legacy routes in this milestone. The diagnostics UI is updated to show only the combined upload form, but the routes remain registered for emergency use.
 
-### Anti-Pattern 3: `constrain()` auf numLeds erst beim Lesen, nicht beim Speichern
-
-**Was Leute tun:** In `processLEDUpdates()` `min(numLeds, MAX_LEDS)` als Loop-Bound verwenden,
-  aber `numLeds` bleibt > MAX_LEDS im Speicher.
-**Warum es falsch ist:** Andere Codestellen (z.B. `STATUS_LED_INDEX = numLeds - 1`) nutzen
-  `numLeds` direkt und koennen weiterhin out-of-bounds sein.
-**Stattdessen:** `numLeds` direkt beim Laden (Preferences/JSON) cappen:
-  `numLeds = constrain(value, 1, MAX_LEDS)` — einmalig, sicher ueberall.
-
----
-
-## Integration Points
-
-### External Services
-
-| Dienst | Integrationsmuster | Relevante Fixes |
-|--------|-------------------|-----------------|
-| OpenAI API | Batch-Request in `analyze_headlines_openai_batch()` | Kein Fix in diesem Milestone |
-| PostgreSQL | ThreadedConnectionPool (1-5), Singleton via `get_database()` | Gunicorn w=1 schuetzt vor Pool-Erschoepfung |
-| Redis | Singleton via `get_cache()`, 5-Min TTL | Unveraendert |
-| MQTT Broker | ArduinoHA Library, exponentieller Backoff | Status-LED Grace Period reduziert sichtbare Artefakte |
-| NTP | `configTime()` einmalig beim Boot | Unveraendert |
-
-### Internal Boundaries (Firmware)
-
-| Grenze | Kommunikation | Wichtig fuer Fixes |
-|--------|--------------|-------------------|
-| Sentiment-Fetch-Task <-> LED-Update | `ledUpdatePending` Flag + `ledMutex` | RAII Fix beruehrt diesen Pfad |
-| WiFi-Events <-> Status-LED | Indirektes Flag-Muster (teilweise) | Grace-Period Fix vervollstaendigt dieses Muster |
-| Health-Check (1h) <-> Health-Check (5min) | Getrennte static-Timer, teilen `sysHealth` Objekt | Konsolidierungs-Fix |
-| JsonBufferPool <-> alle JSON-Verarbeitung | `acquire()`/`release()` manuell | RAII Fix |
-
-### Internal Boundaries (Backend)
-
-| Grenze | Kommunikation | Wichtig fuer Fixes |
-|--------|--------------|-------------------|
-| app.py <-> background_worker.py | Shared-Function-Reference + geteilt `rss_feeds` | RSS-Fix: Import statt Duplikat |
-| app.py <-> moodlight_extensions.py | Flask Blueprint via `register_moodlight_endpoints()` | Threshold-Fix: Import aus shared_config |
-| Flask-Prozess <-> Gunicorn | WSGI-Protokoll | Migration Fix |
-
----
-
-## Confidence Assessment
-
-| Bereich | Confidence | Begruendung |
-|---------|-----------|-------------|
-| Buffer-Overflow Fix | HIGH | Code direkt gelesen, Zeilen 148/443/580 eindeutig |
-| RAII JsonBufferPool | HIGH | Code direkt gelesen, Zeilen 342-372 eindeutig |
-| Health-Check Konsolidierung | HIGH | Code direkt gelesen, Zeilen 4364-4500 eindeutig |
-| Status-LED Grace Period | HIGH | Code direkt gelesen, Blinkverhalten-Mechanismus klar |
-| Gunicorn w=1 --threads 4 | HIGH | Background-Worker-Threading-Implikation verifiziert |
-| Socket-Timeout Fix | HIGH | Code direkt gelesen, Zeile 373 und Worker-Zeile 164 |
-| RSS/Threshold-Deduplizierung | HIGH | Code direkt gelesen, Zeilen 55+137 und 205/216/24 |
-| Credential Masking | HIGH | Code direkt gelesen, Zeile 672 + 2088-2096 |
+### Version bump before confirmed successful build
+**Why bad:** If `pio run` fails after the version bump, `config.h` has been modified but no artifact was produced. The next git commit would record a version bump without a corresponding release.
+**Instead:** In `build-release.sh`, bump the version and build the firmware, but only write the git commit at the very end, after all artifacts are verified to exist.
 
 ---
 
 ## Sources
 
-- Direkte Codeanalyse: `firmware/src/moodlight.cpp` (Zeilen 148, 330-373, 440-454, 560-607, 4354-4500)
-- Direkte Codeanalyse: `sentiment-api/app.py` (Zeilen 55, 205-209, 363-378, 559-574)
-- Direkte Codeanalyse: `sentiment-api/background_worker.py` (Zeilen 137-150, 157-166, 216-227)
-- Direkte Codeanalyse: `sentiment-api/moodlight_extensions.py` (Zeilen 24-35, 310-328)
-- Direkte Codeanalyse: `sentiment-api/Dockerfile` (Zeile 18)
-- `.planning/codebase/CONCERNS.md` — Vollstaendige Problemliste mit Zeilennummern
-- `.planning/codebase/ARCHITECTURE.md` — Bestehendes Architektur-Dokument
-- `.planning/PROJECT.md` — Projektkontext und Constraints
-
----
-*Architecture research for: ESP32 IoT Firmware Stabilization + Flask Backend Hardening*
-*Researched: 2026-03-25*
+- Direct inspection: `firmware/src/moodlight.cpp` lines 1312-1530 (`handleUiUpload`), lines 2914-2977 (firmware update handler), lines 2070-2075 (route registration)
+- Direct inspection: `build-release.sh` (full file — current build flow)
+- Direct inspection: `firmware/src/config.h` (version format)
+- Direct inspection: `.planning/codebase/ARCHITECTURE.md` (system overview, LittleFS layout)
+- Direct inspection: `.planning/PROJECT.md` (active requirements, constraints, partition info)
+- Confidence: HIGH — all findings from live codebase; no external sources required for this architecture dimension
