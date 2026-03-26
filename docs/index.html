@@ -814,6 +814,22 @@
     </section>
 
 
+    <!-- Headlines-Sektion (PAGE-01) -->
+    <section class="section" id="headlines" style="background: var(--surface);">
+        <div class="container">
+            <h2 class="section-title">Aktuelle Schlagzeilen</h2>
+            <p style="text-align: center; font-size: 1.1rem; margin-bottom: 40px; color: var(--text-secondary);">
+                Die letzten analysierten Nachrichtenüberschriften mit ihren Einzel-Sentiment-Scores
+            </p>
+
+            <div style="background: var(--surface); padding: 40px; border-radius: 20px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow);">
+                <ul class="headlines-list" id="headlines-list">
+                    <li class="headlines-error">Lade Schlagzeilen...</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
     <!-- Screenshots Section -->
     <section class="section" id="screenshots" style="background: var(--surface);">
         <div class="container">
@@ -1632,6 +1648,72 @@
             // Refresh statistics every 5 minutes
             setInterval(loadStatistics, 300000);
         });
+    </script>
+    <script>
+    // Headlines-Sektion laden (PAGE-01)
+    (function() {
+        var API_URL = 'https://analyse.godsapp.de/api/moodlight/headlines?limit=20';
+
+        function scoreToColor(score) {
+            if (score <= -0.4) return '#dc3545';
+            if (score <  0)   return '#fd7e14';
+            if (score === 0)  return '#17a2b8';
+            if (score <  0.4) return '#6f42c1';
+            return '#8A2BE2';
+        }
+
+        function renderHeadlines(headlines) {
+            var list = document.getElementById('headlines-list');
+            if (!list) return;
+            if (!headlines || headlines.length === 0) {
+                list.innerHTML = '<li class="headlines-error">Keine Schlagzeilen verfügbar.</li>';
+                return;
+            }
+            var items = '';
+            for (var i = 0; i < headlines.length; i++) {
+                var h = headlines[i];
+                var score = typeof h.sentiment_score === 'number'
+                    ? (h.sentiment_score >= 0 ? '+' : '') + h.sentiment_score.toFixed(2)
+                    : '--';
+                var color = typeof h.sentiment_score === 'number' ? scoreToColor(h.sentiment_score) : '#6c757d';
+                var feed = h.feed_name || h.source_name || '';
+                items += '<li class="headline-item">';
+                items += '<span class="headline-score" style="color:' + color + ';">' + score + '</span>';
+                items += '<span class="headline-text">' + h.headline + '</span>';
+                if (feed) {
+                    items += '<span class="headline-feed">' + feed + '</span>';
+                }
+                items += '</li>';
+            }
+            list.innerHTML = items;
+        }
+
+        function loadHeadlines() {
+            fetch(API_URL)
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    if (data.status === 'success') {
+                        renderHeadlines(data.headlines);
+                    } else {
+                        var list = document.getElementById('headlines-list');
+                        if (list) list.innerHTML = '<li class="headlines-error">Schlagzeilen konnten nicht geladen werden.</li>';
+                    }
+                })
+                .catch(function() {
+                    var list = document.getElementById('headlines-list');
+                    if (list) list.innerHTML = '<li class="headlines-error">Backend nicht erreichbar — Schlagzeilen nicht verfügbar.</li>';
+                });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadHeadlines);
+        } else {
+            loadHeadlines();
+        }
+    })();
     </script>
 </body>
 </html>
