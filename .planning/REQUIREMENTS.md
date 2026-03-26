@@ -16,7 +16,7 @@
 
 ### Architektur
 
-- [ ] **ARCH-01**: Shared State ist über ein `AppState`-Struct oder globale Header-Datei zugänglich — Module kommunizieren über definiertes Interface, nicht über extern-Variablen kreuz und quer
+- [x] **ARCH-01**: Shared State ist über ein `AppState`-Struct oder globale Header-Datei zugänglich — Module kommunizieren über definiertes Interface, nicht über extern-Variablen kreuz und quer
 - [ ] **ARCH-02**: `moodlight.cpp` enthält nur noch `setup()`, `loop()` und Modul-Initialisierung — max 200 Zeilen
 - [ ] **ARCH-03**: `pio run` baut fehlerfrei mit allen Modulen — kein Linking-Fehler, keine zirkulären Dependencies
 
@@ -46,7 +46,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ARCH-01 | Phase 6 | Pending |
+| ARCH-01 | Phase 6 | Complete |
 | MOD-01 | Phase 7 | Pending |
 | MOD-02 | Phase 7 | Pending |
 | MOD-03 | Phase 7 | Pending |
