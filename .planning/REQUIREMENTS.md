@@ -21,9 +21,9 @@
 
 ### Diagnostics UI
 
-- [ ] **UI-01**: Update-Sektion in `diagnostics.html` hat einen Datei-Picker und einen "Full Update"-Button — der Button führt sequentiell erst UI-Upload, dann Firmware-Flash aus
-- [ ] **UI-02**: Fortschrittsanzeige zeigt welcher Schritt gerade läuft (1/2 UI-Installation, 2/2 Firmware-Flash)
-- [ ] **UI-03**: Eine einzige Versionsanzeige (nicht getrennt Firmware/UI) zeigt die aktuelle Gesamtversion
+- [x] **UI-01**: Update-Sektion in `diagnostics.html` hat einen Datei-Picker und einen "Full Update"-Button — der Button führt sequentiell erst UI-Upload, dann Firmware-Flash aus
+- [x] **UI-02**: Fortschrittsanzeige zeigt welcher Schritt gerade läuft (1/2 UI-Installation, 2/2 Firmware-Flash)
+- [x] **UI-03**: Eine einzige Versionsanzeige (nicht getrennt Firmware/UI) zeigt die aktuelle Gesamtversion
 
 ### Build-Blocker
 
@@ -66,9 +66,9 @@ Deferred to future milestones.
 | OTA-02 | Phase 4 | Complete |
 | OTA-03 | Phase 4 | Complete |
 | OTA-04 | Phase 4 | Complete |
-| UI-01 | Phase 5 | Pending |
-| UI-02 | Phase 5 | Pending |
-| UI-03 | Phase 5 | Pending |
+| UI-01 | Phase 5 | Complete |
+| UI-02 | Phase 5 | Complete |
+| UI-03 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 12 total
