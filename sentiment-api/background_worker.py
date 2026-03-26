@@ -101,7 +101,7 @@ class SentimentUpdateWorker:
 
             response_time_ms = int((time.time() - start_time) * 1000)
 
-            db.save_sentiment(
+            sentiment_history_id = db.save_sentiment(
                 sentiment_score=sentiment_score,
                 category=category,
                 headlines_analyzed=headlines_analyzed,
@@ -114,7 +114,21 @@ class SentimentUpdateWorker:
                 }
             )
 
-            logger.info(f"Sentiment in DB gespeichert: {sentiment_score:.3f}")
+            logger.info(f"Sentiment in DB gespeichert: {sentiment_score:.3f} (id={sentiment_history_id})")
+
+            # NEU: Headlines persistieren (sekundär — Fehler bricht Update nicht ab)
+            try:
+                headline_results = analysis_result.get('results', [])
+                if headline_results:
+                    saved_count = db.save_headlines(
+                        sentiment_history_id=sentiment_history_id,
+                        results=headline_results
+                    )
+                    logger.info(f"Headlines persistiert: {saved_count} Einträge")
+                else:
+                    logger.warning("Keine Einzel-Headlines in analysis_result vorhanden")
+            except Exception as headline_err:
+                logger.error(f"Fehler beim Persistieren der Headlines (Sentiment bleibt gespeichert): {headline_err}")
 
             # 4. Redis-Cache invalidieren
             cache = get_cache()
@@ -182,7 +196,8 @@ class SentimentUpdateWorker:
                                 headlines.append({
                                     "headline": headline_text,
                                     "source": source,
-                                    "link": link
+                                    "link": link,
+                                    "feed_id": feed_row['id']  # NEU: numerische Feed-ID für DB-FK
                                 })
                                 processed_links.add(unique_key)
                                 headlines_from_source += 1
