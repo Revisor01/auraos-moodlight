@@ -561,6 +561,53 @@
                 height: 300px;
             }
         }
+
+        /* Headlines-Sektion (PAGE-01) */
+        .headlines-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .headline-item {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .headline-item:last-child {
+            border-bottom: none;
+        }
+
+        .headline-score {
+            font-weight: 700;
+            font-size: 0.9rem;
+            min-width: 46px;
+            flex-shrink: 0;
+        }
+
+        .headline-text {
+            flex: 1;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .headline-feed {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .headlines-error {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px 0;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
