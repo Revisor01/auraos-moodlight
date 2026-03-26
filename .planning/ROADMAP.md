@@ -39,7 +39,14 @@ Plans:
   2. Nach jeder einzelnen Modul-Extraktion baut `pio run` fehlerfrei — keine Phase-interne Regression
   3. Funktionstest nach allen Extraktionen: Gerät verbindet mit WiFi, LEDs reagieren auf Sentiment, Web-Interface liefert /api/status mit korrekten Werten
   4. MQTT-Heartbeat sendet weiterhin an Home Assistant (wenn mqttEnabled)
-**Plans**: TBD
+**Plans:** 6 plans
+Plans:
+- [ ] 07-01-PLAN.md — Settings-Manager extrahieren (MOD-05)
+- [ ] 07-02-PLAN.md — WiFi-Manager extrahieren (MOD-01)
+- [ ] 07-03-PLAN.md — LED-Controller extrahieren (MOD-02)
+- [ ] 07-04-PLAN.md — Sensor & Sentiment Manager extrahieren (MOD-06)
+- [ ] 07-05-PLAN.md — MQTT/HA-Handler extrahieren (MOD-04)
+- [ ] 07-06-PLAN.md — Web-Server extrahieren (MOD-03)
 
 ### Phase 8: Konsolidierung & Qualität
 **Goal**: moodlight.cpp ist auf setup(), loop() und Modul-Initialisierung reduziert — Codebase ist bereinigt von totem Code, Magic Numbers und Duplikaten
@@ -57,5 +64,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. Shared State Fundament | 2/2 | Complete   | 2026-03-26 |
-| 7. Modul-Extraktion | 0/? | Not started | - |
+| 7. Modul-Extraktion | 0/6 | Planned | - |
 | 8. Konsolidierung & Qualitaet | 0/? | Not started | - |
