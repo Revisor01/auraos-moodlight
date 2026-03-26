@@ -59,8 +59,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 10-01-PLAN.md — Feed-CRUD-API (GET/POST/DELETE /api/moodlight/feeds) + Legacy-Cleanup
-**UI hint**: yes
+- [ ] 11-01-PLAN.md — Flask-Route /feeds + feeds.html (Tabelle, Formular, JS via fetch())
 
 ## Progress
 
@@ -68,4 +67,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 9. DB-Schema & Worker-Integration | 2/2 | Complete   | 2026-03-26 |
 | 10. Feed-API | 1/1 | Complete    | 2026-03-26 |
-| 11. Feed-Management Web-Interface | 0/? | Not started | - |
+| 11. Feed-Management Web-Interface | 0/1 | Not started | - |
