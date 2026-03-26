@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Schlagzeilen-Transparenz & Dashboard
 status: verifying
-stopped_at: Completed 15-client-erweiterungen-01-PLAN.md
-last_updated: "2026-03-26T23:55:59.967Z"
+stopped_at: Completed 15-client-erweiterungen-02-PLAN.md
+last_updated: "2026-03-26T23:56:06.750Z"
 last_activity: 2026-03-26
 progress:
   total_phases: 4
@@ -57,6 +57,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 14-backend-dashboard]: Roh-Durchschnitt in Formelzeile via atanh(score)/2 näherungsweise angezeigt — echter Wert nicht in API verfügbar
 - [Phase 15-client-erweiterungen]: Backend-URL in mood.html hardcoded als https://analyse.godsapp.de — apiUrl-Variable nicht im mood.js-Scope verfügbar
 - [Phase 15-client-erweiterungen]: Headlines-Sektion als .info-card ohne neue CSS-Klassen — IIFE-Inline-Script für isolierten Scope
+- [Phase 15-client-erweiterungen]: Vanilla JS IIFE in docs/index.html — maximale Browser-Kompatibilität ohne Build-Step
 
 ### Pending Todos
 
@@ -69,6 +70,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-26T23:55:50.545Z
-Stopped at: Completed 15-client-erweiterungen-01-PLAN.md
+Last session: 2026-03-26T23:56:06.748Z
+Stopped at: Completed 15-client-erweiterungen-02-PLAN.md
 Resume file: None

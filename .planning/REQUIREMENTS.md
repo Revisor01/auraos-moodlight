@@ -32,7 +32,7 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
 ### GitHub Page
 
-- [ ] **PAGE-01**: GitHub Page zeigt Headline-Darstellung mit Einzel-Scores und Feed-Zuordnung
+- [x] **PAGE-01**: GitHub Page zeigt Headline-Darstellung mit Einzel-Scores und Feed-Zuordnung
 
 ## Future Requirements
 
@@ -65,7 +65,7 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 | AUTH-02 | Phase 13 | Complete |
 | AUTH-03 | Phase 13 | Complete |
 | ESP-01 | Phase 15 | Complete |
-| PAGE-01 | Phase 15 | Pending |
+| PAGE-01 | Phase 15 | Complete |
 
 **Coverage:**
 - v5.0 requirements: 12 total
