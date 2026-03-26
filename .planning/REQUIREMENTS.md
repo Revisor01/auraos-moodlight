@@ -27,7 +27,7 @@
 
 ### Build-Blocker
 
-- [ ] **FIX-01**: `esp_task_wdt_init(30, false)` API-Aufruf in `moodlight.cpp` ist kompatibel mit Arduino ESP32 Core 3.x — `pio run` baut erfolgreich
+- [x] **FIX-01**: `esp_task_wdt_init(30, false)` API-Aufruf in `moodlight.cpp` ist kompatibel mit Arduino ESP32 Core 3.x — `pio run` baut erfolgreich
 
 ## v2 Requirements
 
@@ -57,7 +57,7 @@ Deferred to future milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIX-01 | Phase 3 | Pending |
+| FIX-01 | Phase 3 | Complete |
 | BUILD-01 | Phase 3 | Pending |
 | BUILD-02 | Phase 3 | Pending |
 | BUILD-03 | Phase 3 | Pending |

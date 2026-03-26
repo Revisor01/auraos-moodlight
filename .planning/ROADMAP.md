@@ -27,9 +27,9 @@
   2. `./build-release.sh minor` bumpt die Version in `config.h` und bricht bei Build-Fehler explizit ab
   3. Das erzeugte `Combined-X.X-AuraOS.tgz` enthält sowohl UI-Dateien als auch `firmware.ino.bin`
   4. Build-Script committed Version-Bump + Artefakt nur nach verifiziertem Build
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 03-01-PLAN.md — WDT-API-Fix (esp_task_wdt_init kompatibel mit ESP-IDF 5.x)
+- [x] 03-01-PLAN.md — WDT-API-Fix (esp_task_wdt_init kompatibel mit ESP-IDF 5.x)
 - [ ] 03-02-PLAN.md — Build-Release-Script komplett ersetzen (Version-Bump + Combined-TGZ + Auto-Commit)
 
 ### Phase 4: Combined-Update-Handler
@@ -58,6 +58,6 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 3. Build-Fundament | v2.0 | 0/2 | Planned | - |
+| 3. Build-Fundament | v2.0 | 1/2 | In Progress|  |
 | 4. Combined-Update-Handler | v2.0 | 0/? | Not started | - |
 | 5. Diagnostics-UI | v2.0 | 0/? | Not started | - |
