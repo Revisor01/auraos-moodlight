@@ -32,15 +32,16 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ moodlight.cpp in logische Module aufgeteilt (6 Module) — v3.0 Phase 7
 - ✓ AppState Shared-State-Fundament — v3.0 Phase 6
 - ✓ Code-Qualität konsolidiert (Dead Code, Magic Numbers, Redundanz) — v3.0 Phase 8
+- ✓ RSS-Feed-Liste in PostgreSQL statt hardcoded — v4.0 Phase 9
+- ✓ GET/POST/DELETE /api/moodlight/feeds API-Endpoints — v4.0 Phase 10
+- ✓ Background Worker liest Feeds aus DB — v4.0 Phase 9
+- ✓ Focus-Feed (404) entfernt — v4.0 Phase 9
+- ✓ Feed-URL-Validierung beim Hinzufügen — v4.0 Phase 10
+- ✓ Web-Interface Feed-Management unter /feeds — v4.0 Phase 11
 
 ### Active
 
-- [ ] RSS-Feed-Liste in PostgreSQL statt hardcoded in shared_config.py/app.py/background_worker.py
-- [ ] GET/POST /api/moodlight/feeds API-Endpoints für Feed-Verwaltung
-- [ ] Background Worker liest Feeds aus DB statt hardcoded
-- [ ] Focus-Feed (404) entfernen
-- [ ] Feed-Validierung (URL erreichbar?)
-- [ ] Web-Interface Tab in setup.html — Feeds anzeigen, hinzufügen, entfernen
+(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
 
 ### Out of Scope
 
@@ -48,6 +49,9 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - HTTPS auf ESP32 — gab Probleme in der Vergangenheit, eigener Milestone später
 - BLE Proxy für Bermuda — braucht vollen BLE-Scanner (~70KB RAM), ESPHome-Protokoll nicht kompatibel mit Custom-Firmware, eigener Milestone wenn überhaupt
 - Firmware-Aufsplittung (Monolith → Module) — erledigt in v3.0
+- Feed-Import/Export — kein Bedarf bei ~12 Feeds
+- Feed-Kategorien/Tags — Over-Engineering für privates Projekt
+- Automatische Feed-Discovery — manuelle Verwaltung reicht
 - Mobile App — Web-Interface reicht
 - Multi-Device-Support — ein Gerät im Einsatz
 - Automatische Tests — wünschenswert, aber nicht in diesem Milestone
@@ -64,6 +68,8 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - **Bestehende Libraries**: ESP32-targz für TGZ-Extraktion, Arduino Update-API für Firmware-Flash
 - **Pre-existing Bug**: `esp_task_wdt_init(30, false)` inkompatibel mit Arduino ESP32 Core 3.x — verhindert `pio run`
 - Codebase-Map vorhanden in .planning/codebase/
+- v4.0 shipped: Feed-Verwaltung über Web-UI und API, Background Worker liest aus DB
+- Feed-Management-Seite: https://analyse.godsapp.de/feeds (nach Deploy)
 
 ## Constraints
 
@@ -83,6 +89,8 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 | Kein Auth | Privates Projekt im Heimnetz | ✓ Good |
 | Unified Version statt getrennte UI/Firmware-Versionen | Eine Combined-Datei = eine Version, weniger Verwirrung | — Pending |
 | Combined TGZ statt zwei Dateien | Ein Upload statt zwei, weniger Fehlerquellen | — Pending |
+| Feed-Management als eigenständige Backend-Seite statt ESP32 setup.html | Feeds sind Backend-Concern, ESP32 hat keinen Backend-Zugriff | ✓ Good |
+| Firmware-Splitting erledigt | v3.0 hat moodlight.cpp in 6 Module aufgeteilt | ✓ Good |
 
 ## Evolution
 
@@ -102,16 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-## Current Milestone: v4.0 Konfigurierbare RSS-Feeds
-
-**Goal:** Feed-Liste über Web-Interface und API verwaltbar machen statt hardcoded in shared_config.py/app.py/background_worker.py.
-
-**Target features:**
-- RSS-Feed-Liste in PostgreSQL mit CRUD-API
-- Background Worker liest Feeds aus DB
-- Focus-Feed (404) entfernen
-- Feed-Validierung (URL erreichbar?)
-- Web-Interface Feed-Management in setup.html
-
----
-*Last updated: 2026-03-26 after v4.0 milestone start (Konfigurierbare RSS-Feeds)*
+*Last updated: 2026-03-26 after v4.0 milestone complete (Konfigurierbare RSS-Feeds)*
