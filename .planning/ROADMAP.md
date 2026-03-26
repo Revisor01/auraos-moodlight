@@ -42,7 +42,10 @@ Plans:
   2. POST /api/moodlight/feeds mit einer gültigen, erreichbaren Feed-URL legt einen neuen Feed in der DB an und gibt 201 zurück
   3. POST /api/moodlight/feeds mit einer nicht erreichbaren URL gibt einen 4xx-Fehler mit Fehlermeldung zurück (keine stumme Persistierung)
   4. DELETE /api/moodlight/feeds/<id> entfernt den Feed aus der DB und gibt 204 zurück; unbekannte ID gibt 404
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 10-01-PLAN.md — Feed-CRUD-API (GET/POST/DELETE /api/moodlight/feeds) + Legacy-Cleanup
 
 ### Phase 11: Feed-Management Web-Interface
 **Goal**: Der User kann Feeds im Browser verwalten ohne curl oder direkten DB-Zugriff
@@ -53,7 +56,10 @@ Plans:
   2. User kann über ein Formular eine neue Feed-URL eintragen und abspeichern; Fehler (nicht erreichbar) werden inline angezeigt
   3. User kann einen Feed per Klick (Löschen-Button) entfernen ohne Seiten-Reload
   4. Pro Feed sind letzter Fetch-Zeitpunkt und Fehler-Count sichtbar
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 10-01-PLAN.md — Feed-CRUD-API (GET/POST/DELETE /api/moodlight/feeds) + Legacy-Cleanup
 **UI hint**: yes
 
 ## Progress
