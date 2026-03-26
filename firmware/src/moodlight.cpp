@@ -48,7 +48,7 @@ AppState appState;
 // DNS Server für den Captive Portal
 DNSServer dnsServer;
 const byte DNS_PORT = 53;
-bool isInConfigMode = false;
+// appState.isInConfigMode -> appState.appState.isInConfigMode (migriert)
 
 // === Farbdefinitionen ===
 struct ColorDefinition
@@ -58,14 +58,7 @@ struct ColorDefinition
     uint8_t b;
 };
 
-// Konfigurierbare Farben für die Stimmungsskala
-uint32_t customColors[5] = {
-    0xFF0000, // sehr negativ (Rot)
-    0xFFA500, // negativ (Orange)
-    0x1E90FF, // neutral (Blau)
-    0x545DF0, // positiv (Indigo/Violett-Blau)
-    0x8A2BE2  // sehr positiv (Violett)
-};
+// appState.customColors -> appState.appState.customColors (migriert)
 
 // Farbnamen für UI
 const char *colorNames[5] = {
@@ -89,7 +82,7 @@ ColorDefinition uint32ToColorDef(uint32_t color)
 ColorDefinition getColorDefinition(int index)
 {
     index = constrain(index, 0, 4);
-    return uint32ToColorDef(customColors[index]);
+    return uint32ToColorDef(appState.customColors[index]);
 }
 
 // === Hilfsfunktion ===
@@ -123,111 +116,33 @@ HASensor haSystemStatus("system_status");
 
 // === Webserver für Updates und Logging ===
 WebServer server(80);
-const int LOG_BUFFER_SIZE = 20;    // Anzahl der zu speichernden Log-Zeilen
-String logBuffer[LOG_BUFFER_SIZE]; // Ringpuffer für Logs
-int logIndex = 0;                  // Aktuelle Position im Ringpuffer
+// logBuffer/logIndex -> appState.logBuffer/appState.logIndex (migriert)
+const int LOG_BUFFER_SIZE = 20; // Groesse des Ringpuffers (muss mit AppState.logBuffer[20] uebereinstimmen)
 
 // === Hardware Setup ===
 Adafruit_NeoPixel pixels;
 DHT dht(DEFAULT_DHT_PIN, DHT22);
 Preferences preferences;
 
-// Add these global variables
+// NTP constants (nicht im AppState - compile-time constants)
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;     // GMT+1 (Adjust for your timezone, in seconds)
 const int   daylightOffset_sec = 3600; // +1 hour for DST (summer time)
-bool timeInitialized = false;
+// appState.timeInitialized -> appState.appState.timeInitialized (migriert)
 
-// === Globale Variablen ===
+// === Globale Variablen (migrierte Variablen sind in AppState appState) ===
 
-SemaphoreHandle_t ledMutex = NULL; // Add this for thread safety
 const String SOFTWARE_VERSION = MOODLIGHT_FULL_VERSION;
-int ledPin = DEFAULT_LED_PIN;
-int dhtPin = DEFAULT_DHT_PIN;
-int numLeds = DEFAULT_NUM_LEDS;
-uint8_t manualBrightness = DEFAULT_LED_BRIGHTNESS;
-unsigned long moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
-unsigned long dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
-String apiUrl = DEFAULT_NEWS_API_URL;
-volatile bool ledUpdatePending = false;
-volatile uint32_t ledColors[MAX_LEDS];
-volatile uint8_t ledBrightness = DEFAULT_LED_BRIGHTNESS;
-volatile bool ledClear = false;
-int currentLedIndex = 2;
-int lastLedIndex = 2;
-// v9.0: headlines_per_source removed - only used for legacy API endpoints
-unsigned long lastMoodUpdate = 0;
-bool settingsNeedSaving = false;
-unsigned long lastSettingsSaved = 0;
-bool firstLedShowDone = false;
-unsigned long lastDHTUpdate = 0;
-bool dhtEnabled = true;
-float lastTemp = NAN;
-float lastHum = NAN;
-float lastSentimentScore = 0.0;
-String lastSentimentCategory = "neutral";
-bool initialAnalysisDone = false;
-bool isPulsing = false;
-unsigned long pulseStartTime = 0;
-bool autoMode = true;                                    // Default, wird von Preferences überschrieben
-bool lightOn = true;                                     // Default, wird von Preferences überschrieben
-uint32_t manualColor = pixels.Color(255, 255, 255);      // Default, wird ggf. von Preferences überschrieben
-bool initialStartupPhase = true;
-unsigned long startupTime = 0;
-const unsigned long STARTUP_GRACE_PERIOD = 15000; 
 
-// Neue konfigurierbare Werte
-String mqttServer = "";               // MQTT Server
-String mqttUser = "";                 // MQTT User
-String mqttPassword = "";             // MQTT Password
-bool mqttEnabled = false;             // MQTT-Integration aktiviert?
-
-// Zugangsdaten für WiFi
-String wifiSSID = "";
-String wifiPassword = "";
-bool wifiConfigured = false;
-
-// WiFi Reconnect mit exponentiellem Backoff
-unsigned long lastWifiCheck = 0;
-unsigned long wifiReconnectDelay = 5000;          // Basis-Reconnect-Verzögerung (5 Sekunden)
+// Konstanten bleiben als #define / const (nicht im AppState)
+const unsigned long STARTUP_GRACE_PERIOD = 15000;
 const unsigned long MAX_RECONNECT_DELAY = 300000; // Maximale Verzögerung (5 Minuten)
-int wifiReconnectAttempts = 0;
-bool wifiWasConnected = false; // Zu Beginn als false annehmen
-bool wifiReconnectActive = false; // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
-unsigned long disconnectStartMs = 0;                // LED-03: Grace-Timer fuer Status-LED
-const unsigned long STATUS_LED_GRACE_MS = 30000;    // LED-03: 30s bevor Status-LED aktiviert wird
-
-// MQTT Reconnect und Heartbeat
-unsigned long lastMqttReconnectAttempt = 0;
-unsigned long lastMqttHeartbeat = 0;
+const unsigned long STATUS_LED_GRACE_MS = 30000;  // LED-03: 30s bevor Status-LED aktiviert wird
 const unsigned long MQTT_HEARTBEAT_INTERVAL = 60000; // 1 Minute
-bool mqttWasConnected = false;                       // Um Aktionen nach Reconnect zu steuern
-bool sendingInitialStates = false;                   // Flag um Callback-Loops zu vermeiden
-
-// Fehlertolerante Sentiment-Verarbeitung
-unsigned long lastSuccessfulSentimentUpdate = 0;
 const unsigned long SENTIMENT_FALLBACK_TIMEOUT = 3600000; // Nach 1 Stunde ohne erfolgreiche Aktualisierung
-bool sentimentAPIAvailable = true;
-int consecutiveSentimentFailures = 0;
 const int MAX_SENTIMENT_FAILURES = 5;
-
-// Status-LED
-int statusLedIndex = DEFAULT_NUM_LEDS - 1; // Dynamisch: wird nach numLeds-Load aktualisiert
-unsigned long statusLedBlinkStart = 0;
-bool statusLedState = false;
-int statusLedMode = 0; // 0=Normal, 1=WiFi-Verbindung, 2=API-Fehler, 3=Update, 4=MQTT-Verbindung, 5=AP-Modus
-
-// System status logging
-unsigned long lastStatusLog = 0;
 const unsigned long STATUS_LOG_INTERVAL = 300000; // 5 Minuten
-
-// Access Point Timeout - Nach dieser Zeit ohne Konfiguration wird der AP-Modus verlassen
 const unsigned long AP_TIMEOUT = 300000; // 5 Minuten
-unsigned long apModeStartTime = 0;
-
-// Automatischer Reboot nach Konfiguration
-bool rebootNeeded = false;
-unsigned long rebootTime = 0;
 const unsigned long REBOOT_DELAY = 5000; // 5 Sekunden bis zum Reboot
 
 #ifdef DEBUG_MODE
@@ -246,8 +161,8 @@ void debug(const String &message) {
     
     // Store in ring buffer (use a local copy)
     String logEntry = messageBuffer; // Create the String locally
-    logBuffer[logIndex] = logEntry;  // Copy assignment is safer
-    logIndex = (logIndex + 1) % LOG_BUFFER_SIZE;
+    appState.logBuffer[appState.logIndex] = logEntry;  // Copy assignment is safer
+    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
     
     // Print to Serial
     Serial.print(messageBuffer);
@@ -269,8 +184,8 @@ void debug(const __FlashStringHelper *message) {
     
     // Store in ring buffer (using direct copy)
     String logEntry = messageBuffer;
-    logBuffer[logIndex] = logEntry;
-    logIndex = (logIndex + 1) % LOG_BUFFER_SIZE;
+    appState.logBuffer[appState.logIndex] = logEntry;
+    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
     
     // Print to Serial
     Serial.print(messageBuffer);
@@ -329,7 +244,7 @@ SafeFileOps fileOps;
 NetworkDiagnostics netDiag;
 SystemHealthCheck sysHealth;
 // v9.0: archiveTask removed - archiving handled in backend
-unsigned long lastSystemHealthCheckTime = 0;
+// appState.lastSystemHealthCheckTime -> appState.appState.lastSystemHealthCheckTime (migriert)
 const unsigned long HEALTH_CHECK_INTERVAL = 3600000; // 1 Stunde
 
 struct JsonBufferPool {
@@ -420,7 +335,7 @@ void initTime() {
     time(&now);
     
     if (now > 1600000000) { // Timestamp after 2020
-        timeInitialized = true;
+        appState.timeInitialized = true;
         struct tm timeinfo;
         localtime_r(&now, &timeinfo);
         
@@ -434,12 +349,12 @@ void initTime() {
 
 // === Aktualisiere die LEDs ===
 void updateLEDs() {
-    if (!lightOn) {
+    if (!appState.lightOn) {
         // Just set the clear flag and return
-        if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-            ledClear = true;
-            ledUpdatePending = true;
-            xSemaphoreGive(ledMutex);
+        if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+            appState.ledClear = true;
+            appState.ledUpdatePending = true;
+            xSemaphoreGive(appState.ledMutex);
         }
         return;
     }
@@ -448,30 +363,30 @@ void updateLEDs() {
     uint32_t colorToShow;
     uint8_t brightnessToShow;
 
-    if (autoMode) {
-        currentLedIndex = constrain(currentLedIndex, 0, 4);
-        ColorDefinition color = getColorDefinition(currentLedIndex);
+    if (appState.autoMode) {
+        appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
+        ColorDefinition color = getColorDefinition(appState.currentLedIndex);
         colorToShow = pixels.Color(color.r, color.g, color.b);
         brightnessToShow = DEFAULT_LED_BRIGHTNESS;
     } else {
-        colorToShow = manualColor;
-        brightnessToShow = manualBrightness;
+        colorToShow = appState.manualColor;
+        brightnessToShow = appState.manualBrightness;
     }
 
     // Instead of directly updating LEDs, store the values safely
-    if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+    if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
         // Fill LED buffer
-        for (int i = 0; i < numLeds; i++) {
+        for (int i = 0; i < appState.numLeds; i++) {
             // Skip status LED if in status mode
-            if (i == (numLeds - 1) && statusLedMode != 0) {
+            if (i == (appState.numLeds - 1) && appState.statusLedMode != 0) {
                 continue;
             }
-            ledColors[i] = colorToShow;
+            appState.ledColors[i] = colorToShow;
         }
-        ledBrightness = brightnessToShow;
-        ledClear = false;
-        ledUpdatePending = true;
-        xSemaphoreGive(ledMutex);
+        appState.ledBrightness = brightnessToShow;
+        appState.ledClear = false;
+        appState.ledUpdatePending = true;
+        xSemaphoreGive(appState.ledMutex);
     }
 
     // Debug output optimized
@@ -482,19 +397,19 @@ void updateLEDs() {
     char debugBuffer[100];
     snprintf(debugBuffer, sizeof(debugBuffer),
              "LEDs update requested: %s B=%d RGB(%d,%d,%d)",
-             (autoMode ? "Auto" : "Manual"),
+             (appState.autoMode ? "Auto" : "Manual"),
              brightnessToShow, r, g, b);
     debug(debugBuffer);
 }
 
 // === Status-LED Funktionen ===
 void setStatusLED(int mode) {
-    statusLedMode = mode;
-    statusLedBlinkStart = millis();
-    statusLedState = true;
+    appState.statusLedMode = mode;
+    appState.statusLedBlinkStart = millis();
+    appState.statusLedState = true;
 
     // Store LED state but don't update directly
-    if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+    if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
         // LED-Farbe entsprechend dem Status setzen
         uint32_t statusColor = pixels.Color(0, 0, 0); // Default black
         
@@ -516,21 +431,21 @@ void setStatusLED(int mode) {
                 break;
             default: // Normal (LED aus oder normaler Betrieb)
                 // Just update the whole LED strip
-                ledUpdatePending = true;
-                xSemaphoreGive(ledMutex);
+                appState.ledUpdatePending = true;
+                xSemaphoreGive(appState.ledMutex);
                 return;
         }
 
         // Only update the status LED
-        ledColors[statusLedIndex] = statusColor;
-        ledUpdatePending = true;
-        xSemaphoreGive(ledMutex);
+        appState.ledColors[appState.statusLedIndex] = statusColor;
+        appState.ledUpdatePending = true;
+        xSemaphoreGive(appState.ledMutex);
     }
 }
 
 void updateStatusLED() {
     // Kein Blinken im Normalmodus
-    if (statusLedMode == 0)
+    if (appState.statusLedMode == 0)
         return;
 
     // Zeit für Blink-Update
@@ -538,7 +453,7 @@ void updateStatusLED() {
 
     // Unterschiedliche Blink-Frequenzen für verschiedene Modi
     unsigned long blinkInterval;
-    switch (statusLedMode) {
+    switch (appState.statusLedMode) {
         case 1: blinkInterval = 500; break; // WiFi (schnell)
         case 2: blinkInterval = 300; break; // API-Fehler (sehr schnell)
         case 3: blinkInterval = 1000; break; // Update (langsam)
@@ -548,16 +463,16 @@ void updateStatusLED() {
     }
 
     // Zeit abgelaufen?
-    if (currentMillis - statusLedBlinkStart >= blinkInterval) {
-        statusLedState = !statusLedState;
-        statusLedBlinkStart = currentMillis;
+    if (currentMillis - appState.statusLedBlinkStart >= blinkInterval) {
+        appState.statusLedState = !appState.statusLedState;
+        appState.statusLedBlinkStart = currentMillis;
 
-        if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-            if (statusLedState) {
+        if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+            if (appState.statusLedState) {
                 // LED einschalten mit entsprechender Farbe
                 uint32_t statusColor = pixels.Color(0, 0, 0);
                 
-                switch (statusLedMode) {
+                switch (appState.statusLedMode) {
                     case 1: statusColor = pixels.Color(0, 0, 255); break; // Blau
                     case 2: statusColor = pixels.Color(255, 0, 0); break; // Rot
                     case 3: statusColor = pixels.Color(0, 255, 0); break; // Grün
@@ -565,14 +480,14 @@ void updateStatusLED() {
                     case 5: statusColor = pixels.Color(255, 255, 0); break; // Gelb
                 }
                 
-                ledColors[statusLedIndex] = statusColor;
+                appState.ledColors[appState.statusLedIndex] = statusColor;
             } else {
                 // LED ausschalten
-                ledColors[statusLedIndex] = pixels.Color(0, 0, 0);
+                appState.ledColors[appState.statusLedIndex] = pixels.Color(0, 0, 0);
             }
             
-            ledUpdatePending = true;
-            xSemaphoreGive(ledMutex);
+            appState.ledUpdatePending = true;
+            xSemaphoreGive(appState.ledMutex);
         }
     }
 }
@@ -589,28 +504,28 @@ void processLEDUpdates() {
     // Check if we have pending LED updates
     bool needsUpdate = false;
     
-    if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-        needsUpdate = ledUpdatePending;
+    if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+        needsUpdate = appState.ledUpdatePending;
         if (needsUpdate) {
             // Apply the stored LED values
-            if (ledClear) {
+            if (appState.ledClear) {
                 pixels.clear();
             } else {
-                pixels.setBrightness(ledBrightness);
+                pixels.setBrightness(appState.ledBrightness);
                 
-                for (int i = 0; i < numLeds; i++) {
-                    pixels.setPixelColor(i, ledColors[i]);
+                for (int i = 0; i < appState.numLeds; i++) {
+                    pixels.setPixelColor(i, appState.ledColors[i]);
                 }
             }
-            ledUpdatePending = false;
+            appState.ledUpdatePending = false;
         }
-        xSemaphoreGive(ledMutex);
+        xSemaphoreGive(appState.ledMutex);
     }
     
     // Only call show() if we have updates and not in a critical section
     if (needsUpdate) {
         // LED-02: LEDs nur aktualisieren wenn kein WiFi-Reconnect aktiv ist
-        if (!wifiReconnectActive) {
+        if (!appState.wifiReconnectActive) {
             // Wait for any ongoing interrupt operations
             yield();
             delay(1);
@@ -663,7 +578,7 @@ public:
 // Verarbeite DNS-Anfragen für den Captive Portal
 void processDNS()
 {
-    if (isInConfigMode)
+    if (appState.isInConfigMode)
     {
         dnsServer.processNextRequest();
     }
@@ -680,33 +595,33 @@ bool saveSettingsToFile() {
     JsonDocument doc;
 
     // Allgemeine Einstellungen
-    doc["moodInterval"] = moodUpdateInterval;
-    doc["dhtInterval"] = dhtUpdateInterval;
-    doc["autoMode"] = autoMode;
-    doc["lightOn"] = lightOn;
-    doc["manBright"] = manualBrightness;
-    doc["manColor"] = manualColor;
+    doc["moodInterval"] = appState.moodUpdateInterval;
+    doc["dhtInterval"] = appState.dhtUpdateInterval;
+    doc["autoMode"] = appState.autoMode;
+    doc["lightOn"] = appState.lightOn;
+    doc["manBright"] = appState.manualBrightness;
+    doc["manColor"] = appState.manualColor;
     // v9.0: headlinesPS removed - only for legacy API endpoints
 
     // WiFi-Einstellungen
-    doc["wifiSSID"] = wifiSSID;
-    doc["wifiPass"] = wifiPassword;
-    doc["wifiConfigured"] = wifiConfigured;
+    doc["wifiSSID"] = appState.wifiSSID;
+    doc["wifiPass"] = appState.wifiPassword;
+    doc["wifiConfigured"] = appState.wifiConfigured;
 
     // Erweiterte Einstellungen
-    doc["apiUrl"] = apiUrl;
-    doc["mqttServer"] = mqttServer;
-    doc["mqttUser"] = mqttUser;
-    doc["mqttPass"] = mqttPassword;
-    doc["dhtPin"] = dhtPin;
-    doc["dhtEnabled"] = dhtEnabled;
-    doc["ledPin"] = ledPin;
-    doc["numLeds"] = numLeds;
-    doc["mqttEnabled"] = mqttEnabled;
+    doc["apiUrl"] = appState.apiUrl;
+    doc["mqttServer"] = appState.mqttServer;
+    doc["mqttUser"] = appState.mqttUser;
+    doc["mqttPass"] = appState.mqttPassword;
+    doc["dhtPin"] = appState.dhtPin;
+    doc["dhtEnabled"] = appState.dhtEnabled;
+    doc["ledPin"] = appState.ledPin;
+    doc["numLeds"] = appState.numLeds;
+    doc["mqttEnabled"] = appState.mqttEnabled;
 
     // Benutzerdefinierte Farben
     for (int i = 0; i < 5; i++) {
-        doc["color" + String(i)] = customColors[i];
+        doc["color" + String(i)] = appState.customColors[i];
     }
 
     String jsonContent;
@@ -737,46 +652,46 @@ bool loadSettingsFromFile() {
     }
 
     // Einstellungen aus JSON extrahieren
-    moodUpdateInterval = doc["moodInterval"] | DEFAULT_MOOD_UPDATE_INTERVAL;
-    dhtUpdateInterval = doc["dhtInterval"] | DEFAULT_DHT_READ_INTERVAL;
+    appState.moodUpdateInterval = doc["moodInterval"] | DEFAULT_MOOD_UPDATE_INTERVAL;
+    appState.dhtUpdateInterval = doc["dhtInterval"] | DEFAULT_DHT_READ_INTERVAL;
     // v9.0: headlinesPS removed
-    autoMode = doc["autoMode"] | true;
-    lightOn = doc["lightOn"] | true;
-    manualBrightness = doc["manBright"] | DEFAULT_LED_BRIGHTNESS;
-    manualColor = doc["manColor"] | pixels.Color(255, 255, 255);
+    appState.autoMode = doc["autoMode"] | true;
+    appState.lightOn = doc["lightOn"] | true;
+    appState.manualBrightness = doc["manBright"] | DEFAULT_LED_BRIGHTNESS;
+    appState.manualColor = doc["manColor"] | pixels.Color(255, 255, 255);
 
     // WiFi-Einstellungen
-    wifiSSID = doc["wifiSSID"] | "";
+    appState.wifiSSID = doc["wifiSSID"] | "";
     {
         String loadedWifiPass = doc["wifiPass"] | "";
         if (loadedWifiPass != "****") {
-            wifiPassword = loadedWifiPass;
+            appState.wifiPassword = loadedWifiPass;
         }
     }
-    wifiConfigured = doc["wifiConfigured"] | false;
+    appState.wifiConfigured = doc["wifiConfigured"] | false;
 
     // Erweiterte Einstellungen
-    apiUrl = doc["apiUrl"] | DEFAULT_NEWS_API_URL;
-    mqttServer = doc["mqttServer"] | "";
-    mqttUser = doc["mqttUser"] | "";
+    appState.apiUrl = doc["apiUrl"] | DEFAULT_NEWS_API_URL;
+    appState.mqttServer = doc["mqttServer"] | "";
+    appState.mqttUser = doc["mqttUser"] | "";
     {
         String loadedMqttPass = doc["mqttPass"] | "";
         if (loadedMqttPass != "****") {
-            mqttPassword = loadedMqttPass;
+            appState.mqttPassword = loadedMqttPass;
         }
     }
-    dhtPin = doc["dhtPin"] | DEFAULT_DHT_PIN;
-    dhtEnabled = doc["dhtEnabled"] | true;
-    ledPin = doc["ledPin"] | DEFAULT_LED_PIN;
-    numLeds = constrain(doc["numLeds"] | DEFAULT_NUM_LEDS, 1, MAX_LEDS);
-    statusLedIndex = numLeds - 1;
-    mqttEnabled = doc["mqttEnabled"] | false;
+    appState.dhtPin = doc["dhtPin"] | DEFAULT_DHT_PIN;
+    appState.dhtEnabled = doc["dhtEnabled"] | true;
+    appState.ledPin = doc["ledPin"] | DEFAULT_LED_PIN;
+    appState.numLeds = constrain(doc["numLeds"] | DEFAULT_NUM_LEDS, 1, MAX_LEDS);
+    appState.statusLedIndex = appState.numLeds - 1;
+    appState.mqttEnabled = doc["mqttEnabled"] | false;
 
     // Benutzerdefinierte Farben laden
     for (int i = 0; i < 5; i++) {
         String colorKey = "color" + String(i);
         if (doc[colorKey].is<uint32_t>()) {
-            customColors[i] = doc[colorKey].as<uint32_t>();
+            appState.customColors[i] = doc[colorKey].as<uint32_t>();
         }
     }
 
@@ -792,36 +707,36 @@ void saveSettings()
     preferences.begin("moodlight", false);
 
     // Speichere allgemeine Einstellungen
-    preferences.putULong("moodInterval", moodUpdateInterval);
-    preferences.putULong("dhtInterval", dhtUpdateInterval);
-    preferences.putBool("autoMode", autoMode);
-    preferences.putBool("lightOn", lightOn);
-    preferences.putUChar("manBright", manualBrightness);
-    preferences.putUInt("manColor", manualColor);
+    preferences.putULong("moodInterval", appState.moodUpdateInterval);
+    preferences.putULong("dhtInterval", appState.dhtUpdateInterval);
+    preferences.putBool("autoMode", appState.autoMode);
+    preferences.putBool("lightOn", appState.lightOn);
+    preferences.putUChar("manBright", appState.manualBrightness);
+    preferences.putUInt("manColor", appState.manualColor);
     // v9.0: headlinesPS removed
 
     // Speichere WiFi-Einstellungen
-    preferences.putString("wifiSSID", wifiSSID);
-    preferences.putString("wifiPass", wifiPassword);
-    preferences.putBool("wifiConfigured", wifiConfigured);
+    preferences.putString("wifiSSID", appState.wifiSSID);
+    preferences.putString("wifiPass", appState.wifiPassword);
+    preferences.putBool("wifiConfigured", appState.wifiConfigured);
 
     // Speichere erweiterte Einstellungen
-    preferences.putString("apiUrl", apiUrl);
-    preferences.putString("mqttServer", mqttServer);
-    preferences.putString("mqttUser", mqttUser);
-    preferences.putString("mqttPass", mqttPassword);
-    preferences.putInt("dhtPin", dhtPin);
-    preferences.putBool("dhtEnabled", dhtEnabled);
-    preferences.putInt("ledPin", ledPin);
-    preferences.putInt("numLeds", numLeds);
-    preferences.putBool("mqttEnabled", mqttEnabled);
+    preferences.putString("apiUrl", appState.apiUrl);
+    preferences.putString("mqttServer", appState.mqttServer);
+    preferences.putString("mqttUser", appState.mqttUser);
+    preferences.putString("mqttPass", appState.mqttPassword);
+    preferences.putInt("dhtPin", appState.dhtPin);
+    preferences.putBool("dhtEnabled", appState.dhtEnabled);
+    preferences.putInt("ledPin", appState.ledPin);
+    preferences.putInt("numLeds", appState.numLeds);
+    preferences.putBool("mqttEnabled", appState.mqttEnabled);
 
     // Speichere benutzerdefinierte Farben
-    preferences.putUInt("color0", customColors[0]);
-    preferences.putUInt("color1", customColors[1]);
-    preferences.putUInt("color2", customColors[2]);
-    preferences.putUInt("color3", customColors[3]);
-    preferences.putUInt("color4", customColors[4]);
+    preferences.putUInt("color0", appState.customColors[0]);
+    preferences.putUInt("color1", appState.customColors[1]);
+    preferences.putUInt("color2", appState.customColors[2]);
+    preferences.putUInt("color3", appState.customColors[3]);
+    preferences.putUInt("color4", appState.customColors[4]);
 
     preferences.end();
     debug(F("Einstellungen in Preferences gespeichert."));
@@ -840,37 +755,37 @@ void loadSettings()
         preferences.begin("moodlight", true); // read-only
 
         // Lade allgemeine Einstellungen
-        moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
-        dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
+        appState.moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
+        appState.dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
         // v9.0: headlines_per_source removed
-        autoMode = true;
-        lightOn = true;
-        manualBrightness = DEFAULT_LED_BRIGHTNESS;
-        manualColor = pixels.Color(255, 255, 255);
+        appState.autoMode = true;
+        appState.lightOn = true;
+        appState.manualBrightness = DEFAULT_LED_BRIGHTNESS;
+        appState.manualColor = pixels.Color(255, 255, 255);
 
         // Lade WiFi-Einstellungen
-        wifiSSID = preferences.getString("wifiSSID", "");
-        wifiPassword = preferences.getString("wifiPass", "");
-        wifiConfigured = preferences.getBool("wifiConfigured", false);
+        appState.wifiSSID = preferences.getString("wifiSSID", "");
+        appState.wifiPassword = preferences.getString("wifiPass", "");
+        appState.wifiConfigured = preferences.getBool("wifiConfigured", false);
 
         // Lade erweiterte Einstellungen
-        apiUrl = preferences.getString("apiUrl", DEFAULT_NEWS_API_URL);
-        mqttServer = preferences.getString("mqttServer", "");
-        mqttUser = preferences.getString("mqttUser", "");
-        mqttPassword = preferences.getString("mqttPass", "");
-        dhtPin = preferences.getInt("dhtPin", DEFAULT_DHT_PIN);
-        dhtEnabled = preferences.getBool("dhtEnabled", true);
-        ledPin = preferences.getInt("ledPin", DEFAULT_LED_PIN);
-        numLeds = constrain(preferences.getInt("numLeds", DEFAULT_NUM_LEDS), 1, MAX_LEDS);
-        statusLedIndex = numLeds - 1;
-        mqttEnabled = preferences.getBool("mqttEnabled", false);
+        appState.apiUrl = preferences.getString("apiUrl", DEFAULT_NEWS_API_URL);
+        appState.mqttServer = preferences.getString("mqttServer", "");
+        appState.mqttUser = preferences.getString("mqttUser", "");
+        appState.mqttPassword = preferences.getString("mqttPass", "");
+        appState.dhtPin = preferences.getInt("dhtPin", DEFAULT_DHT_PIN);
+        appState.dhtEnabled = preferences.getBool("dhtEnabled", true);
+        appState.ledPin = preferences.getInt("ledPin", DEFAULT_LED_PIN);
+        appState.numLeds = constrain(preferences.getInt("numLeds", DEFAULT_NUM_LEDS), 1, MAX_LEDS);
+        appState.statusLedIndex = appState.numLeds - 1;
+        appState.mqttEnabled = preferences.getBool("mqttEnabled", false);
 
         // Benutzerdefinierte Farben laden
-        customColors[0] = preferences.getUInt("color0", 0xFF0000);
-        customColors[1] = preferences.getUInt("color1", 0xFFA500);
-        customColors[2] = preferences.getUInt("color2", 0x1E90FF);
-        customColors[3] = preferences.getUInt("color3", 0x545DF0);
-        customColors[4] = preferences.getUInt("color4", 0x8A2BE2);
+        appState.customColors[0] = preferences.getUInt("color0", 0xFF0000);
+        appState.customColors[1] = preferences.getUInt("color1", 0xFFA500);
+        appState.customColors[2] = preferences.getUInt("color2", 0x1E90FF);
+        appState.customColors[3] = preferences.getUInt("color3", 0x545DF0);
+        appState.customColors[4] = preferences.getUInt("color4", 0x8A2BE2);
         preferences.end();
 
         // Nach dem Laden aus Preferences, in Datei speichern für den nächsten Ladevorgang
@@ -880,24 +795,24 @@ void loadSettings()
 
     // Log der geladenen Einstellungen
     debug(F("Einstellungen geladen:"));
-    debug("  Mood Interval: " + String(moodUpdateInterval / 1000) + "s");
-    debug("  DHT Interval: " + String(dhtUpdateInterval / 1000) + "s");
-    debug(String(F("  DHT Enabled: ")) + (dhtEnabled ? "ja" : "nein"));
+    debug("  Mood Interval: " + String(appState.moodUpdateInterval / 1000) + "s");
+    debug("  DHT Interval: " + String(appState.dhtUpdateInterval / 1000) + "s");
+    debug(String(F("  DHT Enabled: ")) + (appState.dhtEnabled ? "ja" : "nein"));
     // v9.0: Headlines debugging removed
-    debug(String(F("  AutoMode: ")) + (autoMode ? "true" : "false"));
-    debug(String(F("  LightOn: ")) + (lightOn ? "true" : "false"));
-    debug(String(F("  WiFi konfiguriert: ")) + (wifiConfigured ? "ja" : "nein"));
+    debug(String(F("  AutoMode: ")) + (appState.autoMode ? "true" : "false"));
+    debug(String(F("  LightOn: ")) + (appState.lightOn ? "true" : "false"));
+    debug(String(F("  WiFi konfiguriert: ")) + (appState.wifiConfigured ? "ja" : "nein"));
 
-    if (wifiConfigured)
+    if (appState.wifiConfigured)
     {
-        debug(String(F("  WiFi SSID: ")) + wifiSSID);
+        debug(String(F("  WiFi SSID: ")) + appState.wifiSSID);
     }
 
-    debug(String(F("  API URL: ")) + apiUrl);
-    debug(String(F("  MQTT Enabled: ")) + (mqttEnabled ? "ja" : "nein"));
-    if (mqttEnabled)
+    debug(String(F("  API URL: ")) + appState.apiUrl);
+    debug(String(F("  MQTT Enabled: ")) + (appState.mqttEnabled ? "ja" : "nein"));
+    if (appState.mqttEnabled)
     {
-        debug(String(F("  MQTT Server: ")) + mqttServer);
+        debug(String(F("  MQTT Server: ")) + appState.mqttServer);
     }
 }
 
@@ -961,7 +876,7 @@ void startAPMode()
 
     // DNS-Server für Captive Portal starten
     dnsServer.start(DNS_PORT, "*", IP);
-    isInConfigMode = true;
+    appState.isInConfigMode = true;
 
     debug("AP gestartet mit IP " + WiFi.softAPIP().toString());
     debug(String(F("SSID: ")) + DEFAULT_AP_NAME);
@@ -973,29 +888,29 @@ void startAPMode()
     setStatusLED(5);
 
     // Merke Zeit für Timeout
-    apModeStartTime = millis();
+    appState.apModeStartTime = millis();
 }
 
 // === WiFi Station-Modus starten ===
 bool startWiFiStation()
 {
-    if (!wifiConfigured || wifiSSID.isEmpty())
+    if (!appState.wifiConfigured || appState.wifiSSID.isEmpty())
     {
         debug(F("Keine WiFi-Konfiguration vorhanden."));
         return false;
     }
 
-    debug(String(F("Verbinde mit WiFi: ")) + wifiSSID);
+    debug(String(F("Verbinde mit WiFi: ")) + appState.wifiSSID);
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
     WiFi.persistent(true);
 
     // Use the safer WiFi connect method
-    bool connected = safeWiFiConnect(wifiSSID, wifiPassword, 15000);
+    bool connected = safeWiFiConnect(appState.wifiSSID, appState.wifiPassword, 15000);
 
     if (connected)
     {
-        wifiWasConnected = true;
+        appState.wifiWasConnected = true;
         
         // Synchronize time via NTP after successful WiFi connection
         initTime();
@@ -1538,7 +1453,7 @@ void handleApiStatus() {
     JsonDocument doc;
 
     doc["wifi"] = WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected";
-    doc["mqtt"] = mqttEnabled && mqtt.isConnected() ? "Connected" : (mqttEnabled ? "Disconnected" : "Disabled");
+    doc["mqtt"] = appState.mqttEnabled && mqtt.isConnected() ? "Connected" : (appState.mqttEnabled ? "Disconnected" : "Disabled");
 
     // System Info
     unsigned long uptime = millis() / 1000;
@@ -1552,26 +1467,26 @@ void handleApiStatus() {
 
     doc["rssi"] = WiFi.status() == WL_CONNECTED ? String(WiFi.RSSI()) + " dBm" : "N/A";
     doc["heap"] = String(ESP.getFreeHeap() / 1024) + " KB";
-    doc["sentiment"] = String(lastSentimentScore, 2) + " (" + lastSentimentCategory + ")";
-    doc["dhtEnabled"] = dhtEnabled;
-    doc["dht"] = isnan(lastTemp) ? "N/A" : String(lastTemp, 1) + "°C / " + String(lastHum, 1) + "%";
-    doc["mode"] = autoMode ? "Auto" : "Manual";
-    doc["lightOn"] = lightOn;
-    doc["brightness"] = manualBrightness;
+    doc["sentiment"] = String(appState.sentimentScore, 2) + " (" + appState.sentimentCategory + ")";
+    doc["dhtEnabled"] = appState.dhtEnabled;
+    doc["dht"] = isnan(appState.currentTemp) ? "N/A" : String(appState.currentTemp, 1) + "°C / " + String(appState.currentHum, 1) + "%";
+    doc["mode"] = appState.autoMode ? "Auto" : "Manual";
+    doc["lightOn"] = appState.lightOn;
+    doc["brightness"] = appState.manualBrightness;
     // v9.0: headlines removed
     doc["version"] = SOFTWARE_VERSION;
 
     // LED-Farbe als Hex
     uint32_t currentColor;
-    if (autoMode)
+    if (appState.autoMode)
     {
-        currentLedIndex = constrain(currentLedIndex, 0, 4);
-        ColorDefinition color = getColorDefinition(currentLedIndex);
+        appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
+        ColorDefinition color = getColorDefinition(appState.currentLedIndex);
         currentColor = pixels.Color(color.r, color.g, color.b);
     }
     else
     {
-        currentColor = manualColor;
+        currentColor = appState.manualColor;
     }
 
     uint8_t r = (currentColor >> 16) & 0xFF;
@@ -1582,10 +1497,10 @@ void handleApiStatus() {
     doc["ledColor"] = hexColor;
 
     // Status-LED Info
-    if (statusLedMode != 0)
+    if (appState.statusLedMode != 0)
     {
         char statusLedColor[8] = "#000000";
-        switch (statusLedMode)
+        switch (appState.statusLedMode)
         {
         case 1:
             strcpy(statusLedColor, "#0000FF");
@@ -1603,7 +1518,7 @@ void handleApiStatus() {
             strcpy(statusLedColor, "#FFFF00");
             break; // AP - Gelb
         }
-        doc["statusLedMode"] = statusLedMode;
+        doc["statusLedMode"] = appState.statusLedMode;
         doc["statusLedColor"] = statusLedColor;
     }
     else
@@ -1721,16 +1636,16 @@ void handleSentiment(float sentimentScore)
     sentimentScore = constrain(sentimentScore, -1.0, 1.0);
 
     // Sende Score an HA nur bei Änderung
-    if (abs(sentimentScore - lastSentimentScore) >= 0.01 || !initialAnalysisDone)
+    if (abs(sentimentScore - appState.sentimentScore) >= 0.01 || !appState.initialAnalysisDone)
     {
         String haValue = floatToString(sentimentScore, 2);
 
-        if (mqttEnabled && mqtt.isConnected())
+        if (appState.mqttEnabled && mqtt.isConnected())
         {
             haSentimentScore.setValue(haValue.c_str());
         }
 
-        lastSentimentScore = sentimentScore;
+        appState.sentimentScore = sentimentScore;
         debug("Neuer Sentiment Score: " + haValue);
     }
 
@@ -1760,33 +1675,33 @@ void handleSentiment(float sentimentScore)
     }
 
     // Sende Kategorie an HA nur bei Änderung
-    if (categoryText != lastSentimentCategory || !initialAnalysisDone)
+    if (categoryText != appState.sentimentCategory || !appState.initialAnalysisDone)
     {
-        if (mqttEnabled && mqtt.isConnected())
+        if (appState.mqttEnabled && mqtt.isConnected())
         {
             haSentimentCategory.setValue(categoryText.c_str());
         }
 
-        lastSentimentCategory = categoryText;
+        appState.sentimentCategory = categoryText;
         debug("Neue Sentiment Kategorie: " + categoryText);
     }
 
     // Aktualisiere LED Index & LEDs nur bei Änderung
-    if (newLedIndex != currentLedIndex || !initialAnalysisDone)
+    if (newLedIndex != appState.currentLedIndex || !appState.initialAnalysisDone)
     { // Auch beim ersten Mal aktualisieren
-        debug("LED Index geändert von " + String(currentLedIndex) + " zu " + String(newLedIndex) + " (" + categoryText + ")");
-        currentLedIndex = newLedIndex;
-        lastLedIndex = currentLedIndex;
-        if (autoMode && lightOn)
+        debug("LED Index geändert von " + String(appState.currentLedIndex) + " zu " + String(newLedIndex) + " (" + categoryText + ")");
+        appState.currentLedIndex = newLedIndex;
+        appState.lastLedIndex = appState.currentLedIndex;
+        if (appState.autoMode && appState.lightOn)
         {
             updateLEDs(); // Ruft optimierte Funktion auf
         }
     }
 
     // API ist erreichbar
-    sentimentAPIAvailable = true;
-    consecutiveSentimentFailures = 0;
-    lastSuccessfulSentimentUpdate = millis();
+    appState.sentimentAPIAvailable = true;
+    appState.consecutiveSentimentFailures = 0;
+    appState.lastSuccessfulSentimentUpdate = millis();
 }
 
 // Safer string handling function
@@ -1932,17 +1847,17 @@ void setupWebServer()
             doc["ip"] = WiFi.localIP().toString();
         }
 
-        doc["mqttEnabled"] = mqttEnabled;
-        doc["mqttConnected"] = mqttEnabled && mqtt.isConnected();
+        doc["mqttEnabled"] = appState.mqttEnabled;
+        doc["mqttConnected"] = appState.mqttEnabled && mqtt.isConnected();
         doc["temperature"] = temperatureRead();
-        doc["sentiment"] = lastSentimentScore;
-        doc["sentimentCategory"] = lastSentimentCategory;
+        doc["sentiment"] = appState.sentimentScore;
+        doc["sentimentCategory"] = appState.sentimentCategory;
 
         bool memoryOk = ESP.getFreeHeap() > 30000;
         bool fragmentationOk = (float)ESP.getMaxAllocHeap() / ESP.getFreeHeap() > 0.7;
         bool filesystemOk = ((float)used * 100.0 / total) < 80.0;
         bool wifiOk = WiFi.status() == WL_CONNECTED && WiFi.RSSI() > -80;
-        bool mqttOk = !mqttEnabled || (mqttEnabled && mqtt.isConnected());
+        bool mqttOk = !appState.mqttEnabled || (appState.mqttEnabled && mqtt.isConnected());
 
         doc["status"]["memory"] = memoryOk ? "ok" : "warning";
         doc["status"]["fragmentation"] = fragmentationOk ? "ok" : "warning";
@@ -2090,9 +2005,9 @@ server.on("/api/ui-version", HTTP_GET, []() {
     server.on("/api/settings/hardware", HTTP_GET, []() {
         JsonDocument doc;
         
-        doc["ledPin"] = ledPin;
-        doc["dhtPin"] = dhtPin;
-        doc["numLeds"] = numLeds;
+        doc["ledPin"] = appState.ledPin;
+        doc["dhtPin"] = appState.dhtPin;
+        doc["numLeds"] = appState.numLeds;
         
         char* jsonBuffer = jsonPool.acquire();
         size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
@@ -2109,33 +2024,33 @@ server.on("/api/export/settings", HTTP_GET, []() {
     JsonDocument doc;
     
     // Allgemeine Einstellungen
-    doc["moodInterval"] = moodUpdateInterval / 1000;
-    doc["dhtInterval"] = dhtUpdateInterval / 1000;
-    doc["autoMode"] = autoMode;
-    doc["lightOn"] = lightOn;
-    doc["manBright"] = manualBrightness;
-    doc["manColor"] = manualColor;
+    doc["moodInterval"] = appState.moodUpdateInterval / 1000;
+    doc["dhtInterval"] = appState.dhtUpdateInterval / 1000;
+    doc["autoMode"] = appState.autoMode;
+    doc["lightOn"] = appState.lightOn;
+    doc["manBright"] = appState.manualBrightness;
+    doc["manColor"] = appState.manualColor;
     // v9.0: headlinesPS removed
     
     // WiFi-Einstellungen
-    doc["wifiSSID"] = wifiSSID;
+    doc["wifiSSID"] = appState.wifiSSID;
     doc["wifiPass"] = "****";
-    doc["wifiConfigured"] = wifiConfigured;
+    doc["wifiConfigured"] = appState.wifiConfigured;
 
     // Erweiterte Einstellungen
-    doc["apiUrl"] = apiUrl;
-    doc["mqttServer"] = mqttServer;
-    doc["mqttUser"] = mqttUser;
+    doc["apiUrl"] = appState.apiUrl;
+    doc["mqttServer"] = appState.mqttServer;
+    doc["mqttUser"] = appState.mqttUser;
     doc["mqttPass"] = "****";
-    doc["dhtPin"] = dhtPin;
-    doc["dhtEnabled"] = dhtEnabled;
-    doc["ledPin"] = ledPin;
-    doc["numLeds"] = numLeds;
-    doc["mqttEnabled"] = mqttEnabled;
+    doc["dhtPin"] = appState.dhtPin;
+    doc["dhtEnabled"] = appState.dhtEnabled;
+    doc["ledPin"] = appState.ledPin;
+    doc["numLeds"] = appState.numLeds;
+    doc["mqttEnabled"] = appState.mqttEnabled;
 
     // Benutzerdefinierte Farben
     for (int i = 0; i < 5; i++) {
-        doc["color" + String(i)] = customColors[i];
+        doc["color" + String(i)] = appState.customColors[i];
     }
 
     String jsonContent;
@@ -2151,11 +2066,11 @@ server.on("/api/export/settings", HTTP_GET, []() {
 server.on("/api/settings/api", HTTP_GET, []() {
     JsonDocument doc;
     
-    doc["apiUrl"] = apiUrl;
-    doc["moodInterval"] = moodUpdateInterval / 1000;
-    doc["dhtInterval"] = dhtUpdateInterval / 1000;
+    doc["apiUrl"] = appState.apiUrl;
+    doc["moodInterval"] = appState.moodUpdateInterval / 1000;
+    doc["dhtInterval"] = appState.dhtUpdateInterval / 1000;
     // v9.0: headlinesPerSource removed
-    doc["dhtEnabled"] = dhtEnabled;
+    doc["dhtEnabled"] = appState.dhtEnabled;
     
     char* jsonBuffer = jsonPool.acquire();
     size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
@@ -2166,9 +2081,9 @@ server.on("/api/settings/api", HTTP_GET, []() {
   server.on("/api/settings/mqtt", HTTP_GET, []() {
     JsonDocument doc;
     
-    doc["enabled"] = mqttEnabled;
-    doc["server"] = mqttServer;
-    doc["user"] = mqttUser;
+    doc["enabled"] = appState.mqttEnabled;
+    doc["server"] = appState.mqttServer;
+    doc["user"] = appState.mqttUser;
     doc["pass"] = "****";
     
     char* jsonBuffer = jsonPool.acquire();
@@ -2184,7 +2099,7 @@ server.on("/api/settings/api", HTTP_GET, []() {
   
     for (int i = 0; i < 5; i++) {
       // uint32 Farbe in Hex-String konvertieren
-      uint32_t color = customColors[i];
+      uint32_t color = appState.customColors[i];
       char hexColor[8];
       sprintf(hexColor, "#%06X", color);
       colors.add(hexColor);
@@ -2243,17 +2158,17 @@ server.on("/api/settings/api", HTTP_GET, []() {
     }
 
     // Werte aus JSON extrahieren
-    wifiSSID = doc["ssid"].as<String>();
-    wifiPassword = doc["pass"].as<String>();
-    wifiConfigured = true;
+    appState.wifiSSID = doc["ssid"].as<String>();
+    appState.wifiPassword = doc["pass"].as<String>();
+    appState.wifiConfigured = true;
 
     // Einstellungen speichern
-    settingsNeedSaving = true;
-    lastSettingsSaved = millis();
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 
     // Reboot planen
-    rebootNeeded = true;
-    rebootTime = millis() + REBOOT_DELAY;
+    appState.rebootNeeded = true;
+    appState.rebootTime = millis() + REBOOT_DELAY;
 
     server.send(200, "text/plain", "OK");
     debug(F("Neue WiFi-Einstellungen gespeichert, Reboot geplant")); });
@@ -2261,17 +2176,17 @@ server.on("/api/settings/api", HTTP_GET, []() {
     // WiFi zurücksetzen
     server.on("/resetwifi", HTTP_POST, []()
               {
-    wifiSSID = "";
-    wifiPassword = "";
-    wifiConfigured = false;
+    appState.wifiSSID = "";
+    appState.wifiPassword = "";
+    appState.wifiConfigured = false;
 
     // Einstellungen speichern
-    settingsNeedSaving = true;
-    lastSettingsSaved = millis();
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 
     // Reboot planen
-    rebootNeeded = true;
-    rebootTime = millis() + REBOOT_DELAY;
+    appState.rebootNeeded = true;
+    appState.rebootTime = millis() + REBOOT_DELAY;
 
     server.send(200, "text/plain", "OK");
     debug(F("WiFi-Einstellungen zurückgesetzt, Reboot geplant")); });
@@ -2290,18 +2205,18 @@ server.on("/api/settings/api", HTTP_GET, []() {
     }
 
     // Werte aus JSON extrahieren
-    mqttEnabled = doc["enabled"].as<bool>();
-    mqttServer = doc["server"].as<String>();
-    mqttUser = doc["user"].as<String>();
-    mqttPassword = doc["pass"].as<String>();
+    appState.mqttEnabled = doc["enabled"].as<bool>();
+    appState.mqttServer = doc["server"].as<String>();
+    appState.mqttUser = doc["user"].as<String>();
+    appState.mqttPassword = doc["pass"].as<String>();
 
     // Einstellungen speichern
-    settingsNeedSaving = true;
-    lastSettingsSaved = millis();
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 
     // Reboot planen
-    rebootNeeded = true;
-    rebootTime = millis() + REBOOT_DELAY;
+    appState.rebootNeeded = true;
+    appState.rebootTime = millis() + REBOOT_DELAY;
 
     server.send(200, "text/plain", "OK");
     debug(F("MQTT-Einstellungen gespeichert, Reboot geplant")); });
@@ -2325,28 +2240,28 @@ server.on("/api/settings/api", HTTP_GET, []() {
     // Werte aus JSON extrahieren und globale Variablen aktualisieren
     if (doc["apiUrl"].is<const char*>()) {
       String newApiUrl = doc["apiUrl"].as<String>();
-      if (newApiUrl != apiUrl) {
-        apiUrl = newApiUrl;
-        lastMoodUpdate = 0;  // Erzwinge Sentiment-Update bei nächster Gelegenheit
+      if (newApiUrl != appState.apiUrl) {
+        appState.apiUrl = newApiUrl;
+        appState.lastMoodUpdate = 0;  // Erzwinge Sentiment-Update bei nächster Gelegenheit
         changed = true;
-        debug(String(F("API URL geändert zu: ")) + apiUrl);
+        debug(String(F("API URL geändert zu: ")) + appState.apiUrl);
       }
     }
     if (doc["moodInterval"].is<float>()) {
       unsigned long newMoodInterval = 1000UL * doc["moodInterval"].as<unsigned long>();
       newMoodInterval = constrain(newMoodInterval, 10000, 7200000);  // Mind. 10s, Max 2h
-      if (newMoodInterval != moodUpdateInterval) {
-        moodUpdateInterval = newMoodInterval;
+      if (newMoodInterval != appState.moodUpdateInterval) {
+        appState.moodUpdateInterval = newMoodInterval;
         changed = true;
-        debug(String(F("Mood Interval geändert zu: ")) + String(moodUpdateInterval / 1000) + F("s"));
+        debug(String(F("Mood Interval geändert zu: ")) + String(appState.moodUpdateInterval / 1000) + F("s"));
       }
     }
     if (doc["dhtEnabled"].is<float>()) {
       bool newDhtEnabled = doc["dhtEnabled"].as<bool>();
-      if (newDhtEnabled != dhtEnabled) {
-        dhtEnabled = newDhtEnabled;
+      if (newDhtEnabled != appState.dhtEnabled) {
+        appState.dhtEnabled = newDhtEnabled;
         changed = true;
-        debug(String(F("DHT Enabled geändert zu: ")) + (dhtEnabled ? "ja" : "nein"));
+        debug(String(F("DHT Enabled geändert zu: ")) + (appState.dhtEnabled ? "ja" : "nein"));
       }
     }
     // v9.0: headlinesPerSource removed - only for legacy API endpoints
@@ -2355,10 +2270,10 @@ server.on("/api/settings/api", HTTP_GET, []() {
     if (doc["dhtInterval"].is<float>()) {
       unsigned long newDhtInterval = 1000UL * doc["dhtInterval"].as<unsigned long>();
       newDhtInterval = constrain(newDhtInterval, 10000, 3600000);  // Mind. 10s, Max 1h
-      if (newDhtInterval != dhtUpdateInterval) {
-        dhtUpdateInterval = newDhtInterval;
+      if (newDhtInterval != appState.dhtUpdateInterval) {
+        appState.dhtUpdateInterval = newDhtInterval;
         changed = true;
-        debug(String(F("DHT Interval geändert zu: ")) + String(dhtUpdateInterval / 1000) + F("s"));
+        debug(String(F("DHT Interval geändert zu: ")) + String(appState.dhtUpdateInterval / 1000) + F("s"));
       }
     }
 
@@ -2366,20 +2281,20 @@ server.on("/api/settings/api", HTTP_GET, []() {
     if (changed) {
       debug(F("API/Intervall-Einstellungen geändert. Speichere und aktualisiere HA..."));
       // Einstellungen speichern
-      settingsNeedSaving = true;
-      lastSettingsSaved = millis();
+      appState.settingsNeedSaving = true;
+      appState.lastSettingsSaved = millis();
 
       // HA Entitäten aktualisieren, falls MQTT verbunden
-      if (mqttEnabled && mqtt.isConnected()) {
+      if (appState.mqttEnabled && mqtt.isConnected()) {
         // API Update Interval
-        haUpdateInterval.setState(float(moodUpdateInterval / 1000.0));
-        debug(String(F("  HA: haUpdateInterval auf ")) + String(moodUpdateInterval / 1000.0) + F("s gesetzt."));
+        haUpdateInterval.setState(float(appState.moodUpdateInterval / 1000.0));
+        debug(String(F("  HA: haUpdateInterval auf ")) + String(appState.moodUpdateInterval / 1000.0) + F("s gesetzt."));
 
         // v9.0: haHeadlinesPerSource removed
 
         // DHT Update Interval
-        haDhtInterval.setState(float(dhtUpdateInterval / 1000.0));
-        debug(String(F("  HA: haDhtInterval auf ")) + String(dhtUpdateInterval / 1000.0) + F("s gesetzt."));
+        haDhtInterval.setState(float(appState.dhtUpdateInterval / 1000.0));
+        debug(String(F("  HA: haDhtInterval auf ")) + String(appState.dhtUpdateInterval / 1000.0) + F("s gesetzt."));
       } else {
         debug(F("  HA: MQTT nicht verbunden, Zustände nicht gesendet."));
       }
@@ -2413,14 +2328,14 @@ server.on("/api/settings/api", HTTP_GET, []() {
             String hexColor = colorValue.as<String>();
             uint32_t rgb = 0;
             sscanf(hexColor.c_str(), "%x", &rgb);
-            customColors[index] = rgb;
+            appState.customColors[index] = rgb;
             index++;
         }
     }
 
       // Einstellungen speichern
-      settingsNeedSaving = true;
-      lastSettingsSaved = millis();
+      appState.settingsNeedSaving = true;
+      appState.lastSettingsSaved = millis();
 
       server.send(200, "text/plain", "OK");
       debug(F("Farbeinstellungen gespeichert."));
@@ -2518,17 +2433,17 @@ server.on("/testapi", HTTP_POST, []() {
     bool needsReboot = false;
 
     // Werte aus JSON extrahieren und prüfen, ob Änderung vorliegt
-    if (doc["ledPin"].is<int>() && doc["ledPin"].as<int>() != ledPin) {
-        ledPin = doc["ledPin"].as<int>();
+    if (doc["ledPin"].is<int>() && doc["ledPin"].as<int>() != appState.ledPin) {
+        appState.ledPin = doc["ledPin"].as<int>();
         needsReboot = true;  // Pin-Änderung erfordert Neustart
     }
-    if (doc["dhtPin"].is<int>() && doc["dhtPin"].as<int>() != dhtPin) {
-        dhtPin = doc["dhtPin"].as<int>();
+    if (doc["dhtPin"].is<int>() && doc["dhtPin"].as<int>() != appState.dhtPin) {
+        appState.dhtPin = doc["dhtPin"].as<int>();
         needsReboot = true;  // Pin-Änderung erfordert Neustart
     }
 
-    if (doc["numLeds"].is<int>() && doc["numLeds"].as<int>() != numLeds) {
-        numLeds = doc["numLeds"].as<int>();
+    if (doc["numLeds"].is<int>() && doc["numLeds"].as<int>() != appState.numLeds) {
+        appState.numLeds = doc["numLeds"].as<int>();
         needsReboot = true;  // LED-Anzahl-Änderung erfordert Neustart
     }
 
@@ -2536,12 +2451,12 @@ server.on("/testapi", HTTP_POST, []() {
 
     if (needsReboot) {
       // Einstellungen speichern (nur wenn relevant)
-      settingsNeedSaving = true;
-      lastSettingsSaved = millis();  // Speichert die geänderten Pins/LEDs
+      appState.settingsNeedSaving = true;
+      appState.lastSettingsSaved = millis();  // Speichert die geänderten Pins/LEDs
 
       // Reboot planen (ist für Pin/LED-Änderungen notwendig)
-      rebootNeeded = true;
-      rebootTime = millis() + REBOOT_DELAY;
+      appState.rebootNeeded = true;
+      appState.rebootTime = millis() + REBOOT_DELAY;
 
       server.send(200, "text/plain", "OK");
       debug(F("Hardware Pin/LED-Einstellungen gespeichert, Reboot geplant"));
@@ -2561,24 +2476,24 @@ server.on("/testapi", HTTP_POST, []() {
     preferences.end();
 
     // Standardwerte wiederherstellen
-    wifiSSID = "";
-    wifiPassword = "";
-    wifiConfigured = false;
-    mqttEnabled = false;
-    mqttServer = "";
-    mqttUser = "";
-    mqttPassword = "";
-    apiUrl = DEFAULT_NEWS_API_URL;
-    moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
-    dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
-    ledPin = DEFAULT_LED_PIN;
-    dhtPin = DEFAULT_DHT_PIN;
-    numLeds = DEFAULT_NUM_LEDS;
+    appState.wifiSSID = "";
+    appState.wifiPassword = "";
+    appState.wifiConfigured = false;
+    appState.mqttEnabled = false;
+    appState.mqttServer = "";
+    appState.mqttUser = "";
+    appState.mqttPassword = "";
+    appState.apiUrl = DEFAULT_NEWS_API_URL;
+    appState.moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
+    appState.dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
+    appState.ledPin = DEFAULT_LED_PIN;
+    appState.dhtPin = DEFAULT_DHT_PIN;
+    appState.numLeds = DEFAULT_NUM_LEDS;
     // v9.0: headlines_per_source removed
 
     // Reboot planen
-    rebootNeeded = true;
-    rebootTime = millis() + REBOOT_DELAY;
+    appState.rebootNeeded = true;
+    appState.rebootTime = millis() + REBOOT_DELAY;
 
     server.send(200, "text/plain", "OK");
     debug(F("Factory Reset durchgeführt, Reboot geplant")); });
@@ -2588,9 +2503,9 @@ server.on("/testapi", HTTP_POST, []() {
               {
     String logs = "";
     for (int i = 0; i < LOG_BUFFER_SIZE; i++) {
-      int idx = (logIndex + i) % LOG_BUFFER_SIZE;
-      if (logBuffer[idx].length() > 0) {
-        logs += logBuffer[idx] + "<br>";
+      int idx = (appState.logIndex + i) % LOG_BUFFER_SIZE;
+      if (appState.logBuffer[idx].length() > 0) {
+        logs += appState.logBuffer[idx] + "<br>";
       }
     }
     server.send(200, "text/html", logs); });
@@ -2601,7 +2516,7 @@ server.on("/testapi", HTTP_POST, []() {
     JsonDocument doc;
 
     doc["wifi"] = WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected";
-    doc["mqtt"] = mqttEnabled && mqtt.isConnected() ? "Connected" : (mqttEnabled ? "Disconnected" : "Disabled");
+    doc["mqtt"] = appState.mqttEnabled && mqtt.isConnected() ? "Connected" : (appState.mqttEnabled ? "Disconnected" : "Disabled");
 
     unsigned long uptime = millis() / 1000;
     int days = uptime / 86400;
@@ -2614,22 +2529,22 @@ server.on("/testapi", HTTP_POST, []() {
 
     doc["rssi"] = WiFi.status() == WL_CONNECTED ? String(WiFi.RSSI()) + " dBm" : "N/A";
     doc["heap"] = String(ESP.getFreeHeap() / 1024) + " KB";
-    doc["sentiment"] = String(lastSentimentScore, 2) + " (" + lastSentimentCategory + ")";
-    doc["dhtEnabled"] = dhtEnabled;
-    doc["dht"] = isnan(lastTemp) ? "N/A" : String(lastTemp, 1) + "°C / " + String(lastHum, 1) + "%";
-    doc["mode"] = autoMode ? "Auto" : "Manual";
-    doc["lightOn"] = lightOn;
-    doc["brightness"] = manualBrightness;
+    doc["sentiment"] = String(appState.sentimentScore, 2) + " (" + appState.sentimentCategory + ")";
+    doc["dhtEnabled"] = appState.dhtEnabled;
+    doc["dht"] = isnan(appState.currentTemp) ? "N/A" : String(appState.currentTemp, 1) + "°C / " + String(appState.currentHum, 1) + "%";
+    doc["mode"] = appState.autoMode ? "Auto" : "Manual";
+    doc["lightOn"] = appState.lightOn;
+    doc["brightness"] = appState.manualBrightness;
     // v9.0: headlines removed
 
     // LED-Farbe als Hex holen
     uint32_t currentColor;
-    if (autoMode) {
-      currentLedIndex = constrain(currentLedIndex, 0, 4);
-      ColorDefinition color = getColorDefinition(currentLedIndex);
+    if (appState.autoMode) {
+      appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
+      ColorDefinition color = getColorDefinition(appState.currentLedIndex);
       currentColor = pixels.Color(color.r, color.g, color.b);
     } else {
-      currentColor = manualColor;
+      currentColor = appState.manualColor;
     }
 
     uint8_t r = (currentColor >> 16) & 0xFF;
@@ -2640,16 +2555,16 @@ server.on("/testapi", HTTP_POST, []() {
     doc["ledColor"] = hexColor;
 
     // Status-LED Info
-    if (statusLedMode != 0) {
+    if (appState.statusLedMode != 0) {
       char statusLedColor[8] = "#000000";
-      switch (statusLedMode) {
+      switch (appState.statusLedMode) {
         case 1: strcpy(statusLedColor, "#0000FF"); break;  // WiFi - Blau
         case 2: strcpy(statusLedColor, "#FF0000"); break;  // API - Rot
         case 3: strcpy(statusLedColor, "#00FF00"); break;  // Update - Grün
         case 4: strcpy(statusLedColor, "#00FFFF"); break;  // MQTT - Cyan
         case 5: strcpy(statusLedColor, "#FFFF00"); break;  // AP - Gelb
       }
-      doc["statusLedMode"] = statusLedMode;
+      doc["statusLedMode"] = appState.statusLedMode;
       doc["statusLedColor"] = statusLedColor;
     } else {
       doc["statusLedMode"] = 0;
@@ -2676,12 +2591,12 @@ server.on("/refresh", HTTP_GET, []() {
     // Erfolg melden, damit die UI nicht blockiert
     server.send(200, "text/plain", "Refresh initiated");
 
-    isPulsing = true;
-    pulseStartTime = millis();
+    appState.isPulsing = true;
+    appState.pulseStartTime = millis();
 
     debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
     // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
-    if (http.begin(wifiClientHTTP, apiUrl)) {
+    if (http.begin(wifiClientHTTP, appState.apiUrl)) {
       http.setTimeout(10000);  // Kürzeres Timeout für UI-Feedback
       int httpCode = http.GET();
 
@@ -2694,7 +2609,7 @@ server.on("/refresh", HTTP_GET, []() {
                 receivedSentiment = doc["sentiment"].as<float>();
                 success = true;
                 debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
-                lastMoodUpdate = millis();
+                appState.lastMoodUpdate = millis();
             } else {
                 debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
             }
@@ -2703,7 +2618,7 @@ server.on("/refresh", HTTP_GET, []() {
         }
       } else {
         debug(String(F("HTTP Fehler: ")) + String(httpCode));
-        consecutiveSentimentFailures++;
+        appState.consecutiveSentimentFailures++;
       }
       http.end();
     }
@@ -2711,8 +2626,8 @@ server.on("/refresh", HTTP_GET, []() {
     // Verarbeite das empfangene Sentiment
     if (success) {
       handleSentiment(receivedSentiment);
-      initialAnalysisDone = true;
-      if (statusLedMode == 2) {
+      appState.initialAnalysisDone = true;
+      if (appState.statusLedMode == 2) {
         setStatusLED(0);  // Normalmodus
       }
 
@@ -2723,14 +2638,14 @@ server.on("/refresh", HTTP_GET, []() {
     }
 
     // Aktualisierung abschließen
-    isPulsing = false;
+    appState.isPulsing = false;
     updateLEDs();
     debug(F("Force-Update abgeschlossen."));
 });
     // toggle-light Endpunkt
     server.on("/toggle-light", HTTP_GET, []()
               {
-    lightOn = !lightOn;
+    appState.lightOn = !appState.lightOn;
 
     // Erst die Antwort senden
     server.send(200, "text/plain", "OK");
@@ -2739,7 +2654,7 @@ server.on("/refresh", HTTP_GET, []() {
     delay(50);
 
     // Dann LEDs aktualisieren
-    if (lightOn) {
+    if (appState.lightOn) {
       updateLEDs();
     } else {
       pixels.clear();
@@ -2750,36 +2665,36 @@ server.on("/refresh", HTTP_GET, []() {
     delay(50);
 
     // Zum Schluss die Einstellungen speichern
-    settingsNeedSaving = true;
-    lastSettingsSaved = millis();
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 
     // Home Assistant aktualisieren
-    if (mqttEnabled && mqtt.isConnected()) {
-      haLight.setState(lightOn);
+    if (appState.mqttEnabled && mqtt.isConnected()) {
+      haLight.setState(appState.lightOn);
     }
 
-    debug(String(F("Licht über Web umgeschaltet: ")) + (lightOn ? "AN" : "AUS")); });
+    debug(String(F("Licht über Web umgeschaltet: ")) + (appState.lightOn ? "AN" : "AUS")); });
 
     // toggle-mode Endpunkt
     server.on("/toggle-mode", HTTP_GET, []()
               {
-    autoMode = !autoMode;
+    appState.autoMode = !appState.autoMode;
     // Home Assistant aktualisieren, wenn aktiviert
-    if (mqttEnabled && mqtt.isConnected()) {
-      haMode.setState(autoMode ? 0 : 1);
+    if (appState.mqttEnabled && mqtt.isConnected()) {
+      haMode.setState(appState.autoMode ? 0 : 1);
     }
 
     // LEDs aktualisieren, wenn Licht an ist
-    if (lightOn) {
+    if (appState.lightOn) {
       updateLEDs();
     }
 
     // Einstellung speichern
-    settingsNeedSaving = true;
-    lastSettingsSaved = millis();
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 
     server.send(200, "text/plain", "OK");
-    debug(String(F("Modus über Web umgeschaltet: ")) + (autoMode ? "Auto" : "Manual")); });
+    debug(String(F("Modus über Web umgeschaltet: ")) + (appState.autoMode ? "Auto" : "Manual")); });
 
     // set-color Endpunkt
     server.on("/set-color", HTTP_GET, []()
@@ -2797,15 +2712,15 @@ server.on("/refresh", HTTP_GET, []() {
       uint8_t b = rgb & 0xFF;
 
       // Farbe setzen
-      manualColor = pixels.Color(r, g, b);
+      appState.manualColor = pixels.Color(r, g, b);
 
       // LEDs aktualisieren, wenn im manuellen Modus und Licht an
-      if (!autoMode && lightOn) {
+      if (!appState.autoMode && appState.lightOn) {
         updateLEDs();
       }
 
       // Home Assistant aktualisieren, wenn aktiviert
-      if (mqttEnabled && mqtt.isConnected()) {
+      if (appState.mqttEnabled && mqtt.isConnected()) {
         HALight::RGBColor color;
         color.red = r;
         color.green = g;
@@ -2814,8 +2729,8 @@ server.on("/refresh", HTTP_GET, []() {
       }
 
       // Einstellung speichern
-      settingsNeedSaving = true;
-      lastSettingsSaved = millis();
+      appState.settingsNeedSaving = true;
+      appState.lastSettingsSaved = millis();
 
       server.send(200, "text/plain", "OK");
       debug(String(F("Farbe über Web gesetzt: #")) + hexColor);
@@ -2829,21 +2744,21 @@ server.on("/refresh", HTTP_GET, []() {
     if (server.hasArg("value")) {
       int brightness = server.arg("value").toInt();
       brightness = constrain(brightness, 10, 255);
-      manualBrightness = brightness;
+      appState.manualBrightness = brightness;
 
       // LEDs aktualisieren, wenn im manuellen Modus und Licht an
-      if (!autoMode && lightOn) {
+      if (!appState.autoMode && appState.lightOn) {
         updateLEDs();
       }
 
       // Home Assistant aktualisieren, wenn aktiviert
-      if (mqttEnabled && mqtt.isConnected()) {
+      if (appState.mqttEnabled && mqtt.isConnected()) {
         haLight.setBrightness(brightness);
       }
 
       // Einstellung speichern
-      settingsNeedSaving = true;
-      lastSettingsSaved = millis();
+      appState.settingsNeedSaving = true;
+      appState.lastSettingsSaved = millis();
 
       server.send(200, "text/plain", "OK");
       debug(String(F("Helligkeit über Web gesetzt: ")) + brightness);
@@ -2857,38 +2772,38 @@ server.on("/refresh", HTTP_GET, []() {
         JsonDocument doc;
         
         // Allgemeine Einstellungen
-        doc["moodInterval"] = moodUpdateInterval / 1000;
-        doc["dhtInterval"] = dhtUpdateInterval / 1000;
-        doc["autoMode"] = autoMode;
-        doc["lightOn"] = lightOn;
-        doc["manBright"] = manualBrightness;
+        doc["moodInterval"] = appState.moodUpdateInterval / 1000;
+        doc["dhtInterval"] = appState.dhtUpdateInterval / 1000;
+        doc["autoMode"] = appState.autoMode;
+        doc["lightOn"] = appState.lightOn;
+        doc["manBright"] = appState.manualBrightness;
         
         // Farbe als HEX
         char hexColor[10];
-        sprintf(hexColor, "#%06X", manualColor);
+        sprintf(hexColor, "#%06X", appState.manualColor);
         doc["manColor"] = hexColor;
         
         // v9.0: headlinesPS removed
       
         // WiFi-Einstellungen (Passwort maskiert)
-        doc["wifiSSID"] = wifiSSID;
-        doc["wifiConfigured"] = wifiConfigured;
+        doc["wifiSSID"] = appState.wifiSSID;
+        doc["wifiConfigured"] = appState.wifiConfigured;
       
         // Erweiterte Einstellungen (Passwort maskiert)
-        doc["apiUrl"] = apiUrl;
-        doc["mqttServer"] = mqttServer;
-        doc["mqttUser"] = mqttUser;
-        doc["dhtPin"] = dhtPin;
-        doc["dhtEnabled"] = dhtEnabled;
-        doc["ledPin"] = ledPin;
-        doc["numLeds"] = numLeds;
-        doc["mqttEnabled"] = mqttEnabled;
+        doc["apiUrl"] = appState.apiUrl;
+        doc["mqttServer"] = appState.mqttServer;
+        doc["mqttUser"] = appState.mqttUser;
+        doc["dhtPin"] = appState.dhtPin;
+        doc["dhtEnabled"] = appState.dhtEnabled;
+        doc["ledPin"] = appState.ledPin;
+        doc["numLeds"] = appState.numLeds;
+        doc["mqttEnabled"] = appState.mqttEnabled;
         
         // Farben
         JsonArray colors = doc["colors"].to<JsonArray>();
         for (int i = 0; i < 5; i++) {
           char hexColor[10];
-          sprintf(hexColor, "#%06X", customColors[i]);
+          sprintf(hexColor, "#%06X", appState.customColors[i]);
           colors.add(hexColor);
         }
         
@@ -3003,20 +2918,20 @@ jsonPool.release(jsonBuffer);
 // === LED-Animationen ===
 void pulseCurrentColor()
 {
-    uint8_t targetBrightness = autoMode ? DEFAULT_LED_BRIGHTNESS : manualBrightness;
+    uint8_t targetBrightness = appState.autoMode ? DEFAULT_LED_BRIGHTNESS : appState.manualBrightness;
 
     // Debug pulsing state periodically
     static unsigned long lastPulseDebug = 0;
     if (millis() - lastPulseDebug >= 10000)
     { // Every 10 seconds
-        if (isPulsing)
+        if (appState.isPulsing)
         {
-            debug(String(F("Pulse Status: Aktiv - Laufzeit: ")) + String((millis() - pulseStartTime) / 1000) + "s");
+            debug(String(F("Pulse Status: Aktiv - Laufzeit: ")) + String((millis() - appState.pulseStartTime) / 1000) + "s");
         }
         lastPulseDebug = millis();
     }
 
-    if (!isPulsing || !lightOn)
+    if (!appState.isPulsing || !appState.lightOn)
     {
         // Stelle sicher, dass Helligkeit korrekt ist, wenn nicht gepulst wird
         static uint8_t lastSetBrightness = 0;
@@ -3030,13 +2945,13 @@ void pulseCurrentColor()
     }
 
     unsigned long currentTime = millis();
-    unsigned long elapsedTime = currentTime - pulseStartTime;
+    unsigned long elapsedTime = currentTime - appState.pulseStartTime;
 
     // Auto-disable pulsing after timeout (3 cycles)
     if (elapsedTime > DEFAULT_WAVE_DURATION * 3)
     {
         debug(F("Pulse: Timeout - Auto-disable nach 3 Zyklen"));
-        isPulsing = false;
+        appState.isPulsing = false;
         pixels.setBrightness(targetBrightness);
         pixels.show();
         return;
@@ -3060,14 +2975,14 @@ void pulseCurrentColor()
 void onStateCommand(bool state, HALight *sender)
 {
     // Ignoriere Callbacks während wir Initial States senden
-    if (sendingInitialStates) {
+    if (appState.sendingInitialStates) {
         debug(F("Ignoriere State Command während Initial States"));
         return;
     }
 
-    if (state == lightOn)
+    if (state == appState.lightOn)
         return;
-    lightOn = state;
+    appState.lightOn = state;
     debug(String(F("HA Light State Command: ")) + (state ? "ON" : "OFF"));
     if (!state)
     {
@@ -3087,18 +3002,18 @@ void onStateCommand(bool state, HALight *sender)
 void onBrightnessCommand(uint8_t brightness, HALight *sender)
 {
     // Ignoriere Callbacks während wir Initial States senden
-    if (sendingInitialStates) {
+    if (appState.sendingInitialStates) {
         debug(F("Ignoriere Brightness Command während Initial States"));
         return;
     }
 
-    if (brightness == manualBrightness)
+    if (brightness == appState.manualBrightness)
         return;
-    manualBrightness = brightness;
+    appState.manualBrightness = brightness;
     debug(String(F("HA Brightness Command: ")) + brightness);
-    if (!autoMode && lightOn)
+    if (!appState.autoMode && appState.lightOn)
     {
-        updateLEDs(); // updateLEDs berücksichtigt jetzt manualBrightness
+        updateLEDs(); // updateLEDs berücksichtigt jetzt appState.manualBrightness
     }
     sender->setBrightness(brightness);
 
@@ -3109,19 +3024,19 @@ void onBrightnessCommand(uint8_t brightness, HALight *sender)
 void onRGBColorCommand(HALight::RGBColor color, HALight *sender)
 {
     // Ignoriere Callbacks während wir Initial States senden
-    if (sendingInitialStates) {
+    if (appState.sendingInitialStates) {
         debug(F("Ignoriere RGB Command während Initial States"));
         return;
     }
 
     uint32_t newColor = pixels.Color(color.red, color.green, color.blue);
-    if (newColor == manualColor)
+    if (newColor == appState.manualColor)
         return;
-    manualColor = newColor;
+    appState.manualColor = newColor;
     debug(String(F("HA RGB Command: R=")) + color.red + " G=" + color.green + " B=" + color.blue);
-    if (!autoMode && lightOn)
+    if (!appState.autoMode && appState.lightOn)
     {
-        updateLEDs(); // updateLEDs berücksichtigt jetzt manualColor
+        updateLEDs(); // updateLEDs berücksichtigt jetzt appState.manualColor
     }
     sender->setRGBColor(color);
     
@@ -3131,18 +3046,18 @@ void onRGBColorCommand(HALight::RGBColor color, HALight *sender)
 
 void onModeCommand(int8_t index, HASelect *sender) {
     // Ignore mode commands during startup phase
-    if (initialStartupPhase) {
+    if (appState.initialStartupPhase) {
         debug(F("Ignoring mode command during startup grace period"));
         // Force HA back to the current state instead of accepting the change
-        sender->setState(autoMode ? 0 : 1);
+        sender->setState(appState.autoMode ? 0 : 1);
         return;
     }
 
     bool newMode = (index == 0);
-    if (newMode == autoMode) return;
-    autoMode = newMode;
-    debug(String(F("HA Mode Command: ")) + (autoMode ? "Auto" : "Manual"));
-    if (lightOn) {
+    if (newMode == appState.autoMode) return;
+    appState.autoMode = newMode;
+    debug(String(F("HA Mode Command: ")) + (appState.autoMode ? "Auto" : "Manual"));
+    if (appState.lightOn) {
         updateLEDs();
     }
     sender->setState(index);
@@ -3154,7 +3069,7 @@ void onModeCommand(int8_t index, HASelect *sender) {
 void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
 {
     // Ignoriere Callbacks während wir Initial States senden
-    if (sendingInitialStates) {
+    if (appState.sendingInitialStates) {
         debug(F("Ignoriere Update Interval Command während Initial States"));
         return;
     }
@@ -3162,9 +3077,9 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
     float intervalSeconds = value.toFloat();
     intervalSeconds = constrain(intervalSeconds, 10, 7200);
     unsigned long newInterval = (unsigned long)(intervalSeconds * 1000);
-    if (newInterval == moodUpdateInterval)
+    if (newInterval == appState.moodUpdateInterval)
         return;
-    moodUpdateInterval = newInterval;
+    appState.moodUpdateInterval = newInterval;
     sender->setState(float(intervalSeconds));
     debug(String(F("Mood Update Interval gesetzt auf: ")) + String(intervalSeconds) + "s");
 
@@ -3172,7 +3087,7 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
     saveSettings();
 
     // Reset des Zeitgebers für das nächste Update (optional)
-    // lastMoodUpdate = millis() - (moodUpdateInterval / 2); // Hälfte des Intervalls
+    // appState.lastMoodUpdate = millis() - (appState.moodUpdateInterval / 2); // Hälfte des Intervalls
 }
 
 // v9.0: onHeadlinesCommand() removed - headlines_per_source not used anymore
@@ -3180,7 +3095,7 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
 void onDHTIntervalCommand(HANumeric value, HANumber *sender)
 {
     // Ignoriere Callbacks während wir Initial States senden
-    if (sendingInitialStates) {
+    if (appState.sendingInitialStates) {
         debug(F("Ignoriere DHT Interval Command während Initial States"));
         return;
     }
@@ -3188,9 +3103,9 @@ void onDHTIntervalCommand(HANumeric value, HANumber *sender)
     float intervalSeconds = value.toFloat();
     intervalSeconds = constrain(intervalSeconds, 10, 7200);
     unsigned long newInterval = (unsigned long)(intervalSeconds * 1000);
-    if (newInterval == dhtUpdateInterval)
+    if (newInterval == appState.dhtUpdateInterval)
         return;
-    dhtUpdateInterval = newInterval;
+    appState.dhtUpdateInterval = newInterval;
     sender->setState(float(intervalSeconds));
     debug(String(F("DHT Interval gesetzt auf: ")) + String(intervalSeconds) + "s");
 
@@ -3210,12 +3125,12 @@ void onRefreshButtonPressed(HAButton *sender)
     http.setReuse(false);
     http.setUserAgent("MoodlightClient/1.0");
 
-    isPulsing = true;
-    pulseStartTime = millis();
+    appState.isPulsing = true;
+    appState.pulseStartTime = millis();
 
     debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
     // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
-    if (http.begin(wifiClientHTTP, apiUrl))
+    if (http.begin(wifiClientHTTP, appState.apiUrl))
     {
         http.setTimeout(10000);
         int httpCode = http.GET();
@@ -3230,7 +3145,7 @@ void onRefreshButtonPressed(HAButton *sender)
                     receivedSentiment = doc["sentiment"].as<float>();
                     success = true;
                     debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
-                    lastMoodUpdate = millis();
+                    appState.lastMoodUpdate = millis();
                 } else {
                     debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
                 }
@@ -3248,7 +3163,7 @@ void onRefreshButtonPressed(HAButton *sender)
     }
     else
     {
-        debug(String(F("HTTP Verbindungsfehler zu: ")) + String(apiUrl));
+        debug(String(F("HTTP Verbindungsfehler zu: ")) + String(appState.apiUrl));
         if (wifiClientHTTP.connected())
         {
             wifiClientHTTP.stop();
@@ -3258,17 +3173,17 @@ void onRefreshButtonPressed(HAButton *sender)
     if (success)
     {
         handleSentiment(receivedSentiment);
-        initialAnalysisDone = true;
+        appState.initialAnalysisDone = true;
     }
 
-    isPulsing = false;
+    appState.isPulsing = false;
     updateLEDs();
 }
 
 // === MQTT Heartbeat ===
 void sendHeartbeat()
 {
-    if (!mqttEnabled || !mqtt.isConnected())
+    if (!appState.mqttEnabled || !mqtt.isConnected())
         return;
 
     // 1. Uptime
@@ -3289,13 +3204,13 @@ void sendHeartbeat()
     String status = "OK";
 
     // Sentiment API Status
-    if (!sentimentAPIAvailable)
+    if (!appState.sentimentAPIAvailable)
     {
         status = "Sentiment API nicht erreichbar";
     }
 
     // Temperatur/Luftfeuchtigkeit Status
-    if (isnan(lastTemp) || isnan(lastHum))
+    if (isnan(appState.currentTemp) || isnan(appState.currentHum))
     {
         status = "DHT Sensor Probleme";
     }
@@ -3309,12 +3224,12 @@ void sendHeartbeat()
     haSystemStatus.setValue(status.c_str());
 
     debug(F("MQTT Heartbeat gesendet"));
-    lastMqttHeartbeat = millis();
+    appState.lastMqttHeartbeat = millis();
 }
 // === Home Assistant Setup Routine ===
 void setupHA()
 {
-    if (!mqttEnabled || mqttServer.isEmpty())
+    if (!appState.mqttEnabled || appState.mqttServer.isEmpty())
     {
         debug(F("MQTT nicht konfiguriert, überspringe HA Setup"));
         return;
@@ -3344,7 +3259,7 @@ void setupHA()
     haSentimentCategory.setIcon("mdi:tag-text-outline");
     // Keine Einheit für Text-Sensoren
 
-    if (dhtEnabled)
+    if (appState.dhtEnabled)
     {
         // Temperatur Sensor
         haTemperature.setName("Temperatur");
@@ -3415,7 +3330,7 @@ void setupHA()
 // === Sende initiale Zustände an HA ===
 void sendInitialStates()
 {
-    if (!mqttEnabled || !mqtt.isConnected())
+    if (!appState.mqttEnabled || !mqtt.isConnected())
     {
         debug(F("MQTT not connected, skipping initial states."));
         return;
@@ -3424,27 +3339,27 @@ void sendInitialStates()
     debug(F("Sende initiale Zustände an HA..."));
 
     // Setze Flag um Callback-Loops zu vermeiden
-    sendingInitialStates = true;
+    appState.sendingInitialStates = true;
 
     // Licht & Modus (aus globalen Variablen)
-    haLight.setState(lightOn);
-    haLight.setBrightness(manualBrightness);
+    haLight.setState(appState.lightOn);
+    haLight.setBrightness(appState.manualBrightness);
     // v9.0: haHeadlinesPerSource removed
-    uint32_t initialColor = autoMode ? pixels.Color(
-                                           getColorDefinition(currentLedIndex).r,
-                                           getColorDefinition(currentLedIndex).g,
-                                           getColorDefinition(currentLedIndex).b)
-                                     : manualColor;
+    uint32_t initialColor = appState.autoMode ? pixels.Color(
+                                           getColorDefinition(appState.currentLedIndex).r,
+                                           getColorDefinition(appState.currentLedIndex).g,
+                                           getColorDefinition(appState.currentLedIndex).b)
+                                     : appState.manualColor;
     HALight::RGBColor color;
     color.red = (initialColor >> 16) & 0xFF;
     color.green = (initialColor >> 8) & 0xFF;
     color.blue = initialColor & 0xFF;
     haLight.setRGBColor(color);
-    haMode.setState(autoMode ? 0 : 1);
+    haMode.setState(appState.autoMode ? 0 : 1);
 
     // Intervalle (aus globalen Variablen)
-    haUpdateInterval.setState(float(moodUpdateInterval / 1000.0));
-    haDhtInterval.setState(float(dhtUpdateInterval / 1000.0));
+    haUpdateInterval.setState(float(appState.moodUpdateInterval / 1000.0));
+    haDhtInterval.setState(float(appState.dhtUpdateInterval / 1000.0));
 
     // DHT direkt lesen für aktuelle Werte
     debug(F("Lese aktuelle DHT Werte für initiale Zustände..."));
@@ -3455,7 +3370,7 @@ void sendInitialStates()
 
     if (tempValid)
     {
-        lastTemp = currentTemp; // Update globale Variable
+        appState.currentTemp = currentTemp; // Update globale Variable
         haTemperature.setValue(floatToString(currentTemp, 1).c_str());
         debug(String(F("  Init Temp: ")) + String(currentTemp, 1) + "C");
     }
@@ -3463,12 +3378,12 @@ void sendInitialStates()
     {
         debug(F("  Init Temp: Lesefehler!"));
         // Sende letzten bekannten Wert, falls vorhanden
-        if (!isnan(lastTemp))
-            haTemperature.setValue(floatToString(lastTemp, 1).c_str());
+        if (!isnan(appState.currentTemp))
+            haTemperature.setValue(floatToString(appState.currentTemp, 1).c_str());
     }
     if (humValid)
     {
-        lastHum = currentHum; // Update globale Variable
+        appState.currentHum = currentHum; // Update globale Variable
         haHumidity.setValue(floatToString(currentHum, 1).c_str());
         debug(String(F("  Init Hum: ")) + String(currentHum, 1) + "%");
     }
@@ -3476,17 +3391,17 @@ void sendInitialStates()
     {
         debug(F("  Init Hum: Lesefehler!"));
         // Sende letzten bekannten Wert, falls vorhanden
-        if (!isnan(lastHum))
-            haHumidity.setValue(floatToString(lastHum, 1).c_str());
+        if (!isnan(appState.currentHum))
+            haHumidity.setValue(floatToString(appState.currentHum, 1).c_str());
     }
-    // Setze lastDHTUpdate, da wir gerade gelesen haben (verhindert sofortiges Lesen im Loop)
-    lastDHTUpdate = millis();
+    // Setze appState.lastDHTUpdate, da wir gerade gelesen haben (verhindert sofortiges Lesen im Loop)
+    appState.lastDHTUpdate = millis();
 
     // Sentiment (letzter bekannter Wert aus globalen Variablen)
-    haSentimentScore.setValue(floatToString(lastSentimentScore, 2).c_str());
-    haSentimentCategory.setValue(lastSentimentCategory.c_str());
-    debug(String(F("  Init Sentiment Score: ")) + String(lastSentimentScore, 2));
-    debug(String(F("  Init Sentiment Category: ")) + lastSentimentCategory);
+    haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
+    haSentimentCategory.setValue(appState.sentimentCategory.c_str());
+    debug(String(F("  Init Sentiment Score: ")) + String(appState.sentimentScore, 2));
+    debug(String(F("  Init Sentiment Category: ")) + appState.sentimentCategory);
 
     // Initiale Heartbeat-Werte senden
     sendHeartbeat();
@@ -3494,7 +3409,7 @@ void sendInitialStates()
     debug(F("Initiale Zustände gesendet."));
 
     // Flag zurücksetzen - Callbacks sind jetzt wieder aktiv
-    sendingInitialStates = false;
+    appState.sendingInitialStates = false;
 }
 
 // Add this function for safer HTTP requests with JSON
@@ -3566,16 +3481,16 @@ void getSentiment()
     static unsigned long lastIntervalDebug = 0;
     if (currentMillis - lastIntervalDebug >= 300000)
     {
-        debug(String(F("Sentiment Interval Status: ")) + String(currentMillis - lastMoodUpdate) + F("/") + String(moodUpdateInterval) + F("ms"));
+        debug(String(F("Sentiment Interval Status: ")) + String(currentMillis - appState.lastMoodUpdate) + F("/") + String(appState.moodUpdateInterval) + F("ms"));
         lastIntervalDebug = currentMillis;
     }
 
     // Check for API timeout logic
-    if (sentimentAPIAvailable && lastSuccessfulSentimentUpdate > 0 && currentMillis - lastSuccessfulSentimentUpdate > SENTIMENT_FALLBACK_TIMEOUT)
+    if (appState.sentimentAPIAvailable && appState.lastSuccessfulSentimentUpdate > 0 && currentMillis - appState.lastSuccessfulSentimentUpdate > SENTIMENT_FALLBACK_TIMEOUT)
     {
         debug(F("API-Timeout: Kein erfolgreicher Sentiment-Abruf seit über einer Stunde."));
         debug(F("Wechsel in Neutral-Modus."));
-        sentimentAPIAvailable = false;
+        appState.sentimentAPIAvailable = false;
         handleSentiment(0.0);
         setStatusLED(2);
     }
@@ -3585,13 +3500,13 @@ void getSentiment()
         return;
 
     // Check if it's time for an update
-    if (!(currentMillis - lastMoodUpdate >= moodUpdateInterval || !initialAnalysisDone))
+    if (!(currentMillis - appState.lastMoodUpdate >= appState.moodUpdateInterval || !appState.initialAnalysisDone))
         return;
 
     debug(F("Starte Sentiment-Abruf..."));
     isUpdating = true;
-    isPulsing = true;
-    pulseStartTime = currentMillis;
+    appState.isPulsing = true;
+    appState.pulseStartTime = currentMillis;
 
     // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
 
@@ -3600,27 +3515,27 @@ void getSentiment()
     doc.clear();
 
     // Use the safe HTTP request function
-    bool success = safeHttpGet(apiUrl, doc);
+    bool success = safeHttpGet(appState.apiUrl, doc);
 
     // Always update timing state
-    lastMoodUpdate = currentMillis;
+    appState.lastMoodUpdate = currentMillis;
 
     if (success && doc["sentiment"].is<float>())
     {
         float receivedSentiment = doc["sentiment"].as<float>();
         debug(String(F("Sentiment empfangen: ")) + String(receivedSentiment, 2));
 
-        // Process valid sentiment value (vor initialAnalysisDone=true, damit MQTT-Werte gesendet werden!)
+        // Process valid sentiment value (vor appState.initialAnalysisDone=true, damit MQTT-Werte gesendet werden!)
         handleSentiment(receivedSentiment);
-        initialAnalysisDone = true;
-        lastSuccessfulSentimentUpdate = currentMillis;
+        appState.initialAnalysisDone = true;
+        appState.lastSuccessfulSentimentUpdate = currentMillis;
 
         // Reset error tracking
-        consecutiveSentimentFailures = 0;
-        sentimentAPIAvailable = true;
+        appState.consecutiveSentimentFailures = 0;
+        appState.sentimentAPIAvailable = true;
 
         // Reset status LED if there was a previous API error
-        if (statusLedMode == 2)
+        if (appState.statusLedMode == 2)
         {
             setStatusLED(0);
         }
@@ -3630,16 +3545,16 @@ void getSentiment()
     else
     {
         debug(F("Sentiment Update fehlgeschlagen"));
-        consecutiveSentimentFailures++;
+        appState.consecutiveSentimentFailures++;
 
         // Error handling for consecutive failures
-        if (consecutiveSentimentFailures >= MAX_SENTIMENT_FAILURES && sentimentAPIAvailable)
+        if (appState.consecutiveSentimentFailures >= MAX_SENTIMENT_FAILURES && appState.sentimentAPIAvailable)
         {
-            sentimentAPIAvailable = false;
+            appState.sentimentAPIAvailable = false;
             debug(F("API nicht erreichbar nach mehreren Fehlversuchen. Wechsel in Neutral-Modus."));
 
             // Set neutral mood if no previous value exists
-            if (!initialAnalysisDone)
+            if (!appState.initialAnalysisDone)
             {
                 handleSentiment(0.0);
             }
@@ -3649,31 +3564,31 @@ void getSentiment()
         }
 
         // Update HA values with last known value anyway
-        if (mqttEnabled && mqtt.isConnected())
+        if (appState.mqttEnabled && mqtt.isConnected())
         {
-            haSentimentScore.setValue(floatToString(lastSentimentScore, 2).c_str());
-            haSentimentCategory.setValue(lastSentimentCategory.c_str());
+            haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
+            haSentimentCategory.setValue(appState.sentimentCategory.c_str());
         }
     }
 
     // Always clean up
-    isPulsing = false;
+    appState.isPulsing = false;
     isUpdating = false;
     updateLEDs();
 
-    debug(String(F("Sentiment Update abgeschlossen. Nächstes Update in ")) + String(moodUpdateInterval / 1000) + F(" Sekunden."));
+    debug(String(F("Sentiment Update abgeschlossen. Nächstes Update in ")) + String(appState.moodUpdateInterval / 1000) + F(" Sekunden."));
 }
 
 // === Lese DHT Sensor und sende an HA ===
 void readAndPublishDHT()
 {
     // First check if DHT is enabled
-    if (!dhtEnabled)
+    if (!appState.dhtEnabled)
     {
         return; // Skip DHT processing entirely
     }
 
-    if (millis() - lastDHTUpdate >= dhtUpdateInterval)
+    if (millis() - appState.lastDHTUpdate >= appState.dhtUpdateInterval)
     {
         debug(F("DHT Lesezyklus gestartet..."));
 
@@ -3702,11 +3617,11 @@ void readAndPublishDHT()
         // Process temperature if valid
         if (tempValid)
         {
-            bool tempChanged = abs(temp - lastTemp) >= 0.1; // 0.1°C Schwelle
-            if (tempChanged || isnan(lastTemp))
+            bool tempChanged = abs(temp - appState.currentTemp) >= 0.1; // 0.1°C Schwelle
+            if (tempChanged || isnan(appState.currentTemp))
             {
-                lastTemp = temp;
-                if (mqttEnabled && mqtt.isConnected())
+                appState.currentTemp = temp;
+                if (appState.mqttEnabled && mqtt.isConnected())
                 {
                     haTemperature.setValue(floatToString(temp, 1).c_str());
                 }
@@ -3725,11 +3640,11 @@ void readAndPublishDHT()
         // Process humidity if valid
         if (humValid)
         {
-            bool humChanged = abs(hum - lastHum) >= 0.5; // 0.5% Schwelle
-            if (humChanged || isnan(lastHum))
+            bool humChanged = abs(hum - appState.currentHum) >= 0.5; // 0.5% Schwelle
+            if (humChanged || isnan(appState.currentHum))
             {
-                lastHum = hum;
-                if (mqttEnabled && mqtt.isConnected())
+                appState.currentHum = hum;
+                if (appState.mqttEnabled && mqtt.isConnected())
                 {
                     haHumidity.setValue(floatToString(hum, 1).c_str());
                 }
@@ -3745,8 +3660,8 @@ void readAndPublishDHT()
             debug(F("DHT Hum Lesefehler!"));
         }
 
-        lastDHTUpdate = millis();
-        debug(String(F("DHT Lesezyklus beendet. Nächstes Update in ")) + String(dhtUpdateInterval / 1000) + F(" Sekunden."));
+        appState.lastDHTUpdate = millis();
+        debug(String(F("DHT Lesezyklus beendet. Nächstes Update in ")) + String(appState.dhtUpdateInterval / 1000) + F(" Sekunden."));
     }
 }
 
@@ -3755,7 +3670,7 @@ void readAndPublishDHT()
 void checkAndReconnectWifi()
 {
     // Don't try to reconnect if we're in AP mode
-    if (isInConfigMode)
+    if (appState.isInConfigMode)
     {
         return;
     }
@@ -3772,37 +3687,37 @@ void checkAndReconnectWifi()
 
     if (WiFi.status() != WL_CONNECTED)
     {
-        if (wifiWasConnected)
+        if (appState.wifiWasConnected)
         {
             debug(F("WiFi Verbindung verloren! Starte Reconnect-Prozess..."));
-            wifiWasConnected = false;
-            wifiReconnectActive = true;  // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
-            wifiReconnectAttempts = 0;
-            wifiReconnectDelay = 5000;
-            disconnectStartMs = millis();  // LED-03: Grace-Timer starten, KEIN setStatusLED(1) hier
+            appState.wifiWasConnected = false;
+            appState.wifiReconnectActive = true;  // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
+            appState.wifiReconnectAttempts = 0;
+            appState.wifiReconnectDelay = 5000;
+            appState.disconnectStartMs = millis();  // LED-03: Grace-Timer starten, KEIN setStatusLED(1) hier
         }
 
         // LED-03: Status-LED erst nach Grace Period aktivieren
-        if (disconnectStartMs > 0 && (currentMillis - disconnectStartMs > STATUS_LED_GRACE_MS)) {
+        if (appState.disconnectStartMs > 0 && (currentMillis - appState.disconnectStartMs > STATUS_LED_GRACE_MS)) {
             setStatusLED(1);
-            disconnectStartMs = 0;  // Einmalig setzen
+            appState.disconnectStartMs = 0;  // Einmalig setzen
         }
 
         // Check if it's time for a new reconnect attempt
-        if (currentMillis - lastWifiCheck >= wifiReconnectDelay)
+        if (currentMillis - appState.lastWifiCheck >= appState.wifiReconnectDelay)
         {
-            lastWifiCheck = currentMillis;
-            wifiReconnectAttempts++;
+            appState.lastWifiCheck = currentMillis;
+            appState.wifiReconnectAttempts++;
 
             // Only try to connect if we have SSID
-            if (wifiConfigured && !wifiSSID.isEmpty())
+            if (appState.wifiConfigured && !appState.wifiSSID.isEmpty())
             {
-                debug(String(F("WiFi Reconnect Versuch #")) + wifiReconnectAttempts + String(F(" mit Delay ")) + String(wifiReconnectDelay / 1000) + "s");
+                debug(String(F("WiFi Reconnect Versuch #")) + appState.wifiReconnectAttempts + String(F(" mit Delay ")) + String(appState.wifiReconnectDelay / 1000) + "s");
 
                 // Try reconnect
                 WiFi.disconnect(true);
                 delay(100);
-                WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
+                WiFi.begin(appState.wifiSSID.c_str(), appState.wifiPassword.c_str());
 
                 // Short non-blocking wait time
                 unsigned long reconnectStart = millis();
@@ -3819,17 +3734,17 @@ void checkAndReconnectWifi()
                 if (WiFi.status() == WL_CONNECTED)
                 {
                     debug(F("WiFi erfolgreich wieder verbunden!"));
-                    wifiWasConnected = true;
-                    wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
-                    disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
-                    wifiReconnectAttempts = 0;
-                    wifiReconnectDelay = 5000;
+                    appState.wifiWasConnected = true;
+                    appState.wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
+                    appState.disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
+                    appState.wifiReconnectAttempts = 0;
+                    appState.wifiReconnectDelay = 5000;
 
                     // Explicitly disable power save mode after connection
                     esp_wifi_set_ps(WIFI_PS_NONE);
 
                     // Initialize time after successful reconnection if not already done
-                    if (!timeInitialized) {
+                    if (!appState.timeInitialized) {
                         initTime();
                     }
 
@@ -3838,27 +3753,27 @@ void checkAndReconnectWifi()
                 else
                 {
                     // Exponential backoff - with max limit
-                    wifiReconnectDelay = min(wifiReconnectDelay * 2, MAX_RECONNECT_DELAY);
-                    debug(String(F("WiFi Reconnect fehlgeschlagen. Nächster Versuch in ")) + String(wifiReconnectDelay / 1000) + "s");
+                    appState.wifiReconnectDelay = min(appState.wifiReconnectDelay * 2, MAX_RECONNECT_DELAY);
+                    debug(String(F("WiFi Reconnect fehlgeschlagen. Nächster Versuch in ")) + String(appState.wifiReconnectDelay / 1000) + "s");
                 }
             }
         }
     }
-    else if (!wifiWasConnected)
+    else if (!appState.wifiWasConnected)
     {
         // WiFi is now connected but was disconnected before
         debug(F("WiFi ist wieder verbunden."));
-        wifiWasConnected = true;
-        wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
-        disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
-        wifiReconnectAttempts = 0;
-        wifiReconnectDelay = 5000;
+        appState.wifiWasConnected = true;
+        appState.wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
+        appState.disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
+        appState.wifiReconnectAttempts = 0;
+        appState.wifiReconnectDelay = 5000;
 
         // Explicitly disable power save mode after connection
         esp_wifi_set_ps(WIFI_PS_NONE);
 
         // Initialize time after successful reconnection if not already done
-        if (!timeInitialized) {
+        if (!appState.timeInitialized) {
             initTime();
         }
 
@@ -3871,14 +3786,14 @@ void checkAndReconnectWifi()
 // === Verbesserte MQTT Reconnect und Heartbeat ===
 // Fix the checkAndReconnectMQTT function - add the missing closing brace
 void checkAndReconnectMQTT() {
-    if (!mqttEnabled || mqttServer.isEmpty())
+    if (!appState.mqttEnabled || appState.mqttServer.isEmpty())
         return;
 
     unsigned long currentMillis = millis();
 
     // Heartbeat senden, wenn verbunden
     if (WiFi.status() == WL_CONNECTED && mqtt.isConnected()) {
-        if (currentMillis - lastMqttHeartbeat >= MQTT_HEARTBEAT_INTERVAL) {
+        if (currentMillis - appState.lastMqttHeartbeat >= MQTT_HEARTBEAT_INTERVAL) {
             sendHeartbeat();
         }
     }
@@ -3889,19 +3804,19 @@ void checkAndReconnectMQTT() {
     // Reconnect-Logik
     if (WiFi.status() == WL_CONNECTED) {
         if (!mqtt.isConnected()) {
-            if (currentMillis - lastMqttReconnectAttempt > mqttReconnectBackoff) {
+            if (currentMillis - appState.lastMqttReconnectAttempt > mqttReconnectBackoff) {
                 debug(F("MQTT nicht verbunden. Versuche Reconnect..."));
                 
                 // Update status LED indicator without direct LED update
-                if (statusLedMode != 4) {
-                    statusLedMode = 4; // MQTT mode
-                    statusLedBlinkStart = currentMillis;
-                    statusLedState = true;
+                if (appState.statusLedMode != 4) {
+                    appState.statusLedMode = 4; // MQTT mode
+                    appState.statusLedBlinkStart = currentMillis;
+                    appState.statusLedState = true;
                     
-                    if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                        ledColors[statusLedIndex] = pixels.Color(0, 255, 255); // Cyan
-                        ledUpdatePending = true;
-                        xSemaphoreGive(ledMutex);
+                    if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+                        appState.ledColors[appState.statusLedIndex] = pixels.Color(0, 255, 255); // Cyan
+                        appState.ledUpdatePending = true;
+                        xSemaphoreGive(appState.ledMutex);
                     }
                 }
 
@@ -3913,7 +3828,7 @@ void checkAndReconnectMQTT() {
                 delay(100);
 
                 // MQTT neu starten
-                mqtt.begin(mqttServer.c_str(), mqttUser.c_str(), mqttPassword.c_str());
+                mqtt.begin(appState.mqttServer.c_str(), appState.mqttUser.c_str(), appState.mqttPassword.c_str());
 
                 // Kurz auf Verbindung warten (mit mqtt.loop()!)
                 unsigned long mqttStart = millis();
@@ -3922,11 +3837,11 @@ void checkAndReconnectMQTT() {
                     delay(100);
                 }
 
-                lastMqttReconnectAttempt = currentMillis;
+                appState.lastMqttReconnectAttempt = currentMillis;
 
                 if (mqtt.isConnected()) {
                     debug(F("MQTT erfolgreich verbunden."));
-                    mqttWasConnected = true;
+                    appState.mqttWasConnected = true;
                     mqttReconnectBackoff = 10000; // Reset backoff on success
                     
                     // Schedule initial state sending for next loop cycle
@@ -3935,11 +3850,11 @@ void checkAndReconnectMQTT() {
                     initialStatesPending = true;
                     
                     // Update status LED without direct update
-                    statusLedMode = 0; // Normal mode
+                    appState.statusLedMode = 0; // Normal mode
                     
-                    if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                        ledUpdatePending = true; // Request full LED update
-                        xSemaphoreGive(ledMutex);
+                    if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+                        appState.ledUpdatePending = true; // Request full LED update
+                        xSemaphoreGive(appState.ledMutex);
                     }
                 } else {
                     debug(F("MQTT Reconnect fehlgeschlagen. Erhöhe Backoff."));
@@ -3947,21 +3862,21 @@ void checkAndReconnectMQTT() {
                     mqttReconnectBackoff = min(mqttReconnectBackoff * 2, 300000UL);
                 }
             }
-        } else if (!mqttWasConnected) {
+        } else if (!appState.mqttWasConnected) {
             debug(F("MQTT wieder verbunden. Sende Zustände..."));
             
             // Schedule state sending for next loop cycle
             static bool initialStatesPending = true;
             initialStatesPending = true;
             
-            mqttWasConnected = true;
+            appState.mqttWasConnected = true;
             
             // Update status LED without direct update
-            statusLedMode = 0; // Normal mode
+            appState.statusLedMode = 0; // Normal mode
             
-            if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                ledUpdatePending = true; // Request full LED update
-                xSemaphoreGive(ledMutex);
+            if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+                appState.ledUpdatePending = true; // Request full LED update
+                xSemaphoreGive(appState.ledMutex);
             }
         }
         
@@ -3982,25 +3897,25 @@ void logSystemStatus()
 {
     unsigned long currentMillis = millis();
 
-    if (currentMillis - lastStatusLog >= STATUS_LOG_INTERVAL)
+    if (currentMillis - appState.lastStatusLog >= STATUS_LOG_INTERVAL)
     {
         debug(F("=== SYSTEM STATUS ==="));
         debug(String(F("Uptime: ")) + String(currentMillis / 1000 / 60) + F(" minutes"));
         debug(String(F("Free Heap: ")) + String(ESP.getFreeHeap()) + F(" bytes"));
         debug(String(F("WiFi Status: ")) + (WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected"));
         debug(String(F("WiFi RSSI: ")) + String(WiFi.RSSI()) + F(" dBm"));
-        debug(String(F("MQTT Enabled: ")) + (mqttEnabled ? "Yes" : "No"));
-        if (mqttEnabled)
+        debug(String(F("MQTT Enabled: ")) + (appState.mqttEnabled ? "Yes" : "No"));
+        if (appState.mqttEnabled)
         {
             debug(String(F("MQTT Status: ")) + (mqtt.isConnected() ? "Connected" : "Disconnected"));
         }
-        debug(String(F("LED Status: ")) + (lightOn ? "ON" : "OFF") + ", Mode: " + (autoMode ? "Auto" : "Manual"));
-        debug(String(F("Current Sentiment: ")) + String(lastSentimentScore, 2) + F(" (") + lastSentimentCategory + F(")"));
-        debug(String(F("DHT Values: T=")) + String(lastTemp, 1) + F("C, H=") + String(lastHum, 1) + F("%"));
-        debug(String(F("Intervals: Mood=")) + String(moodUpdateInterval / 1000) + F("s, DHT=") + String(dhtUpdateInterval / 1000) + F("s"));
+        debug(String(F("LED Status: ")) + (appState.lightOn ? "ON" : "OFF") + ", Mode: " + (appState.autoMode ? "Auto" : "Manual"));
+        debug(String(F("Current Sentiment: ")) + String(appState.sentimentScore, 2) + F(" (") + appState.sentimentCategory + F(")"));
+        debug(String(F("DHT Values: T=")) + String(appState.currentTemp, 1) + F("C, H=") + String(appState.currentHum, 1) + F("%"));
+        debug(String(F("Intervals: Mood=")) + String(appState.moodUpdateInterval / 1000) + F("s, DHT=") + String(appState.dhtUpdateInterval / 1000) + F("s"));
         debug(F("===================="));
 
-        lastStatusLog = currentMillis;
+        appState.lastStatusLog = currentMillis;
     }
 }
 
@@ -4042,7 +3957,7 @@ void startAPModeWithServer()
 
     // DNS-Server starten
     dnsServer.start(DNS_PORT, "*", IP);
-    isInConfigMode = true; // Dies markiert, dass wir im AP-Modus sind
+    appState.isInConfigMode = true; // Dies markiert, dass wir im AP-Modus sind
 
     debug("AP gestartet mit IP " + WiFi.softAPIP().toString());
     debug(String(F("SSID: ")) + DEFAULT_AP_NAME);
@@ -4054,7 +3969,7 @@ void startAPModeWithServer()
     setStatusLED(5);
 
     // Merke Zeit für Timeout
-    apModeStartTime = millis();
+    appState.apModeStartTime = millis();
 }
 
 
@@ -4161,8 +4076,8 @@ void setup() {
     delay(200);  // Kurze Pause für Stabilität
 
     // Mutex für sicheren LED-Zugriff erstellen
-    ledMutex = xSemaphoreCreateMutex();
-    if (ledMutex == NULL) {
+    appState.ledMutex = xSemaphoreCreateMutex();
+    if (appState.ledMutex == NULL) {
         debug(F("Failed to create LED mutex!"));
     }
 
@@ -4175,8 +4090,8 @@ void setup() {
     setupWebServer();
 
     // WiFi-Verbindung herstellen (falls konfiguriert)
-    if (wifiConfigured && !wifiSSID.isEmpty()) {
-        debug(String(F("Vorhandene WiFi-Konfiguration gefunden: ")) + wifiSSID);
+    if (appState.wifiConfigured && !appState.wifiSSID.isEmpty()) {
+        debug(String(F("Vorhandene WiFi-Konfiguration gefunden: ")) + appState.wifiSSID);
 
         // Verbindungsversuch
         bool wifiConnected = startWiFiStation();
@@ -4207,7 +4122,7 @@ void setup() {
             // No need to send feed config on startup
 
             // MQTT einrichten für Home Assistant Integration
-            if (mqttEnabled && !mqttServer.isEmpty()) {
+            if (appState.mqttEnabled && !appState.mqttServer.isEmpty()) {
                 debug(F("MQTT Konfiguration gefunden, starte verzögerte Initialisierung..."));
                 delay(500);
 
@@ -4220,7 +4135,7 @@ void setup() {
 
                 try {
                     // MQTT-Verbindung starten (nicht-blockierend)
-                    mqtt.begin(mqttServer.c_str(), mqttUser.c_str(), mqttPassword.c_str());
+                    mqtt.begin(appState.mqttServer.c_str(), appState.mqttUser.c_str(), appState.mqttPassword.c_str());
 
                     // Kurzes Warten mit mqtt.loop() für Verbindungsaufbau
                     debug(F("Warte auf MQTT Verbindung (max 5s)..."));
@@ -4255,7 +4170,7 @@ void setup() {
     // NeoPixel-LEDs ZULETZT initialisieren (nach allem anderen)
     debug(F("Finalizing Hardware Init: NeoPixel..."));
     delay(200);
-    pixels = Adafruit_NeoPixel(numLeds, ledPin, NEO_GRB + NEO_KHZ800);
+    pixels = Adafruit_NeoPixel(appState.numLeds, appState.ledPin, NEO_GRB + NEO_KHZ800);
     pixels.begin();
     pixels.setBrightness(DEFAULT_LED_BRIGHTNESS);
     debug(F("NeoPixel basic init done (begin/setBrightness)."));
@@ -4263,8 +4178,8 @@ void setup() {
     debug(F("Setup abgeschlossen."));
     
     // Startwerte für Betriebsparameter setzen
-    startupTime = millis();
-    initialStartupPhase = true;
+    appState.startupTime = millis();
+    appState.initialStartupPhase = true;
     debug(F("Startup grace period active - ignoring mode changes for 15 seconds"));
 
     // Marker für den Start der Loop
@@ -4277,28 +4192,28 @@ void loop() {
     watchdog.autoFeed();
     
     // Erste LED-Initialisierung nach dem Setup
-    if (!firstLedShowDone) {
+    if (!appState.firstLedShowDone) {
         // LED-Puffer mit Nullen initialisieren für sauberen Start
-        if (xSemaphoreTake(ledMutex, portMAX_DELAY) == pdTRUE) {
-            for (int i = 0; i < numLeds; i++) {
-                ledColors[i] = 0;
+        if (xSemaphoreTake(appState.ledMutex, portMAX_DELAY) == pdTRUE) {
+            for (int i = 0; i < appState.numLeds; i++) {
+                appState.ledColors[i] = 0;
             }
-            ledClear = true;
-            ledUpdatePending = true;
-            xSemaphoreGive(ledMutex);
+            appState.ledClear = true;
+            appState.ledUpdatePending = true;
+            xSemaphoreGive(appState.ledMutex);
         }
         
         // LEDs werden durch processLEDUpdates aktualisiert
-        firstLedShowDone = true;
+        appState.firstLedShowDone = true;
         debug(F("First LED update scheduled"));
     }
 
     // DNS-Anfragen verarbeiten, falls im Access-Point-Modus
-    if (isInConfigMode) {
+    if (appState.isInConfigMode) {
         dnsServer.processNextRequest();
 
         // Timeout für AP-Modus prüfen (Neustart nach bestimmter Zeit)
-        if (millis() - apModeStartTime > AP_TIMEOUT) {
+        if (millis() - appState.apModeStartTime > AP_TIMEOUT) {
             debug(F("AP-Modus Timeout. Starte neu..."));
             ESP.restart();
         }
@@ -4312,7 +4227,7 @@ void loop() {
     }
 
     // Prüfen, ob ein Neustart angefordert wurde
-    if (rebootNeeded && millis() > rebootTime) {
+    if (appState.rebootNeeded && millis() > appState.rebootTime) {
         debug(F("Ausführen des angeforderten Neustarts..."));
         delay(200);
         ESP.restart();
@@ -4322,14 +4237,14 @@ void loop() {
     // v9.0: Daily archive check removed - archiving handled in backend
 
     // Startup-Grace-Period beenden nach definierter Zeit
-    if (initialStartupPhase && (millis() - startupTime > STARTUP_GRACE_PERIOD)) {
-        initialStartupPhase = false;
+    if (appState.initialStartupPhase && (millis() - appState.startupTime > STARTUP_GRACE_PERIOD)) {
+        appState.initialStartupPhase = false;
         debug(F("Initial startup grace period ended, now accepting all commands"));
     }
     
     // MQTT-Loop periodisch ausführen für Verbindungspflege
     static unsigned long lastMqttLoop = 0;
-    if (mqttEnabled && WiFi.status() == WL_CONNECTED && (millis() - lastMqttLoop >= 100)) {
+    if (appState.mqttEnabled && WiFi.status() == WL_CONNECTED && (millis() - lastMqttLoop >= 100)) {
         mqtt.loop();
         lastMqttLoop = millis();
     }
@@ -4341,7 +4256,7 @@ void loop() {
 
         checkAndReconnectWifi();
 
-        if (mqttEnabled) {
+        if (appState.mqttEnabled) {
             checkAndReconnectMQTT();
         }
     }
@@ -4350,28 +4265,28 @@ void loop() {
     processLEDUpdates();
 
     // Einstellungen speichern, falls geändert
-    if (settingsNeedSaving && (millis() - lastSettingsSaved > 2000)) {
+    if (appState.settingsNeedSaving && (millis() - appState.lastSettingsSaved > 2000)) {
         debug(F("Verzögerte Speicherung ausführen..."));
         saveSettings();
-        settingsNeedSaving = false;
-        lastSettingsSaved = millis();
+        appState.settingsNeedSaving = false;
+        appState.lastSettingsSaved = millis();
     }
 
     // Sentiment-Aktualisierung und DHT-Sensor auslesen bei aktiver WiFi-Verbindung
     if (WiFi.status() == WL_CONNECTED) {
-        if (autoMode) {
+        if (appState.autoMode) {
             getSentiment();  // Weltlage-Stimmung abrufen
         }
         readAndPublishDHT();  // DHT-Sensor auslesen
-    } else if (isPulsing) {
+    } else if (appState.isPulsing) {
         // Pulsieren stoppen, wenn WiFi nicht verbunden
-        isPulsing = false;
+        appState.isPulsing = false;
         
         // LED-Helligkeit zurücksetzen
-        if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-            ledBrightness = autoMode ? DEFAULT_LED_BRIGHTNESS : manualBrightness;
-            ledUpdatePending = true;
-            xSemaphoreGive(ledMutex);
+        if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+            appState.ledBrightness = appState.autoMode ? DEFAULT_LED_BRIGHTNESS : appState.manualBrightness;
+            appState.ledUpdatePending = true;
+            xSemaphoreGive(appState.ledMutex);
         }
     }
 
@@ -4379,21 +4294,21 @@ void loop() {
     updateStatusLED();
     
     // Pulsieren der LEDs verarbeiten
-    if (isPulsing && lightOn) {
+    if (appState.isPulsing && appState.lightOn) {
         static unsigned long lastPulseUpdate = 0;
         if (millis() - lastPulseUpdate >= 30) {  // 30ms zwischen Updates
             unsigned long currentTime = millis();
-            unsigned long elapsedTime = currentTime - pulseStartTime;
+            unsigned long elapsedTime = currentTime - appState.pulseStartTime;
             
             // Auto-deaktivieren des Pulsierens nach Timeout
             if (elapsedTime > DEFAULT_WAVE_DURATION * 3) {
                 debug(F("Pulse: Timeout - Auto-disable nach 3 Zyklen"));
-                isPulsing = false;
+                appState.isPulsing = false;
                 
-                if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                    ledBrightness = autoMode ? DEFAULT_LED_BRIGHTNESS : manualBrightness;
-                    ledUpdatePending = true;
-                    xSemaphoreGive(ledMutex);
+                if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+                    appState.ledBrightness = appState.autoMode ? DEFAULT_LED_BRIGHTNESS : appState.manualBrightness;
+                    appState.ledUpdatePending = true;
+                    xSemaphoreGive(appState.ledMutex);
                 }
             } else {
                 // Sinuswelle für sanftes Pulsieren berechnen
@@ -4401,17 +4316,17 @@ void loop() {
                 float easedValue = (sin(progress * 2.0 * PI - PI / 2.0) + 1.0) / 2.0;
                 
                 // Helligkeit skalieren
-                uint8_t targetBrightness = autoMode ? DEFAULT_LED_BRIGHTNESS : manualBrightness;
+                uint8_t targetBrightness = appState.autoMode ? DEFAULT_LED_BRIGHTNESS : appState.manualBrightness;
                 uint8_t minPulseBright = (DEFAULT_WAVE_MIN_BRIGHTNESS < targetBrightness / 2) ? DEFAULT_WAVE_MIN_BRIGHTNESS : (targetBrightness / 2);
                 uint8_t maxPulseBright = (DEFAULT_WAVE_MAX_BRIGHTNESS < targetBrightness) ? DEFAULT_WAVE_MAX_BRIGHTNESS : targetBrightness;
                 
                 int brightness = minPulseBright + (int)(easedValue * (maxPulseBright - minPulseBright));
                 
                 // LED-Helligkeit sicher aktualisieren
-                if (xSemaphoreTake(ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                    ledBrightness = constrain(brightness, 0, 255);
-                    ledUpdatePending = true;
-                    xSemaphoreGive(ledMutex);
+                if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+                    appState.ledBrightness = constrain(brightness, 0, 255);
+                    appState.ledUpdatePending = true;
+                    xSemaphoreGive(appState.ledMutex);
                 }
             }
             lastPulseUpdate = millis();
@@ -4420,7 +4335,7 @@ void loop() {
 
     // System-Gesundheitsüberprüfung alle HEALTH_CHECK_INTERVAL (1 Stunde)
     unsigned long currentMillis = millis();
-    if (currentMillis - lastSystemHealthCheckTime >= HEALTH_CHECK_INTERVAL) {
+    if (currentMillis - appState.lastSystemHealthCheckTime >= HEALTH_CHECK_INTERVAL) {
         debug(F("Führe regelmäßige Systemprüfung durch..."));
         
         // Memory-Analyse durchführen
@@ -4482,8 +4397,8 @@ void loop() {
             // Neustart in der Nacht planen (3:00-4:00 Uhr)
             if (timeinfo.tm_hour >= 2 && timeinfo.tm_hour < 4) {
                 debug(F("Nachtstunden, führe Neustart sofort durch..."));
-                rebootNeeded = true;
-                rebootTime = currentMillis + 60000;  // 1 Minute Verzögerung
+                appState.rebootNeeded = true;
+                appState.rebootTime = currentMillis + 60000;  // 1 Minute Verzögerung
             } else {
                 debug(F("Neustart verschoben auf Nachtstunden..."));
                 // Flag für späteren Neustart setzen
@@ -4508,8 +4423,8 @@ void loop() {
             // Neustart in der Nacht ausführen
             if (timeinfo.tm_hour >= 3 && timeinfo.tm_hour < 4) {
                 debug(F("Geplanter Neustart wird ausgeführt..."));
-                rebootNeeded = true;
-                rebootTime = currentMillis + 30000;  // 30 Sekunden Verzögerung
+                appState.rebootNeeded = true;
+                appState.rebootTime = currentMillis + 30000;  // 30 Sekunden Verzögerung
                 
                 // Neustart-Flag zurücksetzen
                 preferences.begin("syshealth", false);
@@ -4528,14 +4443,13 @@ void loop() {
             // v9.0: Archiving handled in backend, no local action needed
         }
         
-        lastSystemHealthCheckTime = currentMillis;
+        appState.lastSystemHealthCheckTime = currentMillis;
     }
 
     // Regelmäßige Statusprotokollierung
-    static unsigned long lastStatusLog = 0;
-    if (millis() - lastStatusLog >= STATUS_LOG_INTERVAL) {
+    if (millis() - appState.lastStatusLog >= STATUS_LOG_INTERVAL) {
         logSystemStatus();
-        lastStatusLog = millis();
+        appState.lastStatusLog = millis();
     }
 
     // System etwas Zeit geben - verhindert 100% CPU-Auslastung
