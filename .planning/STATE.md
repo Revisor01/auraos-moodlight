@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Combined Update + Build Automation
-status: Ready to execute
-stopped_at: Completed 04-combined-update-handler-01-PLAN.md
-last_updated: "2026-03-26T07:53:33.322Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 04-combined-update-handler-02-PLAN.md
+last_updated: "2026-03-26T08:00:49.883Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -44,6 +44,7 @@ Plan: 2 of 2
 | Phase 03-build-fundament P01 | 5min | 1 tasks | 3 files |
 | Phase 03-build-fundament P02 | 222s | 2 tasks | 1 files |
 | Phase 04 P01 | 191s | 2 tasks | 2 files |
+| Phase 04 P02 | 150s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,9 @@ Recent decisions affecting current work:
 - [Phase 03-build-fundament]: macOS BSD tar: --exclude Flags muessen vor Dateien stehen (GNU tar erlaubt beides)
 - [Phase 04]: available() gibt (int)_available zurueck — Arduino Stream-Interface erwartet >= 0, nicht -1
 - [Phase 04]: ChunkStream 4KB Ring-Buffer als Default — konservativ sicher bei ~320KB ESP32 RAM
+- [Phase 04]: FreeRTOS-Task auf Core 0 fuer OTA-Streaming — verhindert Deadlock durch synchrones tarGzStreamExpander-Blocking auf WebServer-Core
+- [Phase 04]: tarGzStreamUpdater ohne Exclude-Filter — erkennt .ino.bin automatisch via tarHeaderUpdateCallBack
+- [Phase 04]: VERSION.txt nur im UI-Handler lesen und verteilen — Firmware-Handler greift nicht auf LittleFS zu
 
 ### Pending Todos
 
@@ -72,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T07:53:33.319Z
-Stopped at: Completed 04-combined-update-handler-01-PLAN.md
+Last session: 2026-03-26T08:00:49.880Z
+Stopped at: Completed 04-combined-update-handler-02-PLAN.md
 Resume file: None

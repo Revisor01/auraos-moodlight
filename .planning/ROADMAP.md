@@ -13,7 +13,7 @@
 ## Phases
 
 - [x] **Phase 3: Build-Fundament** - Build-Blocker fixen + Build-Script das ein verifiziertes Combined-TGZ erzeugt (completed 2026-03-26)
-- [ ] **Phase 4: Combined-Update-Handler** - ESP32 verarbeitet Combined-TGZ über zwei neue HTTP-Routen
+- [x] **Phase 4: Combined-Update-Handler** - ESP32 verarbeitet Combined-TGZ über zwei neue HTTP-Routen (completed 2026-03-26)
 - [ ] **Phase 5: Diagnostics-UI** - Ein Upload-Feld, ein Button, eine Versionsanzeige
 
 ## Phase Details
@@ -41,10 +41,10 @@ Plans:
   2. POST an `/update/combined-firmware` streamt `firmware.ino.bin` direkt in den OTA-Flash ohne LittleFS-Kontakt
   3. Nach erfolgreichem Firmware-Flash enthält `/firmware-version.txt` auf LittleFS die neue Version
   4. Ein unterbrochener Upload hinterlässt keinen inkonsistenten State — erneuter Upload funktioniert
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 04-01-PLAN.md — ChunkStream-Wrapper + VERSION.txt ins Build-Script
-- [ ] 04-02-PLAN.md — Combined-UI und Combined-Firmware Upload-Handler
+- [x] 04-02-PLAN.md — Combined-UI und Combined-Firmware Upload-Handler
 
 ### Phase 5: Diagnostics-UI
 **Goal**: Die Update-Sektion in `diagnostics.html` hat einen einzigen Datei-Picker und einen "Full Update"-Button der beide Uploads sequentiell ausführt, sowie eine einzige Versionsanzeige
@@ -62,5 +62,5 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 3. Build-Fundament | v2.0 | 2/2 | Complete   | 2026-03-26 |
-| 4. Combined-Update-Handler | v2.0 | 1/2 | In Progress|  |
+| 4. Combined-Update-Handler | v2.0 | 2/2 | Complete   | 2026-03-26 |
 | 5. Diagnostics-UI | v2.0 | 0/? | Not started | - |
