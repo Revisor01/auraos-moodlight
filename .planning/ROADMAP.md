@@ -14,7 +14,7 @@
 
 - [x] **Phase 3: Build-Fundament** - Build-Blocker fixen + Build-Script das ein verifiziertes Combined-TGZ erzeugt (completed 2026-03-26)
 - [x] **Phase 4: Combined-Update-Handler** - ESP32 verarbeitet Combined-TGZ über zwei neue HTTP-Routen (completed 2026-03-26)
-- [ ] **Phase 5: Diagnostics-UI** - Ein Upload-Feld, ein Button, eine Versionsanzeige
+- [x] **Phase 5: Diagnostics-UI** - Ein Upload-Feld, ein Button, eine Versionsanzeige (completed 2026-03-26)
 
 ## Phase Details
 
@@ -54,9 +54,9 @@ Plans:
   1. Nutzer wählt eine Combined-TGZ-Datei und klickt "Full Update" — kein zweiter Upload nötig
   2. Fortschrittsanzeige zeigt klar welcher Schritt läuft (1/2 UI-Installation, 2/2 Firmware-Flash)
   3. Eine einzige Versionsanzeige zeigt die aktuelle Gesamtversion (nicht getrennt Firmware/UI)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 05-01-PLAN.md — Combined Update UI (File-Picker, Progress, Versionsanzeige, Legacy-Fallback)
+- [x] 05-01-PLAN.md — Combined Update UI (File-Picker, Progress, Versionsanzeige, Legacy-Fallback)
 
 ## Progress
 
@@ -64,4 +64,4 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 3. Build-Fundament | v2.0 | 2/2 | Complete   | 2026-03-26 |
 | 4. Combined-Update-Handler | v2.0 | 2/2 | Complete   | 2026-03-26 |
-| 5. Diagnostics-UI | v2.0 | 0/1 | Planned | - |
+| 5. Diagnostics-UI | v2.0 | 1/1 | Complete   | 2026-03-26 |
