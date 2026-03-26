@@ -297,15 +297,7 @@ def get_headlines_per_source(route_default: int) -> int:
 
 @app.route('/')
 def index():
-  return jsonify({
-    "service": "AuraOS Moodlight API v9.1",
-    "status": "running",
-    "endpoints": {
-      "current": "/api/moodlight/current",
-      "history": "/api/moodlight/history?hours=168",
-      "health": "/api/health"
-    }
-  })
+    return redirect(url_for('dashboard'))
 
 @app.route('/api/health')
 def health_check():
@@ -493,7 +485,7 @@ def login_page():
         if _admin_password_hash and check_password_hash(_admin_password_hash, password):
             session['authenticated'] = True
             session.permanent = True
-            next_url = request.args.get('next') or url_for('feed_management')
+            next_url = request.args.get('next') or url_for('dashboard')
             logging.info("Admin-Login erfolgreich.")
             return redirect(next_url)
         else:
@@ -509,6 +501,14 @@ def logout():
     session.clear()
     logging.info("Admin-Logout.")
     return redirect(url_for('login_page'))
+
+
+# ===== DASHBOARD =====
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """Haupt-Dashboard — Übersicht, Headlines, Feeds in einem Interface."""
+    return render_template('dashboard.html')
 
 
 # ===== FEED-MANAGEMENT WEB-INTERFACE =====
