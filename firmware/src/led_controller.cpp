@@ -1,5 +1,6 @@
 #include "led_controller.h"
 #include "debug.h"
+#include <esp_wifi.h>
 
 extern AppState appState;
 
@@ -208,14 +209,16 @@ void processLEDUpdates() {
 
     // Only call show() if we have updates and not in a critical section
     if (needsUpdate) {
-        // LED-02: LEDs nur aktualisieren wenn kein WiFi-Reconnect aktiv ist
-        if (!appState.wifiReconnectActive) {
-            // Wait for any ongoing interrupt operations
+        // LEDs nur aktualisieren wenn safe UND kein WiFi-Reconnect aktiv
+        if (appState.ledSafeToShow && !appState.wifiReconnectActive) {
             yield();
             delay(1);
 
-            // Now it should be safe to update LEDs
+            // WiFi-Interrupts kurz pausieren waehrend pixels.show()
+            // Verhindert xEventGroupClearBits Crash auf aelteren ESP32-Revisionen
+            esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
             pixels.show();
+            esp_wifi_set_ps(WIFI_PS_NONE);
             lastLedUpdateTime = currentTime;
 
             static unsigned long lastShowDebug = 0;
@@ -246,10 +249,10 @@ void pulseCurrentColor()
     {
         // Stelle sicher, dass Helligkeit korrekt ist, wenn nicht gepulst wird
         static uint8_t lastSetBrightness = 0;
-        if (pixels.getBrightness() != targetBrightness)
+        if (appState.ledSafeToShow && pixels.getBrightness() != targetBrightness)
         {
             pixels.setBrightness(targetBrightness);
-            pixels.show(); // Zeige korrekte Helligkeit
+            pixels.show();
             debug(String(F("Pulse: Helligkeit zurückgesetzt auf ")) + targetBrightness);
         }
         return;
@@ -263,16 +266,15 @@ void pulseCurrentColor()
     {
         debug(F("Pulse: Timeout - Auto-disable nach 3 Zyklen"));
         appState.isPulsing = false;
-        pixels.setBrightness(targetBrightness);
-        pixels.show();
+        if (appState.ledSafeToShow) { pixels.setBrightness(targetBrightness); pixels.show(); }
         return;
     }
+
+    if (!appState.ledSafeToShow) return;
 
     float progress = fmod((float)elapsedTime, (float)DEFAULT_WAVE_DURATION) / (float)DEFAULT_WAVE_DURATION;
     float easedValue = (sin(progress * 2.0 * PI - PI / 2.0) + 1.0) / 2.0;
 
-    // Use the config values instead of hardcoded ones
-    // Explizite Typkonvertierung, um den Compilerfehler zu vermeiden
     uint8_t minPulseBright = (DEFAULT_WAVE_MIN_BRIGHTNESS < targetBrightness / 2) ? DEFAULT_WAVE_MIN_BRIGHTNESS : (targetBrightness / 2);
     uint8_t maxPulseBright = (DEFAULT_WAVE_MAX_BRIGHTNESS < targetBrightness) ? DEFAULT_WAVE_MAX_BRIGHTNESS : targetBrightness;
 

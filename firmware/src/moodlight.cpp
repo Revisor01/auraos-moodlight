@@ -53,13 +53,16 @@ void setup() {
 
     btStop();
     WiFi.persistent(false);
-    WiFi.mode(WIFI_STA);
-    WiFi.setSleep(false);
+    WiFi.mode(WIFI_OFF);  // WiFi-Subsystem initialisieren ohne aktiven Modus
+    delay(100);
 
     Serial.println(F("==========================================="));
     Serial.println(F("AuraOS Moodlight — " MOODLIGHT_FULL_VERSION));
     Serial.println(F("==========================================="));
     debug(F("Starte Moodlight..."));
+
+    // Hardware-Mutex ZUERST (wird von loadSettings/updateLEDs gebraucht)
+    appState.ledMutex = xSemaphoreCreateMutex();
 
     // Dateisystem und Utils
     initFS();
@@ -73,7 +76,6 @@ void setup() {
 
     // Hardware
     delay(200);
-    appState.ledMutex = xSemaphoreCreateMutex();
     dht.begin();
 
     // Webserver-Routen definieren
@@ -85,7 +87,7 @@ void setup() {
     }
 
     // NeoPixel-LEDs ZULETZT initialisieren
-    delay(200);
+    delay(500);  // Laengere Pause damit WiFi-Subsystem stabil ist
     pixels = Adafruit_NeoPixel(appState.numLeds, appState.ledPin, NEO_GRB + NEO_KHZ800);
     pixels.begin();
     pixels.setBrightness(DEFAULT_LED_BRIGHTNESS);
@@ -93,6 +95,7 @@ void setup() {
 
     appState.startupTime = millis();
     appState.initialStartupPhase = true;
+    appState.ledSafeToShow = true;  // LEDs erst jetzt freigeben
     Serial.println("=========== Loop Start ===========");
 }
 
@@ -100,16 +103,28 @@ void setup() {
 void loop() {
     watchdog.autoFeed();
 
-    // Erste LED-Initialisierung
-    initFirstLEDUpdate();
-
-    // DNS-Anfragen verarbeiten (AP-Modus)
+    // Im AP/Config-Modus: DNS + WebServer + Settings-Save + Reboot
     if (appState.isInConfigMode) {
         dnsServer.processNextRequest();
+        server.handleClient();
         if (millis() - appState.apModeStartTime > AP_TIMEOUT) {
             ESP.restart();
         }
+        // Settings-Save im Config-Modus (sonst gehen WiFi-Credentials verloren)
+        if (appState.settingsNeedSaving && (millis() - appState.lastSettingsSaved > SETTINGS_SAVE_DEBOUNCE_MS)) {
+            saveSettings();
+            appState.settingsNeedSaving = false;
+        }
+        // Reboot im Config-Modus
+        if (appState.rebootNeeded && millis() > appState.rebootTime) {
+            delay(200);
+            ESP.restart();
+        }
+        return; // Im Config-Modus keine LEDs/Sentiment/MQTT
     }
+
+    // Erste LED-Initialisierung (nur im Normal-Modus)
+    initFirstLEDUpdate();
 
     // Webserver-Anfragen verarbeiten
     static unsigned long lastServerHandle = 0;
