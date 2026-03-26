@@ -67,6 +67,42 @@ CREATE INDEX IF NOT EXISTS idx_device_requests_endpoint ON device_requests(endpo
 -- ALTER TABLE device_requests ADD CONSTRAINT fk_device
 --   FOREIGN KEY (device_id) REFERENCES device_statistics(device_id) ON DELETE CASCADE;
 
+-- ===== FEEDS TABLE =====
+-- RSS-Feeds für Sentiment-Analyse — verwaltet via API (Phase 10)
+CREATE TABLE IF NOT EXISTS feeds (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    url TEXT NOT NULL UNIQUE,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    last_fetched_at TIMESTAMPTZ,
+    error_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indizes für Performance
+CREATE INDEX IF NOT EXISTS idx_feeds_active ON feeds(active);
+CREATE INDEX IF NOT EXISTS idx_feeds_url ON feeds(url);
+
+COMMENT ON TABLE feeds IS 'RSS-Feeds für Sentiment-Analyse';
+COMMENT ON COLUMN feeds.active IS 'Inaktive Feeds werden vom Worker ignoriert';
+COMMENT ON COLUMN feeds.error_count IS 'Anzahl aufeinanderfolgender Fehler beim Feed-Abruf';
+
+-- Default-Feeds (ohne Focus.de — FEED-06)
+INSERT INTO feeds (name, url) VALUES
+    ('Zeit', 'https://newsfeed.zeit.de/index'),
+    ('Tagesschau', 'https://www.tagesschau.de/xml/rss2'),
+    ('Sueddeutsche', 'https://rss.sueddeutsche.de/rss/Alles'),
+    ('FAZ', 'https://www.faz.net/rss/aktuell/'),
+    ('Die Welt', 'https://www.welt.de/feeds/latest.rss'),
+    ('Handelsblatt', 'https://www.handelsblatt.com/contentexport/feed/schlagzeilen'),
+    ('n-tv', 'https://www.n-tv.de/rss'),
+    ('Stern', 'https://www.stern.de/feed/standard/alle-nachrichten/'),
+    ('Telekom', 'https://www.t-online.de/feed.rss'),
+    ('TAZ', 'https://taz.de/!p4608;rss/'),
+    ('Deutschlandfunk', 'https://www.deutschlandfunk.de/nachrichten-100.rss')
+ON CONFLICT (url) DO NOTHING;
+
 -- ===== HELPER FUNCTIONS =====
 
 -- Funktion: Kategorie aus Sentiment-Score bestimmen
@@ -186,6 +222,8 @@ COMMENT ON TABLE device_requests IS 'Detaillierte Request-Logs pro Gerät (optio
 COMMENT ON COLUMN sentiment_history.sentiment_score IS 'Sentiment-Wert von -1.0 (sehr negativ) bis +1.0 (sehr positiv)';
 COMMENT ON COLUMN sentiment_history.category IS 'Automatisch berechnete Kategorie basierend auf Score';
 COMMENT ON COLUMN device_statistics.device_id IS 'Eindeutige Geräte-ID (ESP32 MAC-Hash)';
+COMMENT ON TABLE feeds IS 'RSS-Feeds für Sentiment-Analyse';
+COMMENT ON COLUMN feeds.url IS 'UNIQUE — verhindert doppelte Feed-Einträge';
 
 -- Fertig!
 DO $$
