@@ -49,6 +49,7 @@ struct AppState {
     SemaphoreHandle_t ledMutex = NULL;
     uint32_t customColors[5] = {0xFF0000, 0xFFA500, 0x1E90FF, 0x545DF0, 0x8A2BE2};
     bool firstLedShowDone = false;
+    bool ledSafeToShow = false;  // Wird erst true nach WiFi-Init + NeoPixel-Init
     bool isPulsing = false;
     unsigned long pulseStartTime = 0;
     int statusLedIndex = DEFAULT_NUM_LEDS - 1;
