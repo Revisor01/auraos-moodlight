@@ -26,7 +26,10 @@
   1. Nach einer Sentiment-Analyse sind die einzelnen Headlines mit Einzel-Scores, Feed-Zuordnung und Zeitstempel in der DB abrufbar
   2. Bestehende Analysen laufen weiterhin durch ohne Fehler oder Performance-Einbußen
   3. Die headlines-Tabelle enthält Fremdschlüssel zu feeds und sentiment_updates
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 12-01-PLAN.md — headlines-Tabelle (DB-Schema + migration_phase12.sql), save_headlines() in database.py, Background Worker Erweiterung
 
 ### Phase 13: Authentifizierung
 **Goal**: Das Backend-Interface ist durch einen einfachen Passwort-Login geschützt, öffentliche ESP32-Endpunkte bleiben zugänglich
@@ -68,7 +71,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 12. Headline-Persistenz | 0/? | Not started | - |
+| 12. Headline-Persistenz | 0/1 | Planning done | - |
 | 13. Authentifizierung | 0/? | Not started | - |
 | 14. Backend-Dashboard | 0/? | Not started | - |
 | 15. Client-Erweiterungen | 0/? | Not started | - |
