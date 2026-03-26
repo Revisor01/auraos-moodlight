@@ -14,8 +14,8 @@
 
 ### ESP32 Combined Update Handler
 
-- [ ] **OTA-01**: Neuer HTTP-Endpoint für Combined-UI-Upload: extrahiert UI-Dateien aus dem Combined-TGZ nach LittleFS, überspringt `*.bin` Dateien
-- [ ] **OTA-02**: Neuer HTTP-Endpoint für Combined-Firmware-Flash: streamt `firmware.ino.bin` aus dem Combined-TGZ direkt via `Update.write()` ohne LittleFS-Staging
+- [x] **OTA-01**: Neuer HTTP-Endpoint für Combined-UI-Upload: extrahiert UI-Dateien aus dem Combined-TGZ nach LittleFS, überspringt `*.bin` Dateien
+- [x] **OTA-02**: Neuer HTTP-Endpoint für Combined-Firmware-Flash: streamt `firmware.ino.bin` aus dem Combined-TGZ direkt via `Update.write()` ohne LittleFS-Staging
 - [x] **OTA-03**: Nach erfolgreichem Firmware-Flash wird die Version aus einer `VERSION.txt` im TGZ-Root gelesen und in `firmware-version.txt` + `ui-version.txt` gespeichert
 - [x] **OTA-04**: Upload-Handler hat sauberen State-Reset bei Abbruch — keine stale static-Variablen vom vorherigen Upload
 
@@ -62,8 +62,8 @@ Deferred to future milestones.
 | BUILD-02 | Phase 3 | Complete |
 | BUILD-03 | Phase 3 | Complete |
 | BUILD-04 | Phase 3 | Complete |
-| OTA-01 | Phase 4 | Pending |
-| OTA-02 | Phase 4 | Pending |
+| OTA-01 | Phase 4 | Complete |
+| OTA-02 | Phase 4 | Complete |
 | OTA-03 | Phase 4 | Complete |
 | OTA-04 | Phase 4 | Complete |
 | UI-01 | Phase 5 | Pending |
