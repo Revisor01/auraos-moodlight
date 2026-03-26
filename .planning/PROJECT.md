@@ -41,11 +41,16 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 
 ### Active
 
-(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
+- [ ] Headlines + Einzel-Scores in DB speichern (nicht nur Durchschnitt)
+- [ ] API-Endpoint für aktuelle Headlines mit Einzel-Scores
+- [ ] Volles Backend-Dashboard mit Feeds, Headlines, Scores, Status
+- [ ] Einfacher Login/Passwort-Schutz für Backend-Interface
+- [ ] ESP32 mood.html zeigt letzte Headlines mit Einzel-Scores
+- [ ] GitHub Page erweitern mit Headline-Darstellung
 
 ### Out of Scope
 
-- Authentifizierung/Autorisierung — privates Projekt im Heimnetz, kein Bedarf
+- Authentifizierung/Autorisierung über Authentik/OAuth — Over-Engineering, einfacher Passwort-Schutz reicht
 - HTTPS auf ESP32 — gab Probleme in der Vergangenheit, eigener Milestone später
 - BLE Proxy für Bermuda — braucht vollen BLE-Scanner (~70KB RAM), ESPHome-Protokoll nicht kompatibel mit Custom-Firmware, eigener Milestone wenn überhaupt
 - Firmware-Aufsplittung (Monolith → Module) — erledigt in v3.0
@@ -110,4 +115,16 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after v4.0 milestone complete (Konfigurierbare RSS-Feeds)*
+## Current Milestone: v5.0 Schlagzeilen-Transparenz & Dashboard
+
+**Goal:** Sichtbar machen welche Schlagzeilen wie bewertet wurden, volles Backend-Dashboard mit Login-Schutz.
+
+**Target features:**
+- Headlines + Einzel-Scores in DB speichern und über API bereitstellen
+- Backend-Dashboard: Feeds, Headlines, Scores, System-Status
+- Einfacher Passwort-Login für Backend-Interface
+- ESP32 mood.html: letzte Headlines mit Scores
+- GitHub Page: Headline-Darstellung
+
+---
+*Last updated: 2026-03-26 after v5.0 milestone start (Schlagzeilen-Transparenz & Dashboard)*
