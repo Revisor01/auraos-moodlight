@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <esp_task_wdt.h>
+#include <esp_idf_version.h>
 #include <LittleFS.h>
 #include <Preferences.h>
 #include <WiFi.h>
