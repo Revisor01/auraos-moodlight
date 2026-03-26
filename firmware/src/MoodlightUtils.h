@@ -11,9 +11,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 
-// Forward-Deklaration für die Debug-Funktion, die vom Hauptprojekt bereitgestellt wird
-extern void debug(const String &message);
-extern void debug(const __FlashStringHelper *message);
+#include "debug.h"
 
 // ===== WATCHDOG-MANAGEMENT =====
 class WatchdogManager {

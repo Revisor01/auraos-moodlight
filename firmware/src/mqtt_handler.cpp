@@ -1,10 +1,10 @@
 #include "mqtt_handler.h"
 #include "led_controller.h"
+#include "sensor_manager.h"
+#include "debug.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include <Adafruit_NeoPixel.h>
-#include <DHT.h>
 
 // === ArduinoHA Globals ===
 static WiFiClient wifiClientHA;
@@ -27,12 +27,6 @@ HASensor haSystemStatus("system_status");
 
 // === Extern-Deklarationen fuer abhaengige Globals ===
 extern AppState appState;
-extern Adafruit_NeoPixel pixels;
-extern DHT dht;
-extern WiFiClient wifiClientHTTP;
-extern void debug(const String &message);
-extern void debug(const __FlashStringHelper *message);
-extern String floatToString(float value, int decimalPlaces);
 extern void updateLEDs();
 extern void setStatusLED(int mode);
 extern void saveSettings();

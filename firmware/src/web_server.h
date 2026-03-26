@@ -3,6 +3,9 @@
 #include "app_state.h"
 #include <WebServer.h>
 
+// Hardware-Instanz — definiert in web_server.cpp
+extern WebServer server;
+
 // === Web-Server-Funktionen ===
 
 // Dateisystem

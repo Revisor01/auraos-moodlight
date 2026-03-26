@@ -2,6 +2,10 @@
 
 #include "app_state.h"
 #include <Arduino.h>
+#include <DNSServer.h>
+
+// Hardware-Instanz — definiert in wifi_manager.cpp
+extern DNSServer dnsServer;
 
 // NTP-Zeit initialisieren
 void initTime();

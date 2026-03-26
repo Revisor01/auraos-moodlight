@@ -24,16 +24,14 @@
 
 // === Externe Globals aus moodlight.cpp ===
 extern AppState appState;
-extern WebServer server;
 extern Adafruit_NeoPixel pixels;
 extern Preferences preferences;
-extern WiFiClient wifiClientHTTP;
 extern const String SOFTWARE_VERSION;
 
-// === Externe Funktionen aus moodlight.cpp ===
-extern void debug(const String &message);
-extern void debug(const __FlashStringHelper *message);
-extern String floatToString(float value, int decimalPlaces);
+#include "debug.h"
+
+// Hardware-Instanz — definiert in diesem Modul
+WebServer server(80);
 
 // === Externe Funktionen aus anderen Modulen ===
 extern void saveSettings();
