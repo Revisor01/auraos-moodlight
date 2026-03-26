@@ -513,6 +513,7 @@ def logout():
 
 # ===== FEED-MANAGEMENT WEB-INTERFACE =====
 @app.route('/feeds')
+@login_required
 def feed_management():
     """Feed-Verwaltungsseite — UI fuer /api/moodlight/feeds CRUD"""
     return render_template('feeds.html')
