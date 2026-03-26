@@ -54,8 +54,9 @@ Plans:
   1. Nutzer wählt eine Combined-TGZ-Datei und klickt "Full Update" — kein zweiter Upload nötig
   2. Fortschrittsanzeige zeigt klar welcher Schritt läuft (1/2 UI-Installation, 2/2 Firmware-Flash)
   3. Eine einzige Versionsanzeige zeigt die aktuelle Gesamtversion (nicht getrennt Firmware/UI)
-**Plans**: TBD
-**UI hint**: yes
+**Plans:** 1 plan
+Plans:
+- [ ] 05-01-PLAN.md — Combined Update UI (File-Picker, Progress, Versionsanzeige, Legacy-Fallback)
 
 ## Progress
 
@@ -63,4 +64,4 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 3. Build-Fundament | v2.0 | 2/2 | Complete   | 2026-03-26 |
 | 4. Combined-Update-Handler | v2.0 | 2/2 | Complete   | 2026-03-26 |
-| 5. Diagnostics-UI | v2.0 | 0/? | Not started | - |
+| 5. Diagnostics-UI | v2.0 | 0/1 | Planned | - |
