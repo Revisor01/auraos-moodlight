@@ -9,7 +9,8 @@ Integration in app.py:
 """
 
 import logging
-from flask import jsonify, request
+from flask import jsonify, request, session
+from functools import wraps
 from datetime import datetime, timedelta
 from database import get_database, get_cache
 from shared_config import get_sentiment_category as get_category_from_score
@@ -17,6 +18,16 @@ import time
 import requests as http_requests
 
 logger = logging.getLogger(__name__)
+
+
+def api_login_required(f):
+    """Decorator für API-Endpoints: gibt 401 JSON zurück statt Redirect."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            return jsonify({"status": "error", "message": "Nicht authentifiziert"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # Farben werden auf dem Moodlight selbst konfiguriert (Teil der User-Config)
@@ -296,6 +307,7 @@ def register_moodlight_endpoints(app):
 
     # ===== CACHE CLEAR ENDPOINT (Admin) =====
     @app.route('/api/moodlight/cache/clear', methods=['POST'])
+    @api_login_required
     def clear_moodlight_cache():
         """
         Lösche Redis-Cache (für manuelle Aktualisierung)
@@ -347,6 +359,7 @@ def register_moodlight_endpoints(app):
 
 
     @app.route('/api/moodlight/feeds', methods=['POST'])
+    @api_login_required
     def add_moodlight_feed():
         """
         Neuen RSS-Feed hinzufügen mit URL-Validierung (FEED-03, FEED-05)
@@ -413,6 +426,7 @@ def register_moodlight_endpoints(app):
 
 
     @app.route('/api/moodlight/feeds/<int:feed_id>', methods=['DELETE'])
+    @api_login_required
     def delete_moodlight_feed(feed_id):
         """
         RSS-Feed entfernen (FEED-04)
