@@ -59,7 +59,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Headlines-API: get_recent_headlines() in database.py, GET /api/moodlight/headlines in moodlight_extensions.py
+- [x] 14-01-PLAN.md — Headlines-API: get_recent_headlines() in database.py, GET /api/moodlight/headlines in moodlight_extensions.py
 - [ ] 14-02-PLAN.md — Dashboard-Template: dashboard.html (SPA, 3 Tabs, Score-Visualisierung, Feed-CRUD), /dashboard Route in app.py
 
 ### Phase 15: Client-Erweiterungen
@@ -79,5 +79,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
 | 13. Authentifizierung | 2/2 | Complete    | 2026-03-26 |
-| 14. Backend-Dashboard | 0/2 | Not started | - |
+| 14. Backend-Dashboard | 1/2 | In Progress|  |
 | 15. Client-Erweiterungen | 0/? | Not started | - |

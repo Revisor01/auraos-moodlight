@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Schlagzeilen-Transparenz & Dashboard
-status: verifying
-stopped_at: Completed 13-authentifizierung-02-PLAN.md
-last_updated: "2026-03-26T23:29:24.189Z"
+status: executing
+stopped_at: Completed 14-backend-dashboard-01-PLAN.md
+last_updated: "2026-03-26T23:37:47.638Z"
 last_activity: 2026-03-26
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 13 — authentifizierung
+**Current focus:** Phase 14 — backend-dashboard
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 14 (backend-dashboard) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-26
 
 ```
@@ -51,6 +51,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 12-headline-persistenz]: feed_id NULLABLE in headlines — historische Headlines bleiben bei Feed-Löschung erhalten
 - [Phase 13-authentifizierung]: werkzeug.security für Passwort-Hash (Flask-integriert, keine neue Abhängigkeit); 24h Session-Timeout mit session.permanent=True
 - [Phase 13-authentifizierung]: api_login_required statt login_required für API-Endpoints — REST-Clients erwarten 401 JSON, kein HTML-Redirect
+- [Phase 14-backend-dashboard]: Endpoint /api/moodlight/headlines ist öffentlich ohne @api_login_required — ESP32 und Dashboard können ohne Session abrufen
+- [Phase 14-backend-dashboard]: max limit=500 für /api/moodlight/headlines — verhindert überlastende DB-Queries
 
 ### Pending Todos
 
@@ -63,6 +65,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-26T23:25:28.829Z
-Stopped at: Completed 13-authentifizierung-02-PLAN.md
+Last session: 2026-03-26T23:37:47.636Z
+Stopped at: Completed 14-backend-dashboard-01-PLAN.md
 Resume file: None
