@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from database import get_database, get_cache
 from shared_config import get_sentiment_category as get_category_from_score
 import time
+import requests as http_requests
 
 logger = logging.getLogger(__name__)
 
@@ -313,5 +314,123 @@ def register_moodlight_endpoints(app):
         except Exception as e:
             logger.error(f"Fehler beim Cache-Löschen: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
+    # ===== FEED-VERWALTUNG ENDPOINTS =====
+
+    @app.route('/api/moodlight/feeds', methods=['GET'])
+    def get_moodlight_feeds():
+        """
+        Alle RSS-Feeds mit Status zurückgeben (FEED-02)
+        """
+        try:
+            db = get_database()
+            feeds = db.get_all_feeds()
+
+            # Timestamps zu ISO-Format konvertieren
+            for feed in feeds:
+                if isinstance(feed.get('last_fetched_at'), datetime):
+                    feed['last_fetched_at'] = feed['last_fetched_at'].isoformat()
+                elif feed.get('last_fetched_at') is None:
+                    feed['last_fetched_at'] = None
+                if isinstance(feed.get('created_at'), datetime):
+                    feed['created_at'] = feed['created_at'].isoformat()
+
+            return jsonify({
+                "status": "success",
+                "count": len(feeds),
+                "feeds": feeds
+            })
+
+        except Exception as e:
+            logger.error(f"Fehler in GET /api/moodlight/feeds: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
+
+
+    @app.route('/api/moodlight/feeds', methods=['POST'])
+    def add_moodlight_feed():
+        """
+        Neuen RSS-Feed hinzufügen mit URL-Validierung (FEED-03, FEED-05)
+
+        Body (JSON): {"url": "https://...", "name": "Feed-Name"}
+        Gibt 201 bei Erfolg, 400 bei fehlenden Feldern, 409 bei Duplikat, 422 bei nicht erreichbarer URL.
+        """
+        try:
+            data = request.get_json(silent=True)
+            if not data:
+                return jsonify({"status": "error", "message": "JSON-Body erwartet"}), 400
+
+            url = data.get('url', '').strip()
+            name = data.get('name', '').strip()
+
+            if not url:
+                return jsonify({"status": "error", "message": "Feld 'url' fehlt oder leer"}), 400
+            if not name:
+                return jsonify({"status": "error", "message": "Feld 'name' fehlt oder leer"}), 400
+
+            # URL-Validierung: Erreichbarkeit prüfen (FEED-05)
+            try:
+                resp = http_requests.get(url, timeout=5, allow_redirects=True, stream=True)
+                resp.close()
+                if resp.status_code >= 400:
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Feed-URL nicht erreichbar: HTTP {resp.status_code}"
+                    }), 422
+            except http_requests.exceptions.Timeout:
+                return jsonify({
+                    "status": "error",
+                    "message": "Feed-URL nicht erreichbar: Timeout (5s)"
+                }), 422
+            except http_requests.exceptions.ConnectionError:
+                return jsonify({
+                    "status": "error",
+                    "message": "Feed-URL nicht erreichbar: Verbindungsfehler"
+                }), 422
+            except http_requests.exceptions.RequestException as e:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Feed-URL ungültig: {str(e)}"
+                }), 422
+
+            # In DB anlegen
+            db = get_database()
+            try:
+                new_feed = db.add_feed(name=name, url=url)
+            except ValueError as e:
+                # Duplikat (UniqueViolation)
+                return jsonify({"status": "error", "message": str(e)}), 409
+
+            # Timestamps konvertieren
+            if isinstance(new_feed.get('created_at'), datetime):
+                new_feed['created_at'] = new_feed['created_at'].isoformat()
+
+            logger.info(f"Feed hinzugefügt via API: {name} ({url})")
+            return jsonify({"status": "success", "feed": new_feed}), 201
+
+        except Exception as e:
+            logger.error(f"Fehler in POST /api/moodlight/feeds: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
+
+
+    @app.route('/api/moodlight/feeds/<int:feed_id>', methods=['DELETE'])
+    def delete_moodlight_feed(feed_id):
+        """
+        RSS-Feed entfernen (FEED-04)
+
+        Gibt 204 bei Erfolg, 404 wenn ID nicht gefunden.
+        """
+        try:
+            db = get_database()
+            deleted = db.delete_feed(feed_id)
+
+            if not deleted:
+                return jsonify({"status": "error", "message": f"Feed nicht gefunden: ID={feed_id}"}), 404
+
+            logger.info(f"Feed entfernt via API: ID={feed_id}")
+            return '', 204
+
+        except Exception as e:
+            logger.error(f"Fehler in DELETE /api/moodlight/feeds/{feed_id}: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
     logger.info("Moodlight API-Endpunkte registriert")
