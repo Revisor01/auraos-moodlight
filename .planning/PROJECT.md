@@ -29,25 +29,25 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ JSON Buffer Pool Memory Leak gefixt (RAII-Guard) — Phase 1
 - ✓ Health-Checks konsolidiert (ein Timer, klare Eskalation) — Phase 1
 - ✓ Credentials in API-Responses maskiert — Phase 1
+- ✓ moodlight.cpp in logische Module aufgeteilt (6 Module) — v3.0 Phase 7
+- ✓ AppState Shared-State-Fundament — v3.0 Phase 6
+- ✓ Code-Qualität konsolidiert (Dead Code, Magic Numbers, Redundanz) — v3.0 Phase 8
 
 ### Active
 
-- [ ] moodlight.cpp (4547 Zeilen) in logische Module aufteilen
-- [ ] WiFi-Management extrahieren (Reconnect, AP-Mode, Captive Portal)
-- [ ] LED-Controller extrahieren (NeoPixel, Farben, Animationen, Status-LED)
-- [ ] Web-Server & API-Handler extrahieren (HTTP-Routes, statische Dateien)
-- [ ] MQTT/Home-Assistant-Integration extrahieren
-- [ ] Settings-Management extrahieren (Load/Save, Preferences, JSON)
-- [ ] Sensor-Management extrahieren (DHT, Sentiment-Fetch)
-- [ ] Globale Variablen durch Klassen-Interfaces oder Shared-State ersetzen
-- [ ] Code-Qualität verbessern wo angefasst (Dead Code, Redundanz, Konstanten)
+- [ ] RSS-Feed-Liste in PostgreSQL statt hardcoded in shared_config.py/app.py/background_worker.py
+- [ ] GET/POST /api/moodlight/feeds API-Endpoints für Feed-Verwaltung
+- [ ] Background Worker liest Feeds aus DB statt hardcoded
+- [ ] Focus-Feed (404) entfernen
+- [ ] Feed-Validierung (URL erreichbar?)
+- [ ] Web-Interface Tab in setup.html — Feeds anzeigen, hinzufügen, entfernen
 
 ### Out of Scope
 
 - Authentifizierung/Autorisierung — privates Projekt im Heimnetz, kein Bedarf
 - HTTPS auf ESP32 — gab Probleme in der Vergangenheit, eigener Milestone später
 - BLE Proxy für Bermuda — braucht vollen BLE-Scanner (~70KB RAM), ESPHome-Protokoll nicht kompatibel mit Custom-Firmware, eigener Milestone wenn überhaupt
-- Firmware-Aufsplittung (Monolith → Module) — eigener Milestone nach Stabilisierung
+- Firmware-Aufsplittung (Monolith → Module) — erledigt in v3.0
 - Mobile App — Web-Interface reicht
 - Multi-Device-Support — ein Gerät im Einsatz
 - Automatische Tests — wünschenswert, aber nicht in diesem Milestone
@@ -102,4 +102,16 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after v3.0 milestone initialization (Firmware-Modularisierung)*
+## Current Milestone: v4.0 Konfigurierbare RSS-Feeds
+
+**Goal:** Feed-Liste über Web-Interface und API verwaltbar machen statt hardcoded in shared_config.py/app.py/background_worker.py.
+
+**Target features:**
+- RSS-Feed-Liste in PostgreSQL mit CRUD-API
+- Background Worker liest Feeds aus DB
+- Focus-Feed (404) entfernen
+- Feed-Validierung (URL erreichbar?)
+- Web-Interface Feed-Management in setup.html
+
+---
+*Last updated: 2026-03-26 after v4.0 milestone start (Konfigurierbare RSS-Feeds)*
