@@ -238,104 +238,154 @@
     <div id="ui-update-tab" class="tab-content" role="tabpanel" aria-labelledby="ui-update-tab">
         <div class="card">
             <div class="card-header">
-                <h2>UI Dateien aktualisieren</h2>
+                <h2>AuraOS Update</h2>
             </div>
             <div class="alert alert-info">
-                <p>Hier kannst du die Weboberfläche des Moodlights aktualisieren. Lade eine TGZ-Datei mit dem Format "UI-X.X-AuraOS.tgz" hoch, die alle HTML, CSS und JavaScript Dateien enthält.</p>
+                <p>Aktuelle Version: <strong id="current-version">—</strong></p>
             </div>
-            
+
             <div class="section">
-                <form method="POST" action="/ui-upload" enctype="multipart/form-data" id="ui-upload-form">
-                    <div class="form-group">
-                        <label for="ui-file">UI TGZ-Datei</label>
-                        <div class="custom-file">
-                            <input type="file" name="ui-file" id="ui-file" class="custom-file-input" accept=".tgz" 
-                                onchange="document.getElementById('ui-file-label').textContent=this.files[0]?this.files[0].name:'UI-Datei wählen'">
-                            <label for="ui-file" class="custom-file-label" id="ui-file-label">UI-Datei wählen</label>
-                        </div>
-                        <div class="help-text">Format: UI-X.X-AuraOS.tgz (z.B. UI-5.1-AuraOS.tgz)</div>
+                <p>Wähle die Update-Dateien aus und starte das Update mit einem Klick. Das Build-Script erzeugt beide Dateien automatisch.</p>
+
+                <div class="form-group">
+                    <label for="ui-file">1. UI-Datei (TGZ)</label>
+                    <div class="custom-file">
+                        <input type="file" id="ui-file" accept=".tgz,.tar.gz" class="custom-file-input"
+                            onchange="document.getElementById('ui-file-label').textContent=this.files[0]?this.files[0].name:'UI-Datei wählen'; checkUpdateReady()">
+                        <label for="ui-file" class="custom-file-label" id="ui-file-label">UI-Datei wählen</label>
                     </div>
-                    
-                    <button type="submit" class="btn btn-success" id="ui-upload-btn" aria-label="UI-Datei hochladen und installieren">
-                        <i class="fas fa-upload" aria-hidden="true"></i> Upload & Installieren
-                    </button>
-                </form>
-                
-                <div class="progress-container" id="upload-progress-container">
-                    <div class="upload-progress">
-                        <div class="upload-progress-bar" id="upload-progress-bar">0%</div>
-                    </div>
-                    <div class="help-text" id="upload-status">Uploading...</div>
+                    <div class="help-text">Format: UI-X.X-AuraOS.tgz</div>
                 </div>
+
+                <div class="form-group">
+                    <label for="fw-file">2. Firmware-Datei (BIN)</label>
+                    <div class="custom-file">
+                        <input type="file" id="fw-file" accept=".bin" class="custom-file-input"
+                            onchange="document.getElementById('fw-file-label').textContent=this.files[0]?this.files[0].name:'Firmware wählen'; checkUpdateReady()">
+                        <label for="fw-file" class="custom-file-label" id="fw-file-label">Firmware wählen</label>
+                    </div>
+                    <div class="help-text">Format: Firmware-X.X-AuraOS.bin</div>
+                </div>
+
+                <div id="update-progress" style="display:none; margin: 20px 0;">
+                    <div id="update-step" style="font-weight:500; margin-bottom:8px;">Warte...</div>
+                    <div class="upload-progress">
+                        <div class="upload-progress-bar" id="update-bar">0%</div>
+                    </div>
+                    <div class="help-text" id="update-status"></div>
+                </div>
+
+                <button class="btn btn-success" id="update-btn" onclick="startFullUpdate()" disabled>
+                    <i class="fas fa-rocket" aria-hidden="true"></i> Update starten
+                </button>
             </div>
-            
-            <div class="section">
-                <h3>Aktuelle UI-Version</h3>
-                <div class="alert alert-info">Die aktuelle Version der Weboberfläche ist <span id="current-ui-version">—</span></div>
-            </div>
-            
+
             <div class="section">
                 <div class="alert alert-warning">
-                    <strong>Wichtig:</strong> 
+                    <strong>Hinweis:</strong>
                     <ul>
-                        <li>Die Datei muss eine .tgz Datei sein</li>
-                        <li>Der Upload kann mehrere Minuten dauern</li>
-                        <li>Nach dem Update wird die Seite automatisch neu geladen</li>
-                        <li>Bei Problemen wird ein Backup der alten UI erstellt</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h2>Firmware aktualisieren</h2>
-            </div>
-            <div class="alert alert-info">
-                <p>Hier kannst du die Firmware des Moodlights aktualisieren. Lade eine kompilierte Firmware-Datei (.bin) hoch.</p>
-            </div>
-            
-            <div class="section">
-                <form method="POST" action="/update" enctype="multipart/form-data" id="firmware-upload-form">
-                    <div class="form-group">
-                        <label for="firmware">Firmware-Datei</label>
-                        <div class="custom-file">
-                            <input type="file" name="update" id="firmware" class="custom-file-input" accept=".bin" onchange="document.getElementById('firmware-label').textContent=this.files[0]?this.files[0].name:'Firmware wählen'">
-                            <label for="firmware" class="custom-file-label" id="firmware-label">Firmware wählen</label>
-                        </div>
-                        <div class="help-text">Format: Firmware-X.X-AuraOS.bin (z.B. Firmware-2.1-AuraOS.bin)</div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-danger" id="firmware-upload-btn" aria-label="Firmware aktualisieren">
-                        <i class="fas fa-upload" aria-hidden="true"></i> Firmware aktualisieren
-                    </button>
-                </form>
-                
-                <div class="progress-container" id="firmware-progress-container">
-                    <div class="upload-progress">
-                        <div class="upload-progress-bar" id="firmware-progress-bar">0%</div>
-                    </div>
-                    <div class="help-text" id="firmware-status">Uploading...</div>
-                </div>
-            </div>
-            
-            <div class="section">
-                <div class="alert alert-info">Die aktuelle Version der Firmware ist <span id="current-firmware-version">—</span></div>
-            </div>
-            
-            <div class="section">
-                <div class="alert alert-warning">
-                    <strong>Achtung:</strong> 
-                    <ul>
-                        <li>Die Firmware-Aktualisierung ist ein kritischer Prozess. Stelle sicher, dass du die richtige Datei verwendest!</li>
-                        <li>Unterbreche den Upload nicht - das Gerät könnte unbrauchbar werden.</li>
-                        <li>Das Gerät wird nach erfolgreichem Update neu gestartet.</li>
-                        <li>Bei Fehlern kann ein Recovery über die serielle Schnittstelle notwendig sein.</li>
+                        <li>Zuerst wird die UI aktualisiert, dann die Firmware geflasht</li>
+                        <li>Das Gerät startet nach dem Firmware-Update automatisch neu</li>
+                        <li>Unterbreche den Vorgang nicht!</li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+    function checkUpdateReady() {
+        var hasUi = document.getElementById('ui-file').files.length > 0;
+        var hasFw = document.getElementById('fw-file').files.length > 0;
+        document.getElementById('update-btn').disabled = !(hasUi && hasFw);
+    }
+
+    function startFullUpdate() {
+        if (!confirm('Update starten? Zuerst UI, dann Firmware. Gerät startet danach neu.')) return;
+
+        var uiFile = document.getElementById('ui-file').files[0];
+        var fwFile = document.getElementById('fw-file').files[0];
+        var btn = document.getElementById('update-btn');
+        var progress = document.getElementById('update-progress');
+        var step = document.getElementById('update-step');
+        var bar = document.getElementById('update-bar');
+        var status = document.getElementById('update-status');
+
+        btn.disabled = true;
+        progress.style.display = 'block';
+
+        // Schritt 1/2: UI Upload
+        step.textContent = 'Schritt 1/2: UI-Installation...';
+        status.textContent = 'Lade UI-Dateien hoch...';
+        bar.style.width = '0%'; bar.textContent = '0%';
+
+        doUpload('/ui-upload', uiFile, 'ui-file', bar, function(ok, msg) {
+            if (!ok) {
+                step.textContent = 'Fehler bei Schritt 1/2';
+                status.textContent = 'UI-Upload fehlgeschlagen: ' + msg;
+                status.style.color = 'var(--negative-color, red)';
+                btn.disabled = false;
+                return;
+            }
+
+            // Schritt 2/2: Firmware Flash
+            step.textContent = 'Schritt 2/2: Firmware-Flash...';
+            status.textContent = 'Flashe Firmware... Gerät startet danach automatisch neu.';
+            bar.style.width = '0%'; bar.textContent = '0%';
+
+            doUpload('/update', fwFile, 'update', bar, function(fwOk, fwMsg) {
+                if (fwOk) {
+                    step.textContent = 'Update abgeschlossen!';
+                    bar.style.width = '100%'; bar.textContent = '100%';
+                    status.textContent = 'Firmware geflasht. Seite wird in 15 Sekunden neu geladen...';
+                    status.style.color = 'var(--positive-color, green)';
+                    setTimeout(function() { window.location.reload(); }, 15000);
+                } else {
+                    step.textContent = 'Fehler bei Schritt 2/2';
+                    status.textContent = 'Firmware-Flash fehlgeschlagen: ' + fwMsg;
+                    status.style.color = 'var(--negative-color, red)';
+                    btn.disabled = false;
+                }
+            });
+        });
+    }
+
+    function doUpload(url, file, fieldName, barEl, callback) {
+        var xhr = new XMLHttpRequest();
+        var fd = new FormData();
+        fd.append(fieldName, file, file.name);
+
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                var pct = Math.round((e.loaded / e.total) * 100);
+                barEl.style.width = pct + '%';
+                barEl.textContent = pct + '%';
+            }
+        });
+        xhr.addEventListener('load', function() {
+            callback(xhr.status === 200, xhr.responseText);
+        });
+        xhr.addEventListener('error', function() {
+            // Firmware-Flash: Connection bricht ab weil ESP neustartet = Erfolg
+            if (url === '/update') { callback(true, 'OK'); }
+            else { callback(false, 'Verbindung fehlgeschlagen'); }
+        });
+        xhr.addEventListener('timeout', function() {
+            if (url === '/update') { callback(true, 'OK'); }
+            else { callback(false, 'Timeout'); }
+        });
+        xhr.timeout = 120000;
+        xhr.open('POST', url);
+        xhr.send(fd);
+    }
+
+    // Version laden
+    fetch('/api/firmware-version').then(function(r){return r.json();}).then(function(d){
+        document.getElementById('current-version').textContent = d.version || '?.?';
+    }).catch(function(){
+        document.getElementById('current-version').textContent = '?.?';
+    });
+    </script>
     
     <!-- Hardware Tab -->
     <div id="hardware-tab" class="tab-content" role="tabpanel" aria-labelledby="hardware-tab">
