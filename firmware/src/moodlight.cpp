@@ -46,8 +46,6 @@ AppState appState;
 
 // DNS Server für den Captive Portal
 DNSServer dnsServer;
-extern const byte DNS_PORT = 53;
-// appState.isInConfigMode -> appState.appState.isInConfigMode (migriert)
 
 // === Hilfsfunktion ===
 String floatToString(float value, int decimalPlaces)
@@ -62,34 +60,14 @@ WiFiClient wifiClientHTTP;
 
 // === Webserver für Updates und Logging ===
 WebServer server(80);
-// logBuffer/logIndex -> appState.logBuffer/appState.logIndex (migriert)
-extern const int LOG_BUFFER_SIZE = 20; // Groesse des Ringpuffers (muss mit AppState.logBuffer[20] uebereinstimmen)
 
 // === Hardware Setup ===
 Adafruit_NeoPixel pixels;
 DHT dht(DEFAULT_DHT_PIN, DHT22);
 Preferences preferences;
 
-// NTP constants (nicht im AppState - compile-time constants)
-const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 3600;     // GMT+1 (Adjust for your timezone, in seconds)
-const int   daylightOffset_sec = 3600; // +1 hour for DST (summer time)
-// appState.timeInitialized -> appState.appState.timeInitialized (migriert)
-
-// === Globale Variablen (migrierte Variablen sind in AppState appState) ===
-
+// Versionierung — für Module die String-Kontext brauchen
 extern const String SOFTWARE_VERSION = MOODLIGHT_FULL_VERSION;
-
-// Konstanten bleiben als #define / const (nicht im AppState)
-const unsigned long STARTUP_GRACE_PERIOD = 15000;
-extern const unsigned long MAX_RECONNECT_DELAY = 300000; // Maximale Verzögerung (5 Minuten)
-extern const unsigned long STATUS_LED_GRACE_MS = 30000;  // LED-03: 30s bevor Status-LED aktiviert wird
-extern const unsigned long MQTT_HEARTBEAT_INTERVAL = 60000; // 1 Minute
-extern const unsigned long SENTIMENT_FALLBACK_TIMEOUT = 3600000; // Nach 1 Stunde ohne erfolgreiche Aktualisierung
-extern const int MAX_SENTIMENT_FAILURES = 5;
-extern const unsigned long STATUS_LOG_INTERVAL = 300000; // 5 Minuten
-extern const unsigned long AP_TIMEOUT = 300000; // 5 Minuten
-extern const unsigned long REBOOT_DELAY = 5000; // 5 Sekunden bis zum Reboot
 
 #ifdef DEBUG_MODE
 // === Debug-Funktion mit Logging ===
@@ -161,28 +139,8 @@ void debug(const __FlashStringHelper *message) {
 WatchdogManager watchdog;
 MemoryMonitor memMonitor;
 SafeFileOps fileOps;
-// v9.0: CSVBuffer removed - stats from backend
-// CSVBuffer statsBuffer("/data/stats.csv");
 NetworkDiagnostics netDiag;
 SystemHealthCheck sysHealth;
-// v9.0: archiveTask removed - archiving handled in backend
-// appState.lastSystemHealthCheckTime -> appState.appState.lastSystemHealthCheckTime (migriert)
-const unsigned long HEALTH_CHECK_INTERVAL = 3600000; // 1 Stunde
-
-// ===== REMOVED IN v9.0: RSS Feed Configuration =====
-// RSS feeds are now hardcoded in backend (app.py)
-// No longer needed on device - reduces memory usage and complexity
-
-// ===== NEW IN v9.0: Backend Statistics API =====
-// fetchBackendStatistics() -> verschoben nach sensor_manager.cpp
-
-// initFS() -> verschoben nach web_server.cpp
-
-// Web-Server-Funktionen (initFS, copyFile, moveFile, copyDir, deleteDir,
-// getCurrentUiVersion, getCurrentFirmwareVersion, handleUiUpload,
-// handleApiStatus, handleApiDeleteDataPoint, handleApiResetAllData,
-// getStorageInfo, handleApiStorageInfo, handleApiStats, handleApiBackendStats,
-// setupWebServer, logSystemStatus) -> verschoben nach web_server.cpp
 
 
 // === Arduino Setup ===
@@ -433,7 +391,7 @@ void loop() {
 
     // Webserver-Anfragen verarbeiten mit reduzierter Frequenz
     static unsigned long lastServerHandle = 0;
-    if (millis() - lastServerHandle >= 20) {  // Alle 20ms
+    if (millis() - lastServerHandle >= LOOP_SERVER_HANDLE_MS) {
         server.handleClient();
         lastServerHandle = millis();
     }
@@ -456,14 +414,14 @@ void loop() {
     
     // MQTT-Loop periodisch ausführen für Verbindungspflege
     static unsigned long lastMqttLoop = 0;
-    if (appState.mqttEnabled && WiFi.status() == WL_CONNECTED && (millis() - lastMqttLoop >= 100)) {
+    if (appState.mqttEnabled && WiFi.status() == WL_CONNECTED && (millis() - lastMqttLoop >= LOOP_MQTT_INTERVAL_MS)) {
         mqtt.loop();
         lastMqttLoop = millis();
     }
 
     // WiFi- und MQTT-Verbindungen prüfen und wiederherstellen
     static unsigned long lastConnectionCheck = 0;
-    if (millis() - lastConnectionCheck >= 2000) {  // Alle 2 Sekunden
+    if (millis() - lastConnectionCheck >= LOOP_CONNECTION_CHECK_MS) {
         lastConnectionCheck = millis();
 
         checkAndReconnectWifi();
@@ -477,7 +435,7 @@ void loop() {
     processLEDUpdates();
 
     // Einstellungen speichern, falls geändert
-    if (appState.settingsNeedSaving && (millis() - appState.lastSettingsSaved > 2000)) {
+    if (appState.settingsNeedSaving && (millis() - appState.lastSettingsSaved > SETTINGS_SAVE_DEBOUNCE_MS)) {
         debug(F("Verzögerte Speicherung ausführen..."));
         saveSettings();
         appState.settingsNeedSaving = false;
@@ -508,7 +466,7 @@ void loop() {
     // Pulsieren der LEDs verarbeiten
     if (appState.isPulsing && appState.lightOn) {
         static unsigned long lastPulseUpdate = 0;
-        if (millis() - lastPulseUpdate >= 30) {  // 30ms zwischen Updates
+        if (millis() - lastPulseUpdate >= LOOP_PULSE_UPDATE_MS) {
             unsigned long currentTime = millis();
             unsigned long elapsedTime = currentTime - appState.pulseStartTime;
             
@@ -579,9 +537,9 @@ void loop() {
             // CPU-Temperatur auslesen
             statsDoc["temperature"] = temperatureRead();
             
-            // Statistik-Datei rotieren (24 Dateien)
+            // Statistik-Datei rotieren
             static int fileCounter = 0;
-            String fileName = "/data/sysstat_" + String(fileCounter++ % 24) + ".json";
+            String fileName = "/data/sysstat_" + String(fileCounter++ % SYSSTAT_FILE_ROTATION) + ".json";
             
             String jsonStr;
             serializeJson(statsDoc, jsonStr);
@@ -606,11 +564,11 @@ void loop() {
             struct tm timeinfo;
             localtime_r(&now, &timeinfo);
             
-            // Neustart in der Nacht planen (3:00-4:00 Uhr)
-            if (timeinfo.tm_hour >= 2 && timeinfo.tm_hour < 4) {
+            // Neustart in der Nacht planen
+            if (timeinfo.tm_hour >= NIGHT_REBOOT_HOUR_START && timeinfo.tm_hour < NIGHT_REBOOT_HOUR_END) {
                 debug(F("Nachtstunden, führe Neustart sofort durch..."));
                 appState.rebootNeeded = true;
-                appState.rebootTime = currentMillis + 60000;  // 1 Minute Verzögerung
+                appState.rebootTime = currentMillis + NIGHT_REBOOT_DELAY;
             } else {
                 debug(F("Neustart verschoben auf Nachtstunden..."));
                 // Flag für späteren Neustart setzen
@@ -633,10 +591,10 @@ void loop() {
             localtime_r(&now, &timeinfo);
             
             // Neustart in der Nacht ausführen
-            if (timeinfo.tm_hour >= 3 && timeinfo.tm_hour < 4) {
+            if (timeinfo.tm_hour >= SCHEDULED_REBOOT_HOUR_START && timeinfo.tm_hour < SCHEDULED_REBOOT_HOUR_END) {
                 debug(F("Geplanter Neustart wird ausgeführt..."));
                 appState.rebootNeeded = true;
-                appState.rebootTime = currentMillis + 30000;  // 30 Sekunden Verzögerung
+                appState.rebootTime = currentMillis + SCHEDULED_REBOOT_DELAY;
                 
                 // Neustart-Flag zurücksetzen
                 preferences.begin("syshealth", false);
@@ -650,9 +608,8 @@ void loop() {
         getStorageInfo(total, used, free);
         float percentUsed = (float)used * 100.0 / total;
         
-        if (percentUsed > 85) {
-            debug(F("Hohe Dateisystembelegung erkannt - v9.0: Archivierung läuft im Backend"));
-            // v9.0: Archiving handled in backend, no local action needed
+        if (percentUsed > STORAGE_WARNING_PERCENT) {
+            debug(F("Hohe Dateisystembelegung erkannt"));
         }
         
         appState.lastSystemHealthCheckTime = currentMillis;
@@ -666,11 +623,11 @@ void loop() {
 
     // System etwas Zeit geben - verhindert 100% CPU-Auslastung
     yield();
-    delay(20);  // 20ms Pause
-    
-    // Regelmaessiger Systemgesundheitscheck (5 Minuten)
+    delay(LOOP_DELAY_MS);
+
+    // Regelmaessiger Systemgesundheitscheck
     static unsigned long lastHealthCheck = 0;
-    if (millis() - lastHealthCheck > 300000) {
+    if (millis() - lastHealthCheck > HEALTH_CHECK_SHORT_INTERVAL) {
         sysHealth.update();
         memMonitor.update();
         lastHealthCheck = millis();

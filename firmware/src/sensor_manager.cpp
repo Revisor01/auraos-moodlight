@@ -19,11 +19,6 @@ extern HASensor haHumidity;
 extern void debug(const String &message);
 extern void debug(const __FlashStringHelper *message);
 extern String floatToString(float value, int decimalPlaces);
-extern const unsigned long SENTIMENT_FALLBACK_TIMEOUT;
-extern const int MAX_SENTIMENT_FAILURES;
-
-// Konstanten aus config.h (ueber app_state.h erreichbar)
-#include "config.h"
 
 // === Map Sentiment Score (-1 bis +1) zu LED Index (0-4) ===
 int mapSentimentToLED(float sentimentScore)

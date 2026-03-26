@@ -37,7 +37,6 @@ extern void updateLEDs();
 extern void setStatusLED(int mode);
 extern void saveSettings();
 extern void handleSentiment(float sentimentScore);
-extern const unsigned long MQTT_HEARTBEAT_INTERVAL;
 
 // ============================================================
 // HA-Callbacks
