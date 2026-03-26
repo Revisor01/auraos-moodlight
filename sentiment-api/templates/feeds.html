@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraOS - Feed-Verwaltung</title>
+  <style>
+    :root {
+      --primary: #8A2BE2;
+      --secondary: #1E90FF;
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --text: #2c3e50;
+      --text-muted: #6c757d;
+      --border: #e9ecef;
+      --shadow: rgba(0,0,0,0.1);
+      --danger: #dc3545;
+      --success: #28a745;
+      --warning: #ffc107;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.25rem;
+    }
+
+    header p {
+      opacity: 0.85;
+      font-size: 0.95rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 0.75rem;
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 0.875rem;
+      border: 1px solid rgba(255,255,255,0.4);
+      padding: 4px 12px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    .back-link:hover {
+      background: rgba(255,255,255,0.15);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    section {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .count-badge {
+      background: var(--primary);
+      color: white;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: normal;
+    }
+
+    /* Formular */
+    #addForm {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    #addForm input {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      color: var(--text);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #addForm input:focus {
+      border-color: var(--primary);
+    }
+
+    #feedName {
+      width: 180px;
+    }
+
+    #feedUrl {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    #addBtn {
+      padding: 8px 18px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    #addBtn:hover:not(:disabled) {
+      background: #7425c9;
+    }
+
+    #addBtn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    /* Meldungen */
+    .error-msg {
+      background: #fdecea;
+      color: var(--danger);
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 8px;
+      font-size: 0.875rem;
+    }
+
+    .success-msg {
+      background: #eafaf1;
+      color: var(--success);
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 8px;
+      font-size: 0.875rem;
+    }
+
+    /* Tabelle */
+    #tableWrapper {
+      overflow-x: auto;
+      transition: opacity 0.15s;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.9rem;
+    }
+
+    thead th {
+      background: var(--primary);
+      color: white;
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    thead th:first-child {
+      border-radius: 4px 0 0 0;
+    }
+
+    thead th:last-child {
+      border-radius: 0 4px 0 0;
+    }
+
+    tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    tbody tr:hover {
+      background: #f0f0f0;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody td a {
+      color: var(--secondary);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    tbody td a:hover {
+      text-decoration: underline;
+    }
+
+    .error-count {
+      color: var(--danger);
+      font-weight: bold;
+    }
+
+    /* Loeschen-Button */
+    .btn-delete {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+
+    .btn-delete:hover:not(:disabled) {
+      background: #c0392b;
+    }
+
+    .btn-delete:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Leerstatus und Loading */
+    #emptyMsg,
+    #loadingMsg {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 1rem 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AuraOS &mdash; Feed-Verwaltung</h1>
+    <p>RSS-Feeds konfigurieren die Weltlage-Analyse</p>
+    <a href="https://analyse.godsapp.de/" class="back-link">zurueck zur API</a>
+  </header>
+
+  <main>
+    <!-- Hinzufuegen-Formular -->
+    <section class="add-feed">
+      <h2>Feed hinzufuegen</h2>
+      <form id="addForm">
+        <input type="text" id="feedName" placeholder="Name (z.B. Spiegel)" required>
+        <input type="url" id="feedUrl" placeholder="https://www.spiegel.de/schlagzeilen/tops/index.rss" required>
+        <button type="submit" id="addBtn">Hinzufuegen</button>
+      </form>
+      <div id="addError" class="error-msg" hidden></div>
+      <div id="addSuccess" class="success-msg" hidden></div>
+    </section>
+
+    <!-- Feed-Tabelle -->
+    <section class="feed-list">
+      <h2>Aktive Feeds <span id="feedCount" class="count-badge"></span></h2>
+      <div id="tableWrapper">
+        <table id="feedTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>URL</th>
+              <th>Letzter Fetch</th>
+              <th>Fehler</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="feedBody">
+            <!-- per JS befuellt -->
+          </tbody>
+        </table>
+        <p id="emptyMsg" hidden>Noch keine Feeds vorhanden.</p>
+        <p id="loadingMsg">Lade Feeds...</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API = '/api/moodlight/feeds';
+
+    function formatDate(iso) {
+      if (!iso) return '&mdash;';
+      const d = new Date(iso);
+      return d.toLocaleString('de-DE', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function setLoading(state) {
+      document.getElementById('loadingMsg').hidden = !state;
+      document.getElementById('tableWrapper').style.opacity = state ? '0.5' : '1';
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(str || ''));
+      return d.innerHTML;
+    }
+
+    function truncateUrl(url) {
+      return url.length > 60 ? url.slice(0, 57) + '...' : url;
+    }
+
+    // Feeds laden und Tabelle befuellen
+    async function loadFeeds() {
+      setLoading(true);
+      try {
+        const res = await fetch(API);
+        const data = await res.json();
+        const feeds = data.feeds || [];
+
+        document.getElementById('feedCount').textContent = feeds.length;
+        document.getElementById('emptyMsg').hidden = feeds.length > 0;
+
+        const tbody = document.getElementById('feedBody');
+        tbody.innerHTML = '';
+        feeds.forEach(feed => {
+          const tr = document.createElement('tr');
+          tr.dataset.id = feed.id;
+          tr.innerHTML =
+            '<td>' + escapeHtml(feed.name) + '</td>' +
+            '<td><a href="' + escapeHtml(feed.url) + '" target="_blank" rel="noopener">' + escapeHtml(truncateUrl(feed.url)) + '</a></td>' +
+            '<td>' + formatDate(feed.last_fetched_at) + '</td>' +
+            '<td class="' + (feed.error_count > 0 ? 'error-count' : '') + '">' + feed.error_count + '</td>' +
+            '<td><button class="btn-delete" data-id="' + feed.id + '" data-name="' + escapeHtml(feed.name) + '">Loeschen</button></td>';
+          tbody.appendChild(tr);
+        });
+
+        // Delete-Handler einhaengen
+        tbody.querySelectorAll('.btn-delete').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            deleteFeed(btn.dataset.id, btn.dataset.name);
+          });
+        });
+
+      } catch (e) {
+        console.error('Fehler beim Laden der Feeds:', e);
+      } finally {
+        setLoading(false);
+        document.getElementById('loadingMsg').hidden = true;
+      }
+    }
+
+    // Feed loeschen (kein confirm-Dialog)
+    async function deleteFeed(id, name) {
+      const btn = document.querySelector('.btn-delete[data-id="' + id + '"]');
+      if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+      try {
+        const res = await fetch(API + '/' + id, { method: 'DELETE' });
+        if (res.status === 204) {
+          // Zeile sofort aus DOM entfernen
+          const row = document.querySelector('tr[data-id="' + id + '"]');
+          if (row) row.remove();
+          const count = document.getElementById('feedCount');
+          count.textContent = parseInt(count.textContent || '0') - 1;
+          const tbody = document.getElementById('feedBody');
+          document.getElementById('emptyMsg').hidden = tbody.children.length > 0;
+        } else {
+          const data = await res.json();
+          alert('Fehler: ' + (data.message || 'Unbekannter Fehler'));
+          if (btn) { btn.disabled = false; btn.textContent = 'Loeschen'; }
+        }
+      } catch (e) {
+        console.error('Fehler beim Loeschen:', e);
+        if (btn) { btn.disabled = false; btn.textContent = 'Loeschen'; }
+      }
+    }
+
+    // Feed hinzufuegen
+    document.getElementById('addForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const errorEl = document.getElementById('addError');
+      const successEl = document.getElementById('addSuccess');
+      const addBtn = document.getElementById('addBtn');
+
+      errorEl.hidden = true;
+      successEl.hidden = true;
+      addBtn.disabled = true;
+      addBtn.textContent = 'Pruefe URL...';
+
+      const name = document.getElementById('feedName').value.trim();
+      const url = document.getElementById('feedUrl').value.trim();
+
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, url: url })
+        });
+        const data = await res.json();
+
+        if (res.status === 201) {
+          successEl.textContent = 'Feed "' + name + '" erfolgreich hinzugefuegt.';
+          successEl.hidden = false;
+          document.getElementById('feedName').value = '';
+          document.getElementById('feedUrl').value = '';
+          await loadFeeds(); // Tabelle aktualisieren
+        } else {
+          errorEl.textContent = data.message || 'Fehler beim Hinzufuegen.';
+          errorEl.hidden = false;
+        }
+      } catch (e) {
+        errorEl.textContent = 'Netzwerkfehler — API nicht erreichbar.';
+        errorEl.hidden = false;
+      } finally {
+        addBtn.disabled = false;
+        addBtn.textContent = 'Hinzufuegen';
+      }
+    });
+
+    // Initial laden
+    loadFeeds();
+  </script>
+</body>
+</html>
