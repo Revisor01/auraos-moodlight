@@ -27,7 +27,11 @@
   2. Der Background Worker holt die Feed-Liste beim Start und bei jedem Analyse-Zyklus aus der DB (nicht aus shared_config.py oder hardcodierten Listen)
   3. Die 12 validen Standard-Feeds sind als Default-Daten in der DB vorhanden
   4. Focus.de ist nicht in der Default-Feed-Liste enthalten
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — feeds-Tabelle in init.sql + Migrations-SQL für Produktionssystem
+- [ ] 09-02-PLAN.md — get_active_feeds() in database.py + Worker/app.py auf DB-Pfad umstellen
 
 ### Phase 10: Feed-API
 **Goal**: Externe Clients (Browser, curl) können die Feed-Liste lesen sowie Feeds hinzufügen und entfernen
@@ -56,6 +60,6 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 9. DB-Schema & Worker-Integration | 0/? | Not started | - |
+| 9. DB-Schema & Worker-Integration | 0/2 | Not started | - |
 | 10. Feed-API | 0/? | Not started | - |
 | 11. Feed-Management Web-Interface | 0/? | Not started | - |
