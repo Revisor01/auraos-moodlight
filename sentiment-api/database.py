@@ -378,6 +378,102 @@ class Database:
             logger.error(f"Fehler beim Laden der aktiven Feeds: {e}")
             return []
 
+    def get_all_feeds(self) -> List[Dict[str, Any]]:
+        """
+        Hole alle RSS-Feeds aus der Datenbank (aktiv und inaktiv).
+
+        Returns:
+            Liste von Dicts mit id, name, url, active, last_fetched_at, error_count, created_at.
+            Leere Liste bei Fehler.
+        """
+        query = """
+            SELECT id, name, url, active, last_fetched_at, error_count, created_at
+            FROM feeds
+            ORDER BY name ASC;
+        """
+        try:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query)
+                results = cur.fetchall()
+                return [dict(row) for row in results]
+        except Exception as e:
+            logger.error(f"Fehler beim Laden aller Feeds: {e}")
+            return []
+
+    def add_feed(self, name: str, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Füge neuen RSS-Feed in die Datenbank ein.
+
+        Args:
+            name: Anzeigename des Feeds
+            url: Feed-URL (muss einzigartig sein)
+
+        Returns:
+            Dict mit id, name, url, active, created_at des neu angelegten Feeds.
+            None bei Fehler oder Duplikat (psycopg2.errors.UniqueViolation).
+
+        Raises:
+            ValueError: Wenn die URL bereits existiert (UNIQUE-Constraint).
+        """
+        query = """
+            INSERT INTO feeds (name, url, active)
+            VALUES (%s, %s, TRUE)
+            RETURNING id, name, url, active, created_at;
+        """
+        try:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, (name, url))
+                result = cur.fetchone()
+                self.conn.commit()
+                logger.info(f"Neuer Feed angelegt: {name} ({url})")
+                return dict(result)
+        except psycopg2.errors.UniqueViolation:
+            self.conn.rollback()
+            raise ValueError(f"Feed-URL bereits vorhanden: {url}")
+        except Exception as e:
+            if self.conn:
+                try:
+                    self.conn.rollback()
+                except Exception:
+                    pass
+            logger.error(f"Fehler beim Anlegen des Feeds: {e}")
+            raise
+
+    def delete_feed(self, feed_id: int) -> bool:
+        """
+        Lösche RSS-Feed aus der Datenbank.
+
+        Args:
+            feed_id: ID des zu löschenden Feeds
+
+        Returns:
+            True wenn Feed gefunden und gelöscht, False wenn ID nicht existiert.
+        """
+        query = """
+            DELETE FROM feeds
+            WHERE id = %s
+            RETURNING id;
+        """
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query, (feed_id,))
+                deleted = cur.fetchone()
+                self.conn.commit()
+                if deleted:
+                    logger.info(f"Feed gelöscht: ID={feed_id}")
+                    return True
+                else:
+                    logger.warning(f"Feed nicht gefunden: ID={feed_id}")
+                    return False
+        except Exception as e:
+            if self.conn:
+                try:
+                    self.conn.rollback()
+                except Exception:
+                    pass
+            logger.error(f"Fehler beim Löschen des Feeds {feed_id}: {e}")
+            raise
+
     def get_statistics(self) -> Dict[str, Any]:
         """
         Hole System-Statistiken
