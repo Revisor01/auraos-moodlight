@@ -6,7 +6,7 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 
 ## Core Value
 
-Ein einziger Klick baut ein Combined Update (UI + Firmware), bumpt die Version und committet — kein manuelles Versionieren, kein getrennter Upload.
+Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
 
 ## Requirements
 
@@ -32,13 +32,15 @@ Ein einziger Klick baut ein Combined Update (UI + Firmware), bumpt die Version u
 
 ### Active
 
-- [ ] Combined Update-Datei: Eine TGZ-Datei enthält UI-Dateien + firmware.bin, ESP32 verarbeitet beides sequentiell in einem Upload
-- [ ] Neuer Upload-Handler auf ESP32: Erkennt Combined-TGZ, extrahiert UI-Dateien nach LittleFS, flasht Firmware-BIN via Update-API
-- [ ] Unified Versionierung: Eine Versionsnummer für Firmware + UI (z.B. "10.0"), aus config.h gelesen
-- [ ] Build-Script: `./build-release.sh` bumpt Version in config.h, baut Firmware, packt Combined-TGZ, committet
-- [ ] Version-Bump-Logik: Major/Minor/Patch Bump als Argument (`./build-release.sh minor`)
-- [ ] Diagnostics-UI anpassen: Ein Upload-Feld statt zwei, zeigt eine Version
-- [ ] esp_task_wdt_init Fix: Pre-existing Build-Fehler beheben (Arduino ESP32 Core API-Kompatibilität)
+- [ ] moodlight.cpp (4547 Zeilen) in logische Module aufteilen
+- [ ] WiFi-Management extrahieren (Reconnect, AP-Mode, Captive Portal)
+- [ ] LED-Controller extrahieren (NeoPixel, Farben, Animationen, Status-LED)
+- [ ] Web-Server & API-Handler extrahieren (HTTP-Routes, statische Dateien)
+- [ ] MQTT/Home-Assistant-Integration extrahieren
+- [ ] Settings-Management extrahieren (Load/Save, Preferences, JSON)
+- [ ] Sensor-Management extrahieren (DHT, Sentiment-Fetch)
+- [ ] Globale Variablen durch Klassen-Interfaces oder Shared-State ersetzen
+- [ ] Code-Qualität verbessern wo angefasst (Dead Code, Redundanz, Konstanten)
 
 ### Out of Scope
 
@@ -100,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after v2.0 milestone initialization*
+*Last updated: 2026-03-26 after v3.0 milestone initialization (Firmware-Modularisierung)*
