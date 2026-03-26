@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-03-26T13:32:15.393Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 07-06-PLAN.md
+last_updated: "2026-03-26T13:49:03.992Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Plan: 6 of 6
 | Phase 07 P03 | 5min | 1 tasks | 3 files |
 | Phase 07 P04 | 12min | 1 tasks | 3 files |
 | Phase 07 P05 | 8min | 1 tasks | 3 files |
+| Phase 07 P06 | 16min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 07]: sensor_manager.cpp inkludiert led_controller.h direkt — sauberere Abhaengigkeit als extern-Deklarationen fuer bereits extrahierte Module
 - [Phase 07]: wifiClientHA/mac/HADevice als static in mqtt_handler.cpp — nur intern benutzt, kein extern noetig
 - [Phase 07]: MQTT_HEARTBEAT_INTERVAL als extern const in moodlight.cpp — C++ const hat interne Verlinkung, extern macht Konstante cross-TU sichtbar
+- [Phase 07]: extern const fuer REBOOT_DELAY/LOG_BUFFER_SIZE/STATUS_LOG_INTERVAL/SOFTWARE_VERSION — C++ const hat interne Verlinkung, extern macht Konstanten cross-TU sichtbar
+- [Phase 07]: initJsonPool() wrapper in web_server.h — JsonBufferPool struct bleibt intern in web_server.cpp, kein Struct-Typ im Header
 
 ### Pending Todos
 
@@ -83,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T13:32:15.385Z
-Stopped at: Completed 07-05-PLAN.md
+Last session: 2026-03-26T13:49:03.979Z
+Stopped at: Completed 07-06-PLAN.md
 Resume file: None

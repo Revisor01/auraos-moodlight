@@ -12,7 +12,7 @@
 ## Phases
 
 - [x] **Phase 6: Shared State Fundament** — AppState-Struct definieren, alle globalen Variablen zentralisieren (completed 2026-03-26)
-- [ ] **Phase 7: Modul-Extraktion** — Alle 6 Module aus moodlight.cpp extrahieren, Firmware baut nach jeder Extraktion
+- [x] **Phase 7: Modul-Extraktion** — Alle 6 Module aus moodlight.cpp extrahieren, Firmware baut nach jeder Extraktion (completed 2026-03-26)
 - [ ] **Phase 8: Konsolidierung & Qualität** — moodlight.cpp auf max 200 Zeilen reduzieren, Qualitätssicherung
 
 ## Phase Details
@@ -39,14 +39,14 @@ Plans:
   2. Nach jeder einzelnen Modul-Extraktion baut `pio run` fehlerfrei — keine Phase-interne Regression
   3. Funktionstest nach allen Extraktionen: Gerät verbindet mit WiFi, LEDs reagieren auf Sentiment, Web-Interface liefert /api/status mit korrekten Werten
   4. MQTT-Heartbeat sendet weiterhin an Home Assistant (wenn mqttEnabled)
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 Plans:
 - [x] 07-01-PLAN.md — Settings-Manager extrahieren (MOD-05)
 - [x] 07-02-PLAN.md — WiFi-Manager extrahieren (MOD-01)
 - [x] 07-03-PLAN.md — LED-Controller extrahieren (MOD-02)
 - [x] 07-04-PLAN.md — Sensor & Sentiment Manager extrahieren (MOD-06)
 - [x] 07-05-PLAN.md — MQTT/HA-Handler extrahieren (MOD-04)
-- [ ] 07-06-PLAN.md — Web-Server extrahieren (MOD-03)
+- [x] 07-06-PLAN.md — Web-Server extrahieren (MOD-03)
 
 ### Phase 8: Konsolidierung & Qualität
 **Goal**: moodlight.cpp ist auf setup(), loop() und Modul-Initialisierung reduziert — Codebase ist bereinigt von totem Code, Magic Numbers und Duplikaten
@@ -64,5 +64,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. Shared State Fundament | 2/2 | Complete   | 2026-03-26 |
-| 7. Modul-Extraktion | 5/6 | In Progress|  |
+| 7. Modul-Extraktion | 6/6 | Complete   | 2026-03-26 |
 | 8. Konsolidierung & Qualitaet | 0/? | Not started | - |
