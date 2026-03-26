@@ -79,5 +79,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
 | 13. Authentifizierung | 2/2 | Complete    | 2026-03-26 |
-| 14. Backend-Dashboard | 2/2 | Complete   | 2026-03-26 |
+| 14. Backend-Dashboard | 2/2 | Complete    | 2026-03-26 |
 | 15. Client-Erweiterungen | 0/? | Not started | - |
