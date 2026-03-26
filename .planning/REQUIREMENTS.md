@@ -17,14 +17,14 @@
 ### Architektur
 
 - [x] **ARCH-01**: Shared State ist über ein `AppState`-Struct oder globale Header-Datei zugänglich — Module kommunizieren über definiertes Interface, nicht über extern-Variablen kreuz und quer
-- [ ] **ARCH-02**: `moodlight.cpp` enthält nur noch `setup()`, `loop()` und Modul-Initialisierung — max 200 Zeilen
+- [x] **ARCH-02**: `moodlight.cpp` enthält nur noch `setup()`, `loop()` und Modul-Initialisierung — max 200 Zeilen
 - [ ] **ARCH-03**: `pio run` baut fehlerfrei mit allen Modulen — kein Linking-Fehler, keine zirkulären Dependencies
 
 ### Qualität
 
 - [x] **QUAL-01**: Tote/unreachable Code-Blöcke sind entfernt (erkannt beim Aufteilen)
 - [x] **QUAL-02**: Magic Numbers sind durch benannte Konstanten in config.h ersetzt
-- [ ] **QUAL-03**: Duplizierter Code innerhalb der Module ist konsolidiert
+- [x] **QUAL-03**: Duplizierter Code innerhalb der Module ist konsolidiert
 
 ## v2 Requirements
 
@@ -53,11 +53,11 @@
 | MOD-04 | Phase 7 | Complete |
 | MOD-05 | Phase 7 | Complete |
 | MOD-06 | Phase 7 | Complete |
-| ARCH-02 | Phase 8 | Pending |
+| ARCH-02 | Phase 8 | Complete |
 | ARCH-03 | Phase 8 | Pending |
 | QUAL-01 | Phase 8 | Complete |
 | QUAL-02 | Phase 8 | Complete |
-| QUAL-03 | Phase 8 | Pending |
+| QUAL-03 | Phase 8 | Complete |
 
 **Coverage:**
 - v1 requirements: 12 total

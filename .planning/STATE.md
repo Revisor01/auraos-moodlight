@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-26T14:11:09.425Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-26T14:18:40.766Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 08 (konsolidierung-qualitaet) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Plan: 2 of 3
 | Phase 07 P05 | 8min | 1 tasks | 3 files |
 | Phase 07 P06 | 16min | 1 tasks | 3 files |
 | Phase 08 P01 | 8min | 2 tasks | 6 files |
+| Phase 08-konsolidierung-qualitaet P02 | 15min | 1 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 07]: initJsonPool() wrapper in web_server.h — JsonBufferPool struct bleibt intern in web_server.cpp, kein Struct-Typ im Header
 - [Phase 08]: SOFTWARE_VERSION bleibt als extern const String in moodlight.cpp — String-Literal-Concat-Makro MOODLIGHT_FULL_VERSION ergibt kein String-Objekt fuer direkten Ersatz
 - [Phase 08]: MAX_RECONNECT_DELAY #define benoetigt (unsigned long) Cast in min() — #define hat keinen Typ, Typ-Mismatch bei Template-Deduktion
+- [Phase 08]: debug.cpp definiert #define DEBUG_MODE als erste Zeile — Präprozessor-Schutz für beide debug()-Varianten korrekt
+- [Phase 08]: WiFiClient wifiClientHTTP in sensor_manager.cpp — primärer HTTP-Nutzer für Sentiment/DHT, mqtt_handler greift via sensor_manager.h zu
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T14:11:09.423Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-03-26T14:18:40.763Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

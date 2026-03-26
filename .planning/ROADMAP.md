@@ -57,10 +57,10 @@ Plans:
   2. `pio run` baut fehlerfrei ohne Linking-Fehler oder zirkulaere Dependencies
   3. Alle Magic Numbers in `moodlight.cpp` und den extrahierten Modulen sind durch benannte Konstanten in `config.h` ersetzt
   4. Kein toter oder unreachable Code in den neuen Modulen — bei Bereinigung gefundene Redundanzen sind konsolidiert
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 - [x] 08-01-PLAN.md — Magic Numbers nach config.h + Dead Code entfernen
-- [ ] 08-02-PLAN.md — debug()-Modul extrahieren + Hardware-Instanzen verschieben
+- [x] 08-02-PLAN.md — debug()-Modul extrahieren + Hardware-Instanzen verschieben
 - [ ] 08-03-PLAN.md — loop() verschlanken + moodlight.cpp auf 200 Zeilen
 
 ## Progress
@@ -69,4 +69,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 6. Shared State Fundament | 2/2 | Complete   | 2026-03-26 |
 | 7. Modul-Extraktion | 6/6 | Complete   | 2026-03-26 |
-| 8. Konsolidierung & Qualitaet | 1/3 | In Progress|  |
+| 8. Konsolidierung & Qualitaet | 2/3 | In Progress|  |
