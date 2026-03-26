@@ -3,64 +3,75 @@
 **Defined:** 2026-03-26
 **Core Value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
 
-## v4.0 Requirements
+## v5.0 Requirements
 
-Requirements für Milestone v4.0: Konfigurierbare RSS-Feeds.
+Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
-### Feed-Management
+### Headline-Transparenz
 
-- [x] **FEED-01**: Feed-Liste in PostgreSQL persistieren statt hardcoded in Python-Dateien
-- [x] **FEED-02**: GET /api/moodlight/feeds liefert aktuelle Feed-Liste mit Status
-- [x] **FEED-03**: POST /api/moodlight/feeds fügt neuen Feed hinzu
-- [x] **FEED-04**: DELETE /api/moodlight/feeds/<id> entfernt Feed
-- [x] **FEED-05**: Feed-URL wird beim Hinzufügen auf Erreichbarkeit validiert
-- [x] **FEED-06**: Focus.de Feed (404) aus Default-Liste entfernen
+- [ ] **HEAD-01**: Backend speichert bei jeder Analyse die einzelnen Headlines mit ihren Einzel-Scores in der DB
+- [ ] **HEAD-02**: API-Endpoint liefert die letzten analysierten Headlines mit Einzel-Scores, Feed-Zuordnung und Zeitstempel
+- [ ] **HEAD-03**: Visualisierung zeigt wie der Gesamt-Score aus den Einzelwerten berechnet wird
 
-### Web-Interface
+### Backend-Dashboard
 
-- [x] **UI-01**: setup.html zeigt Feed-Management-Sektion mit aktueller Feed-Liste
-- [x] **UI-02**: User kann Feed über Web-Interface hinzufügen und entfernen
-- [x] **UI-03**: Feed-Status (letzter Fetch, Fehler-Count) ist pro Feed sichtbar
+- [ ] **DASH-01**: Übersichtsseite zeigt aktuellen Sentiment-Score, Anzahl Feeds, letzten Analyse-Zeitpunkt
+- [ ] **DASH-02**: Headlines-Ansicht zeigt letzte analysierte Schlagzeilen mit Einzel-Scores und Feed-Zuordnung
+- [ ] **DASH-03**: Feed-Verwaltung ist ins Dashboard integriert (bestehende /feeds Funktionalität)
+- [ ] **DASH-04**: Navigation zwischen Dashboard-Bereichen (Übersicht, Headlines, Feeds)
+
+### Authentifizierung
+
+- [ ] **AUTH-01**: Backend-Interface ist durch einfachen Passwort-Login geschützt
+- [ ] **AUTH-02**: API-Endpoints für Schreiboperationen (POST/DELETE) erfordern Authentifizierung
+- [ ] **AUTH-03**: Lese-Endpoints (GET /api/moodlight/current, /history) bleiben öffentlich (ESP32 braucht sie)
+
+### ESP32 Integration
+
+- [ ] **ESP-01**: mood.html auf dem ESP32 zeigt die letzten Headlines mit Einzel-Scores (fetch vom Backend)
+
+### GitHub Page
+
+- [ ] **PAGE-01**: GitHub Page zeigt Headline-Darstellung mit Einzel-Scores und Feed-Zuordnung
 
 ## Future Requirements
 
-### Schlagzeilen-Transparenz (v5.0)
+### Erweiterte Analyse (v6.0+)
 
-- **TRANS-01**: Headlines + Einzel-Scores in DB speichern
-- **TRANS-02**: API-Endpoint für aktuelle Headlines mit Einzel-Scores
-- **TRANS-03**: ESP32 mood.html zeigt letzte Headlines mit Scores
-- **TRANS-04**: GitHub Page erweitern mit Headline-Darstellung
+- **ANAL-01**: Sentiment-Trend pro Feed (welcher Feed ist tendenziell positiver/negativer)
+- **ANAL-02**: Historische Headline-Suche
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| ESP32 Firmware-Änderungen | Feeds sind Backend-only, kein Firmware-Change nötig |
-| Feed-Import/Export | Kein Bedarf bei ~12 Feeds |
-| Feed-Kategorien/Tags | Over-Engineering für privates Projekt |
-| Automatische Feed-Discovery | Manuelle Verwaltung reicht |
+| OAuth/Authentik-Integration | Over-Engineering für privates Projekt, einfacher Passwort-Schutz reicht |
+| Benutzer-Verwaltung (mehrere Accounts) | Ein User, ein Passwort |
+| ESP32 Firmware-Änderungen außer mood.html | Feeds sind Backend-Concern |
+| Echtzeit-Updates (WebSocket) | Polling alle 30 Minuten reicht |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEED-01 | Phase 9 | Complete |
-| FEED-06 | Phase 9 | Complete |
-| FEED-02 | Phase 10 | Complete |
-| FEED-03 | Phase 10 | Complete |
-| FEED-04 | Phase 10 | Complete |
-| FEED-05 | Phase 10 | Complete |
-| UI-01 | Phase 11 | Complete |
-| UI-02 | Phase 11 | Complete |
-| UI-03 | Phase 11 | Complete |
+| HEAD-01 | — | Pending |
+| HEAD-02 | — | Pending |
+| HEAD-03 | — | Pending |
+| DASH-01 | — | Pending |
+| DASH-02 | — | Pending |
+| DASH-03 | — | Pending |
+| DASH-04 | — | Pending |
+| AUTH-01 | — | Pending |
+| AUTH-02 | — | Pending |
+| AUTH-03 | — | Pending |
+| ESP-01 | — | Pending |
+| PAGE-01 | — | Pending |
 
 **Coverage:**
-- v4.0 requirements: 9 total
-- Mapped to phases: 9
-- Unmapped: 0 ✓
+- v5.0 requirements: 12 total
+- Mapped to phases: 0
+- Unmapped: 12 ⚠️
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after roadmap v4.0 creation*
+*Last updated: 2026-03-26 after initial definition*
