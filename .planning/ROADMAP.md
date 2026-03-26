@@ -11,7 +11,7 @@
 
 ## Phases
 
-- [ ] **Phase 12: Headline-Persistenz** - DB-Schema + Headline-Speicherung im Backend
+- [x] **Phase 12: Headline-Persistenz** - DB-Schema + Headline-Speicherung im Backend (completed 2026-03-26)
 - [ ] **Phase 13: Authentifizierung** - Einfacher Passwort-Login für Backend-Interface
 - [ ] **Phase 14: Backend-Dashboard** - Volles Dashboard mit Headlines, Scores, Feeds und Visualisierung
 - [ ] **Phase 15: Client-Erweiterungen** - ESP32 mood.html und GitHub Page mit Headline-Darstellung
@@ -29,7 +29,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 12-01-PLAN.md — headlines-Tabelle (DB-Schema + migration_phase12.sql), save_headlines() in database.py, Background Worker Erweiterung
+- [x] 12-01-PLAN.md — headlines-Tabelle (DB-Schema + migration_phase12.sql), save_headlines() in database.py, Background Worker Erweiterung
 
 ### Phase 13: Authentifizierung
 **Goal**: Das Backend-Interface ist durch einen einfachen Passwort-Login geschützt, öffentliche ESP32-Endpunkte bleiben zugänglich
@@ -71,7 +71,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 12. Headline-Persistenz | 0/1 | Planning done | - |
+| 12. Headline-Persistenz | 1/1 | Complete   | 2026-03-26 |
 | 13. Authentifizierung | 0/? | Not started | - |
 | 14. Backend-Dashboard | 0/? | Not started | - |
 | 15. Client-Erweiterungen | 0/? | Not started | - |

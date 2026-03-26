@@ -9,7 +9,7 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
 ### Headline-Transparenz
 
-- [ ] **HEAD-01**: Backend speichert bei jeder Analyse die einzelnen Headlines mit ihren Einzel-Scores in der DB
+- [x] **HEAD-01**: Backend speichert bei jeder Analyse die einzelnen Headlines mit ihren Einzel-Scores in der DB
 - [ ] **HEAD-02**: API-Endpoint liefert die letzten analysierten Headlines mit Einzel-Scores, Feed-Zuordnung und Zeitstempel
 - [ ] **HEAD-03**: Visualisierung zeigt wie der Gesamt-Score aus den Einzelwerten berechnet wird
 
@@ -54,7 +54,7 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HEAD-01 | Phase 12 | Pending |
+| HEAD-01 | Phase 12 | Complete |
 | HEAD-02 | Phase 14 | Pending |
 | HEAD-03 | Phase 14 | Pending |
 | DASH-01 | Phase 14 | Pending |

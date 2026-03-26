@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Schlagzeilen-Transparenz & Dashboard
-status: Ready for planning
-stopped_at: null
-last_updated: "2026-03-26T23:45:00.000Z"
+status: verifying
+stopped_at: Completed 12-headline-persistenz-01-PLAN.md
+last_updated: "2026-03-26T23:11:52.134Z"
+last_activity: 2026-03-26
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
 ---
 
 # Project State
@@ -19,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 12 — Headline-Persistenz (DB-Schema + Headline-Speicherung)
+**Current focus:** Phase 12 — headline-persistenz
 
 ## Current Position
 
-Phase: 12 (Headline-Persistenz) — Not started
-Plan: —
-Status: Ready for planning
-Last activity: 2026-03-26 — Roadmap für v5.0 erstellt (4 Phasen, 12 Requirements)
+Phase: 12 (headline-persistenz) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-03-26
 
 ```
 Progress: ░░░░░░░░░░ 0/4 phases
@@ -46,6 +47,9 @@ Progress: ░░░░░░░░░░ 0/4 phases
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
+- [Phase 12-headline-persistenz]: save_headlines() Fehler nicht weitergeworfen — Sentiment-Score bleibt Primär-Invariante
+- [Phase 12-headline-persistenz]: feed_id NULLABLE in headlines — historische Headlines bleiben bei Feed-Löschung erhalten
+
 ### Pending Todos
 
 - Phase 12 planen: DB-Migration für headlines-Tabelle, Background Worker anpassen
@@ -57,6 +61,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-26
-Stopped at: Roadmap erstellt, bereit für Phase 12 Planung
+Last session: 2026-03-26T23:11:52.132Z
+Stopped at: Completed 12-headline-persistenz-01-PLAN.md
 Resume file: None
