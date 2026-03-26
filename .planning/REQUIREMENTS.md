@@ -12,7 +12,7 @@
 - [ ] **MOD-03**: Web-Server ist in `web_server.h/.cpp` extrahiert — Route-Registration, API-Handler (/api/status, /api/settings/*, /api/export/*), statische Datei-Handler, UI/Firmware-Upload-Handler
 - [ ] **MOD-04**: MQTT/HA-Integration ist in `mqtt_handler.h/.cpp` extrahiert — setupHA(), MQTT-Connect/Reconnect, ArduinoHA-Entity-Definitionen, Heartbeat, Command-Handler
 - [x] **MOD-05**: Settings-Management ist in `settings_manager.h/.cpp` extrahiert — loadSettings(), saveSettings(), saveSettingsToFile(), loadSettingsFromJSON(), Preferences-API, JSON-Serialisierung
-- [ ] **MOD-06**: Sensor & Sentiment ist in `sensor_manager.h/.cpp` extrahiert — DHT-Read, Sentiment-API-Fetch, mapSentimentToLED(), Fehler-Counter, Fallback-Logik
+- [x] **MOD-06**: Sensor & Sentiment ist in `sensor_manager.h/.cpp` extrahiert — DHT-Read, Sentiment-API-Fetch, mapSentimentToLED(), Fehler-Counter, Fallback-Logik
 
 ### Architektur
 
@@ -52,7 +52,7 @@
 | MOD-03 | Phase 7 | Pending |
 | MOD-04 | Phase 7 | Pending |
 | MOD-05 | Phase 7 | Complete |
-| MOD-06 | Phase 7 | Pending |
+| MOD-06 | Phase 7 | Complete |
 | ARCH-02 | Phase 8 | Pending |
 | ARCH-03 | Phase 8 | Pending |
 | QUAL-01 | Phase 8 | Pending |
