@@ -447,4 +447,31 @@ def register_moodlight_endpoints(app):
             logger.error(f"Fehler in DELETE /api/moodlight/feeds/{feed_id}: {e}", exc_info=True)
             return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
+    # ===== HEADLINES ENDPOINT (HEAD-02) =====
+    @app.route('/api/moodlight/headlines', methods=['GET'])
+    def get_moodlight_headlines():
+        """
+        Letzte analysierte Headlines mit Einzel-Scores und Feed-Zuordnung.
+
+        Query-Parameter:
+            limit: Anzahl Headlines (default: 50, max: 500)
+        """
+        try:
+            limit = min(request.args.get('limit', 50, type=int), 500)
+            if limit < 1:
+                limit = 50
+
+            db = get_database()
+            headlines = db.get_recent_headlines(limit=limit)
+
+            return jsonify({
+                "status": "success",
+                "count": len(headlines),
+                "headlines": headlines
+            })
+
+        except Exception as e:
+            logger.error(f"Fehler in /api/moodlight/headlines: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
+
     logger.info("Moodlight API-Endpunkte registriert")
