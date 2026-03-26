@@ -1,0 +1,10 @@
+# AuraOS Custom Partition Table (4MB Flash)
+# App: 1.6MB (reicht für ~1.34MB Firmware mit Headroom)
+# LittleFS: 512KB (genug für UI-Dateien + TGZ-Staging bei OTA)
+# Name,   Type, SubType, Offset,   Size,    Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xe000,   0x2000,
+app0,     app,  ota_0,   0x10000,  0x190000,
+app1,     app,  ota_1,   0x1A0000, 0x190000,
+spiffs,   data, spiffs,  0x330000, 0x0C0000,
+coredump, data, coredump,0x3F0000, 0x10000,
