@@ -54,24 +54,24 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HEAD-01 | — | Pending |
-| HEAD-02 | — | Pending |
-| HEAD-03 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| AUTH-03 | — | Pending |
-| ESP-01 | — | Pending |
-| PAGE-01 | — | Pending |
+| HEAD-01 | Phase 12 | Pending |
+| HEAD-02 | Phase 14 | Pending |
+| HEAD-03 | Phase 14 | Pending |
+| DASH-01 | Phase 14 | Pending |
+| DASH-02 | Phase 14 | Pending |
+| DASH-03 | Phase 14 | Pending |
+| DASH-04 | Phase 14 | Pending |
+| AUTH-01 | Phase 13 | Pending |
+| AUTH-02 | Phase 13 | Pending |
+| AUTH-03 | Phase 13 | Pending |
+| ESP-01 | Phase 15 | Pending |
+| PAGE-01 | Phase 15 | Pending |
 
 **Coverage:**
 - v5.0 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12 ⚠️
+- Mapped to phases: 12
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after initial definition*
+*Last updated: 2026-03-26 after v5.0 roadmap creation (all 12 requirements mapped)*
