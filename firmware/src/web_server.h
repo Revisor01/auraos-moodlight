@@ -35,4 +35,10 @@ void initJsonPool();
 // Web-Server initialisieren (registriert alle Routen)
 void setupWebServer();
 
+// Watchdog-Timer initialisieren
+void initWatchdog();
+
+// Regelmäßiger System-Gesundheitscheck (aus loop())
+void runSystemHealthCheck();
+
 // JsonBufferPool bleibt intern in web_server.cpp

@@ -281,3 +281,60 @@ void pulseCurrentColor()
     pixels.setBrightness(constrain(brightness, 0, 255));
     pixels.show();
 }
+
+// === Erste LED-Initialisierung nach Setup ===
+void initFirstLEDUpdate() {
+    if (appState.firstLedShowDone) return;
+    if (xSemaphoreTake(appState.ledMutex, portMAX_DELAY) == pdTRUE) {
+        for (int i = 0; i < appState.numLeds; i++) {
+            appState.ledColors[i] = 0;
+        }
+        appState.ledClear = true;
+        appState.ledUpdatePending = true;
+        xSemaphoreGive(appState.ledMutex);
+    }
+    appState.firstLedShowDone = true;
+    debug(F("First LED update scheduled"));
+}
+
+// === Pulse-Animation aus loop() — prüft intern isPulsing && lightOn ===
+void updatePulse() {
+    if (!appState.isPulsing || !appState.lightOn) return;
+
+    static unsigned long lastPulseUpdate = 0;
+    if (millis() - lastPulseUpdate < LOOP_PULSE_UPDATE_MS) return;
+
+    unsigned long currentTime = millis();
+    unsigned long elapsedTime = currentTime - appState.pulseStartTime;
+
+    // Auto-deaktivieren des Pulsierens nach Timeout
+    if (elapsedTime > DEFAULT_WAVE_DURATION * 3) {
+        debug(F("Pulse: Timeout - Auto-disable nach 3 Zyklen"));
+        appState.isPulsing = false;
+
+        if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+            appState.ledBrightness = appState.autoMode ? DEFAULT_LED_BRIGHTNESS : appState.manualBrightness;
+            appState.ledUpdatePending = true;
+            xSemaphoreGive(appState.ledMutex);
+        }
+    } else {
+        // Sinuswelle für sanftes Pulsieren berechnen
+        float progress = fmod((float)elapsedTime, (float)DEFAULT_WAVE_DURATION) / (float)DEFAULT_WAVE_DURATION;
+        float easedValue = (sin(progress * 2.0 * PI - PI / 2.0) + 1.0) / 2.0;
+
+        // Helligkeit skalieren
+        uint8_t targetBrightness = appState.autoMode ? DEFAULT_LED_BRIGHTNESS : appState.manualBrightness;
+        uint8_t minPulseBright = (DEFAULT_WAVE_MIN_BRIGHTNESS < targetBrightness / 2) ? DEFAULT_WAVE_MIN_BRIGHTNESS : (targetBrightness / 2);
+        uint8_t maxPulseBright = (DEFAULT_WAVE_MAX_BRIGHTNESS < targetBrightness) ? DEFAULT_WAVE_MAX_BRIGHTNESS : targetBrightness;
+
+        int brightness = minPulseBright + (int)(easedValue * (maxPulseBright - minPulseBright));
+
+        // LED-Helligkeit sicher aktualisieren
+        if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+            appState.ledBrightness = constrain(brightness, 0, 255);
+            appState.ledUpdatePending = true;
+            xSemaphoreGive(appState.ledMutex);
+        }
+    }
+    lastPulseUpdate = millis();
+}

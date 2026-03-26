@@ -15,6 +15,9 @@
 #include <Adafruit_NeoPixel.h>
 #include "MoodlightUtils.h"
 #include <Preferences.h>
+#include <time.h>
+#include "esp_idf_version.h"
+#include "esp_task_wdt.h"
 #define DEST_FS_USES_LITTLEFS
 #include <ESP32-targz.h>
 
@@ -1933,4 +1936,122 @@ void setupWebServer() {
 
     server.begin();
     debug(F("Webserver gestartet"));
+}
+
+// === Watchdog-Timer initialisieren ===
+void initWatchdog() {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    {
+        esp_task_wdt_config_t wdt_config = {
+            .timeout_ms    = 30000,
+            .idle_core_mask = 0,
+            .trigger_panic  = false
+        };
+        esp_task_wdt_init(&wdt_config);
+    }
+#else
+    esp_task_wdt_init(30, false);
+#endif
+}
+
+// === Regelmäßiger System-Gesundheitscheck ===
+void runSystemHealthCheck() {
+    unsigned long currentMillis = millis();
+    debug(F("Führe regelmäßige Systemprüfung durch..."));
+
+    // Memory-Analyse durchführen
+    memMonitor.update();
+
+    // Systemstatistiken in JSON-Datei speichern
+    if (LittleFS.exists("/data")) {
+        JsonDocument statsDoc;
+        statsDoc["timestamp"] = currentMillis / 1000;
+        statsDoc["uptime"] = currentMillis / 1000;
+        statsDoc["heap"] = ESP.getFreeHeap();
+        statsDoc["maxBlock"] = ESP.getMaxAllocHeap();
+        statsDoc["fragmentation"] = 100.0f - ((float)ESP.getMaxAllocHeap() / ESP.getFreeHeap() * 100.0f);
+        statsDoc["fsTotal"] = LittleFS.totalBytes();
+        statsDoc["fsUsed"] = LittleFS.usedBytes();
+
+        if (WiFi.status() == WL_CONNECTED) {
+            statsDoc["wifiConnected"] = true;
+            statsDoc["rssi"] = WiFi.RSSI();
+        } else {
+            statsDoc["wifiConnected"] = false;
+        }
+        statsDoc["temperature"] = temperatureRead();
+
+        static int fileCounter = 0;
+        String fileName = "/data/sysstat_" + String(fileCounter++ % SYSSTAT_FILE_ROTATION) + ".json";
+
+        String jsonStr;
+        serializeJson(statsDoc, jsonStr);
+
+        File statFile = LittleFS.open(fileName, "w");
+        if (statFile) {
+            statFile.print(jsonStr);
+            statFile.close();
+        }
+    }
+
+    // Systemgesundheit aktualisieren
+    sysHealth.update();
+
+    if (sysHealth.isRestartRecommended()) {
+        debug(F("System empfiehlt Neustart - plane Neustart für 3:00 Uhr..."));
+
+        time_t now;
+        time(&now);
+        struct tm timeinfo;
+        localtime_r(&now, &timeinfo);
+
+        if (timeinfo.tm_hour >= NIGHT_REBOOT_HOUR_START && timeinfo.tm_hour < NIGHT_REBOOT_HOUR_END) {
+            debug(F("Nachtstunden, führe Neustart sofort durch..."));
+            appState.rebootNeeded = true;
+            appState.rebootTime = currentMillis + NIGHT_REBOOT_DELAY;
+        } else {
+            debug(F("Neustart verschoben auf Nachtstunden..."));
+            Preferences prefs;
+            prefs.begin("syshealth", false);
+            prefs.putBool("restartPending", true);
+            prefs.end();
+        }
+    }
+
+    // Geplanten Neustart prüfen
+    {
+        Preferences prefs;
+        prefs.begin("syshealth", true);
+        bool restartPending = prefs.getBool("restartPending", false);
+        prefs.end();
+
+        if (restartPending) {
+            time_t now;
+            time(&now);
+            struct tm timeinfo;
+            localtime_r(&now, &timeinfo);
+
+            if (timeinfo.tm_hour >= SCHEDULED_REBOOT_HOUR_START && timeinfo.tm_hour < SCHEDULED_REBOOT_HOUR_END) {
+                debug(F("Geplanter Neustart wird ausgeführt..."));
+                appState.rebootNeeded = true;
+                appState.rebootTime = currentMillis + SCHEDULED_REBOOT_DELAY;
+
+                Preferences prefs2;
+                prefs2.begin("syshealth", false);
+                prefs2.putBool("restartPending", false);
+                prefs2.end();
+            }
+        }
+    }
+
+    // Speicherplatz-Prüfung
+    uint64_t total, used, free;
+    getStorageInfo(total, used, free);
+    float percentUsed = (float)used * 100.0 / total;
+
+    if (percentUsed > STORAGE_WARNING_PERCENT) {
+        debug(F("Hohe Dateisystembelegung erkannt"));
+    }
+
+    appState.lastSystemHealthCheckTime = currentMillis;
 }
