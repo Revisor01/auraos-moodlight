@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-03-26T13:23:27.812Z"
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-03-26T13:32:15.393Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 ## Current Position
 
 Phase: 07 (modul-extraktion) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Plan: 5 of 6
 | Phase 07 P02 | 8min | 1 tasks | 3 files |
 | Phase 07 P03 | 5min | 1 tasks | 3 files |
 | Phase 07 P04 | 12min | 1 tasks | 3 files |
+| Phase 07 P05 | 8min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 07]: ColorDefinition struct und colorNames in led_controller.h/.cpp — LED-Controller ist eigenständige Einheit
 - [Phase 07]: SENTIMENT_FALLBACK_TIMEOUT und MAX_SENTIMENT_FAILURES als extern const — C++ const hat interne Verlinkung, extern macht Konstanten cross-TU sichtbar
 - [Phase 07]: sensor_manager.cpp inkludiert led_controller.h direkt — sauberere Abhaengigkeit als extern-Deklarationen fuer bereits extrahierte Module
+- [Phase 07]: wifiClientHA/mac/HADevice als static in mqtt_handler.cpp — nur intern benutzt, kein extern noetig
+- [Phase 07]: MQTT_HEARTBEAT_INTERVAL als extern const in moodlight.cpp — C++ const hat interne Verlinkung, extern macht Konstante cross-TU sichtbar
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T13:23:27.809Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-03-26T13:32:15.385Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
