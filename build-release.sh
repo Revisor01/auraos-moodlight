@@ -51,7 +51,7 @@ sed -i '' "s/#define MOODLIGHT_VERSION \"${VERSION}\"/#define MOODLIGHT_VERSION 
 
 # --- Trap: Bei Fehler Version zuruecksetzen + tmp-Dateien aufraeumen ---
 cleanup() {
-    rm -f /tmp/auraos_combined.tar /tmp/firmware.ino.bin
+    rm -f /tmp/auraos_combined.tar /tmp/firmware.ino.bin /tmp/VERSION.txt
 }
 rollback() {
     echo ""
@@ -89,6 +89,10 @@ mkdir -p "$RELEASE_DIR"
 cp firmware/.pio/build/esp32dev/firmware.bin /tmp/firmware.ino.bin
 tar -rf /tmp/auraos_combined.tar -C /tmp firmware.ino.bin
 
+# Schritt 2b: VERSION.txt fuer ESP32-Handler erzeugen und ins Archiv aufnehmen (OTA-03)
+echo "${NEW_VERSION}" > /tmp/VERSION.txt
+tar -rf /tmp/auraos_combined.tar -C /tmp VERSION.txt
+
 # Schritt 3: Gzippen
 TGZ_NAME="AuraOS-${NEW_VERSION}.tgz"
 gzip -c /tmp/auraos_combined.tar > "${RELEASE_DIR}/${TGZ_NAME}"
@@ -105,7 +109,11 @@ if ! echo "$TAR_CONTENTS" | grep -q "index.html"; then
     echo "FEHLER: index.html fehlt im TGZ"
     exit 1
 fi
-echo "   -> TGZ verifiziert (UI-Dateien + firmware.ino.bin vorhanden)"
+if ! echo "$TAR_CONTENTS" | grep -q "VERSION.txt"; then
+    echo "FEHLER: VERSION.txt fehlt im TGZ"
+    exit 1
+fi
+echo "   -> TGZ verifiziert (UI-Dateien + firmware.ino.bin + VERSION.txt vorhanden)"
 
 # --- Git Commit (BUILD-03: nur nach erfolgreichem Build) ---
 echo "[4/4] Committe Version-Bump + Release-Artefakt..."
