@@ -22,6 +22,7 @@
 #include <DNSServer.h>
 #include "esp_wifi.h"
 #include "esp_task_wdt.h"
+#include "esp_idf_version.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "LittleFS.h"
@@ -4021,7 +4022,20 @@ void setup() {
     Serial.begin(115200);
     
     // Watchdog-Timer initialisieren mit 30 Sekunden Timeout, ohne automatischen Reset
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    // Arduino ESP32 Core 3.x (ESP-IDF >= 5.0): Config-Struktur erforderlich
+    {
+        esp_task_wdt_config_t wdt_config = {
+            .timeout_ms    = 30000,
+            .idle_core_mask = 0,
+            .trigger_panic  = false
+        };
+        esp_task_wdt_init(&wdt_config);
+    }
+#else
+    // Aeltere Versionen: Parameter direkt
     esp_task_wdt_init(30, false);
+#endif
 
     #ifndef CONFIG_FREERTOS_UNICORE
         // Stack-Größe für Loop-Task festlegen für bessere Stabilität
