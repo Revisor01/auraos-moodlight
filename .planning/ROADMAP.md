@@ -56,8 +56,11 @@ Plans:
   3. Eine Visualisierung macht sichtbar wie die Einzelwerte zum Gesamt-Score aggregiert werden
   4. Die bestehende Feed-Verwaltung ist über die Dashboard-Navigation erreichbar
   5. Eine Navigation ermöglicht den Wechsel zwischen Übersicht, Headlines und Feeds ohne Seitenreload
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Headlines-API: get_recent_headlines() in database.py, GET /api/moodlight/headlines in moodlight_extensions.py
+- [ ] 14-02-PLAN.md — Dashboard-Template: dashboard.html (SPA, 3 Tabs, Score-Visualisierung, Feed-CRUD), /dashboard Route in app.py
 
 ### Phase 15: Client-Erweiterungen
 **Goal**: Sowohl das ESP32 mood.html als auch die GitHub Page zeigen Headlines mit Einzel-Scores an
@@ -76,5 +79,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
 | 13. Authentifizierung | 2/2 | Complete    | 2026-03-26 |
-| 14. Backend-Dashboard | 0/? | Not started | - |
+| 14. Backend-Dashboard | 0/2 | Not started | - |
 | 15. Client-Erweiterungen | 0/? | Not started | - |
