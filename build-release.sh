@@ -1,23 +1,34 @@
 #!/bin/bash
-# AuraOS Moodlight - Combined Release Build Script
-# Erzeugt ein versioniertes Combined-TGZ (UI + Firmware)
+# AuraOS Moodlight - Release Build Script
+# Erzeugt versionierte UI-TGZ + Firmware-BIN fuer OTA-Upload
 # Verwendung: ./build-release.sh [major|minor]
 
 set -e
 
-# --- Argument-Validierung (BUILD-01, BUILD-04) ---
+# --- Argument-Validierung ---
 BUMP_TYPE="${1:-}"
 if [[ -z "$BUMP_TYPE" ]] || [[ ! "$BUMP_TYPE" =~ ^(major|minor)$ ]]; then
     echo "Verwendung: ./build-release.sh [major|minor]"
     echo ""
-    echo "  major  - Erhoehe Major-Version (z.B. 9.1 -> 10.0)"
-    echo "  minor  - Erhoehe Minor-Version (z.B. 9.1 -> 9.2)"
+    echo "  major  - Erhoehe Major-Version (z.B. 9.4 -> 10.0)"
+    echo "  minor  - Erhoehe Minor-Version (z.B. 9.4 -> 9.5)"
     echo ""
-    echo "AuraOS verwendet X.Y Versionierung (kein Patch)."
+    echo "Erzeugt: releases/vX.Y/UI-X.Y-AuraOS.tgz + Firmware-X.Y-AuraOS.bin"
     exit 1
 fi
 
-# --- Version lesen (mit Empty-Guard) ---
+# --- PlatformIO finden ---
+if command -v pio &> /dev/null; then
+    PIO="pio"
+elif [[ -f "$HOME/.platformio/penv/bin/pio" ]]; then
+    PIO="$HOME/.platformio/penv/bin/pio"
+else
+    echo "FEHLER: PlatformIO nicht gefunden"
+    echo "Installiere: https://platformio.org/install/cli"
+    exit 1
+fi
+
+# --- Version lesen ---
 CONFIG_FILE="firmware/src/config.h"
 VERSION=$(grep '^#define MOODLIGHT_VERSION' "$CONFIG_FILE" | cut -d'"' -f2)
 if [[ -z "$VERSION" ]]; then
@@ -25,7 +36,7 @@ if [[ -z "$VERSION" ]]; then
     exit 1
 fi
 
-# --- Version bumpen (BUILD-01) ---
+# --- Version bumpen ---
 bump_version() {
     local current="$1"
     local type="$2"
@@ -40,7 +51,7 @@ bump_version() {
 NEW_VERSION=$(bump_version "$VERSION" "$BUMP_TYPE")
 
 echo "========================================"
-echo "  AuraOS Combined Release Builder"
+echo "  AuraOS Release Builder"
 echo "========================================"
 echo ""
 echo "Version: ${VERSION} -> ${NEW_VERSION} (${BUMP_TYPE})"
@@ -49,76 +60,59 @@ echo ""
 # --- config.h aktualisieren ---
 sed -i '' "s/#define MOODLIGHT_VERSION \"${VERSION}\"/#define MOODLIGHT_VERSION \"${NEW_VERSION}\"/" "$CONFIG_FILE"
 
-# --- Trap: Bei Fehler Version zuruecksetzen + tmp-Dateien aufraeumen ---
-cleanup() {
-    rm -f /tmp/auraos_combined.tar /tmp/firmware.ino.bin /tmp/VERSION.txt
-}
+# --- Trap: Bei Fehler Version zuruecksetzen ---
 rollback() {
     echo ""
     echo "FEHLER: Build fehlgeschlagen — Version wird zurueckgesetzt auf ${VERSION}"
     sed -i '' "s/#define MOODLIGHT_VERSION \"${NEW_VERSION}\"/#define MOODLIGHT_VERSION \"${VERSION}\"/" "$CONFIG_FILE"
-    cleanup
 }
 trap rollback ERR
-trap cleanup EXIT
 
-# --- Firmware kompilieren (BUILD-04: set -e statt Fehler-Unterdrückung, direkter pio run) ---
+# --- Firmware kompilieren ---
 echo "[1/4] Kompiliere Firmware..."
 cd firmware
-pio run
+$PIO run
 cd ..
 echo "   -> Firmware kompiliert"
 
-# Verify firmware.bin exists
 if [[ ! -f "firmware/.pio/build/esp32dev/firmware.bin" ]]; then
     echo "FEHLER: firmware.bin nicht gefunden nach Build"
     exit 1
 fi
 
-# --- Combined-TGZ erstellen (BUILD-02) ---
-echo "[2/4] Erstelle Combined-TGZ..."
+# --- Release-Dateien erstellen ---
+echo "[2/4] Erstelle Release-Dateien..."
 RELEASE_DIR="releases/v${NEW_VERSION}"
 mkdir -p "$RELEASE_DIR"
 
-# Schritt 1: UI-Dateien als unkomprimiertes TAR (macOS BSD tar: --exclude vor Dateien)
-(cd firmware/data && tar -cf /tmp/auraos_combined.tar \
-    --exclude="*.tmp.*" --exclude="*.tgz" --exclude="*.tar" \
+# UI-TGZ (nur Web-Dateien, kein Firmware-Binary)
+(cd firmware/data && tar -czf "../../${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz" \
+    --exclude="*.tmp.*" --exclude="*.tgz" --exclude="*.tar" --exclude=".DS_Store" \
     index.html setup.html mood.html diagnostics.html js/ css/)
+echo "   -> UI-${NEW_VERSION}-AuraOS.tgz: $(ls -lh "${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz" | awk '{print $5}')"
 
-# Schritt 2: firmware.bin als firmware.ino.bin anhaengen (ESP32-targz Naming-Convention)
-cp firmware/.pio/build/esp32dev/firmware.bin /tmp/firmware.ino.bin
-tar -rf /tmp/auraos_combined.tar -C /tmp firmware.ino.bin
+# Firmware-BIN
+cp firmware/.pio/build/esp32dev/firmware.bin "${RELEASE_DIR}/Firmware-${NEW_VERSION}-AuraOS.bin"
+echo "   -> Firmware-${NEW_VERSION}-AuraOS.bin: $(ls -lh "${RELEASE_DIR}/Firmware-${NEW_VERSION}-AuraOS.bin" | awk '{print $5}')"
 
-# Schritt 2b: VERSION.txt fuer ESP32-Handler erzeugen und ins Archiv aufnehmen (OTA-03)
-echo "${NEW_VERSION}" > /tmp/VERSION.txt
-tar -rf /tmp/auraos_combined.tar -C /tmp VERSION.txt
-
-# Schritt 3: Gzippen
-TGZ_NAME="AuraOS-${NEW_VERSION}.tgz"
-gzip -c /tmp/auraos_combined.tar > "${RELEASE_DIR}/${TGZ_NAME}"
-echo "   -> ${TGZ_NAME}: $(ls -lh "${RELEASE_DIR}/${TGZ_NAME}" | awk '{print $5}')"
-
-# --- TGZ verifizieren ---
-echo "[3/4] Verifiziere TGZ-Inhalt..."
-TAR_CONTENTS=$(tar -tzf "${RELEASE_DIR}/${TGZ_NAME}")
-if ! echo "$TAR_CONTENTS" | grep -q "firmware.ino.bin"; then
-    echo "FEHLER: firmware.ino.bin fehlt im TGZ"
+# --- Verifizieren ---
+echo "[3/4] Verifiziere..."
+UI_CONTENTS=$(tar -tzf "${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz")
+if ! echo "$UI_CONTENTS" | grep -q "index.html"; then
+    echo "FEHLER: index.html fehlt im UI-TGZ"
     exit 1
 fi
-if ! echo "$TAR_CONTENTS" | grep -q "index.html"; then
-    echo "FEHLER: index.html fehlt im TGZ"
+if ! echo "$UI_CONTENTS" | grep -q "setup.html"; then
+    echo "FEHLER: setup.html fehlt im UI-TGZ"
     exit 1
 fi
-if ! echo "$TAR_CONTENTS" | grep -q "VERSION.txt"; then
-    echo "FEHLER: VERSION.txt fehlt im TGZ"
-    exit 1
-fi
-echo "   -> TGZ verifiziert (UI-Dateien + firmware.ino.bin + VERSION.txt vorhanden)"
+echo "   -> UI-TGZ verifiziert"
+echo "   -> Firmware-BIN verifiziert ($(ls -lh "${RELEASE_DIR}/Firmware-${NEW_VERSION}-AuraOS.bin" | awk '{print $5}'))"
 
-# --- Git Commit (BUILD-03: nur nach erfolgreichem Build) ---
-echo "[4/4] Committe Version-Bump + Release-Artefakt..."
-git add "$CONFIG_FILE" "${RELEASE_DIR}/${TGZ_NAME}"
-git commit -m "Release: AuraOS v${NEW_VERSION}"
+# --- Git Commit (nur config.h, nicht die Binaries) ---
+echo "[4/4] Committe Version-Bump..."
+git add "$CONFIG_FILE"
+git commit -m "Release: AuraOS v${NEW_VERSION} (${BUMP_TYPE})"
 
 echo ""
 echo "========================================"
@@ -126,9 +120,11 @@ echo "  Build erfolgreich!"
 echo "========================================"
 echo ""
 echo "Version:  ${NEW_VERSION}"
-echo "Artefakt: ${RELEASE_DIR}/${TGZ_NAME}"
-echo "Commit:   $(git log --oneline -1)"
+echo "Dateien:  ${RELEASE_DIR}/"
+ls -lh "$RELEASE_DIR"
 echo ""
-echo "TGZ-Inhalt:"
-tar -tzf "${RELEASE_DIR}/${TGZ_NAME}"
+echo "Upload auf http://192.168.0.140/setup -> Update Tab:"
+echo "  1. UI-Datei:       ${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz"
+echo "  2. Firmware-Datei: ${RELEASE_DIR}/Firmware-${NEW_VERSION}-AuraOS.bin"
+echo "  3. 'Update starten' klicken"
 echo ""
