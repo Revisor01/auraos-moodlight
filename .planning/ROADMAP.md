@@ -67,5 +67,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 9. DB-Schema & Worker-Integration | 2/2 | Complete   | 2026-03-26 |
-| 10. Feed-API | 1/1 | Complete   | 2026-03-26 |
+| 10. Feed-API | 1/1 | Complete    | 2026-03-26 |
 | 11. Feed-Management Web-Interface | 0/? | Not started | - |
