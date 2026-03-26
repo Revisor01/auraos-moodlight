@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Schlagzeilen-Transparenz & Dashboard
-status: executing
-stopped_at: Completed 13-authentifizierung-01-PLAN.md
-last_updated: "2026-03-26T23:22:22.270Z"
+status: verifying
+stopped_at: Completed 13-authentifizierung-02-PLAN.md
+last_updated: "2026-03-26T23:25:28.831Z"
 last_activity: 2026-03-26
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 
 Phase: 13 (authentifizierung) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-26
 
 ```
@@ -50,6 +50,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 12-headline-persistenz]: save_headlines() Fehler nicht weitergeworfen — Sentiment-Score bleibt Primär-Invariante
 - [Phase 12-headline-persistenz]: feed_id NULLABLE in headlines — historische Headlines bleiben bei Feed-Löschung erhalten
 - [Phase 13-authentifizierung]: werkzeug.security für Passwort-Hash (Flask-integriert, keine neue Abhängigkeit); 24h Session-Timeout mit session.permanent=True
+- [Phase 13-authentifizierung]: api_login_required statt login_required für API-Endpoints — REST-Clients erwarten 401 JSON, kein HTML-Redirect
 
 ### Pending Todos
 
@@ -62,6 +63,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-26T23:22:22.268Z
-Stopped at: Completed 13-authentifizierung-01-PLAN.md
+Last session: 2026-03-26T23:25:28.829Z
+Stopped at: Completed 13-authentifizierung-02-PLAN.md
 Resume file: None

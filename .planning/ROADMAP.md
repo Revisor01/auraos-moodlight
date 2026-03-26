@@ -12,7 +12,7 @@
 ## Phases
 
 - [x] **Phase 12: Headline-Persistenz** - DB-Schema + Headline-Speicherung im Backend (completed 2026-03-26)
-- [ ] **Phase 13: Authentifizierung** - Einfacher Passwort-Login für Backend-Interface
+- [x] **Phase 13: Authentifizierung** - Einfacher Passwort-Login für Backend-Interface (completed 2026-03-26)
 - [ ] **Phase 14: Backend-Dashboard** - Volles Dashboard mit Headlines, Scores, Feeds und Visualisierung
 - [ ] **Phase 15: Client-Erweiterungen** - ESP32 mood.html und GitHub Page mit Headline-Darstellung
 
@@ -44,7 +44,7 @@ Plans:
 
 Plans:
 - [x] 13-01-PLAN.md — Auth-Infrastruktur: login_required Decorator, /login + /logout Routen, login.html Template, docker-compose Umgebungsvariablen
-- [ ] 13-02-PLAN.md — Auth anwenden: @login_required auf /feeds, api_login_required auf POST/DELETE Endpoints, Abmelden-Link in feeds.html
+- [x] 13-02-PLAN.md — Auth anwenden: @login_required auf /feeds, api_login_required auf POST/DELETE Endpoints, Abmelden-Link in feeds.html
 
 ### Phase 14: Backend-Dashboard
 **Goal**: Benutzer können im Browser alle relevanten Informationen zum System sehen — aktueller Score, Headlines mit Einzel-Scores, Feeds — in einer zusammenhängenden Oberfläche
@@ -75,6 +75,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
-| 13. Authentifizierung | 1/2 | In Progress|  |
+| 13. Authentifizierung | 2/2 | Complete   | 2026-03-26 |
 | 14. Backend-Dashboard | 0/? | Not started | - |
 | 15. Client-Erweiterungen | 0/? | Not started | - |
