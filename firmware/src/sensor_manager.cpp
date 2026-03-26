@@ -1,5 +1,6 @@
 #include "sensor_manager.h"
 #include "led_controller.h"
+#include "debug.h"
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
@@ -9,16 +10,15 @@
 
 // Globals aus moodlight.cpp
 extern AppState appState;
-extern DHT dht;
-extern WiFiClient wifiClientHTTP;
 extern HAMqtt mqtt;
 extern HASensor haSentimentScore;
 extern HASensor haSentimentCategory;
 extern HASensor haTemperature;
 extern HASensor haHumidity;
-extern void debug(const String &message);
-extern void debug(const __FlashStringHelper *message);
-extern String floatToString(float value, int decimalPlaces);
+
+// Hardware-Instanzen — definiert in diesem Modul
+DHT dht(DEFAULT_DHT_PIN, DHT22);
+WiFiClient wifiClientHTTP;
 
 // === Map Sentiment Score (-1 bis +1) zu LED Index (0-4) ===
 int mapSentimentToLED(float sentimentScore)

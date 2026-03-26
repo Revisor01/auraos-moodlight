@@ -6,14 +6,15 @@
 #include "MoodlightUtils.h"
 #include "LittleFS.h"
 
-// Externe Objekte — definiert in moodlight.cpp
+// Externe Objekte aus anderen Modulen
 extern AppState appState;
-extern Preferences preferences;
 extern Adafruit_NeoPixel pixels;
 extern SafeFileOps fileOps;
 
-extern void debug(const String &message);
-extern void debug(const __FlashStringHelper *message);
+#include "debug.h"
+
+// Hardware-Instanz — definiert in diesem Modul
+Preferences preferences;
 
 bool saveSettingsToFile() {
     if (!LittleFS.exists("/data")) {

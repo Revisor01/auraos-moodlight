@@ -1,9 +1,10 @@
 #include "led_controller.h"
+#include "debug.h"
 
 extern AppState appState;
-extern Adafruit_NeoPixel pixels;
-extern void debug(const String &message);
-extern void debug(const __FlashStringHelper *message);
+
+// Hardware-Instanz — definiert in diesem Modul
+Adafruit_NeoPixel pixels;
 
 // Farbnamen für UI
 const char *colorNames[5] = {

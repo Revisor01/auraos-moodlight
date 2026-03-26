@@ -2,10 +2,16 @@
 
 #include "app_state.h"
 #include <ArduinoJson.h>
+#include <DHT.h>
+#include <WiFiClient.h>
 
 // === Sensor & Sentiment Manager ===
 // Verwaltet DHT-Sensorik und Sentiment-API-Abruf.
 // Beide Funktionen holen externe Daten und aktualisieren AppState.
+
+// Hardware-Instanzen
+extern DHT dht;
+extern WiFiClient wifiClientHTTP;
 
 // Sentiment-Hilfsfunktionen
 int mapSentimentToLED(float sentimentScore);

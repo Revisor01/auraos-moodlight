@@ -17,11 +17,14 @@
 
 // Externe Globals aus moodlight.cpp
 extern AppState appState;
-extern DNSServer dnsServer;
-extern WebServer server;
 extern Adafruit_NeoPixel pixels;
-extern void debug(const String &message);
-extern void debug(const __FlashStringHelper *message);
+
+#include "debug.h"
+#include "web_server.h"
+
+// Hardware-Instanz — definiert in diesem Modul
+DNSServer dnsServer;
+
 extern void setStatusLED(int mode);
 
 // Captive Portal Redirect Handler — leitet alle unbekannten Anfragen zur Setup-Seite

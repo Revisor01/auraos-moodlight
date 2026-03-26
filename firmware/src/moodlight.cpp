@@ -23,9 +23,9 @@
 #include "freertos/task.h"
 #include "LittleFS.h"
 #include <time.h>
-#define DEBUG_MODE  // AKTIVIERT für besseres Debugging
 #include "config.h"
 #include "app_state.h"
+#include "debug.h"
 #include "settings_manager.h"
 #include "wifi_manager.h"
 #include "led_controller.h"
@@ -36,99 +36,8 @@
 // Zentrale AppState-Instanz
 AppState appState;
 
-// 192.168.4.1 - Standard-IP für den Access Point
-#define CAPTIVE_PORTAL_IP \
-    {192, 168, 4, 1}
-
-// DNS Server für den Captive Portal
-DNSServer dnsServer;
-
-// === Hilfsfunktion ===
-String floatToString(float value, int decimalPlaces)
-{
-    char buffer[16];
-    dtostrf(value, 0, decimalPlaces, buffer);
-    return String(buffer);
-}
-
-// === HTTP-Client fuer Backend API ===
-WiFiClient wifiClientHTTP;
-
-// === Webserver für Updates und Logging ===
-WebServer server(80);
-
-// === Hardware Setup ===
-Adafruit_NeoPixel pixels;
-DHT dht(DEFAULT_DHT_PIN, DHT22);
-Preferences preferences;
-
 // Versionierung — für Module die String-Kontext brauchen
 extern const String SOFTWARE_VERSION = MOODLIGHT_FULL_VERSION;
-
-#ifdef DEBUG_MODE
-// === Debug-Funktion mit Logging ===
-void debug(const String &message) {
-    // Use static buffer for timestamps to avoid repeated allocations
-    static char timeBuffer[16];
-    static char messageBuffer[256];
-    
-    // Calculate timestamp
-    unsigned long ms = millis();
-    snprintf(timeBuffer, sizeof(timeBuffer), "[%lus] ", ms / 1000);
-    
-    // Copy message safely into buffer
-    snprintf(messageBuffer, sizeof(messageBuffer), "%s%s", timeBuffer, message.c_str());
-    
-    // Store in ring buffer (use a local copy)
-    String logEntry = messageBuffer; // Create the String locally
-    appState.logBuffer[appState.logIndex] = logEntry;  // Copy assignment is safer
-    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
-    
-    // Print to Serial
-    Serial.print(messageBuffer);
-    Serial.print(F(" (Mem: "));
-    Serial.print(ESP.getFreeHeap());
-    Serial.println(F(")"));
-}
-
-void debug(const __FlashStringHelper *message) {
-    static char timeBuffer[16];
-    static char messageBuffer[256];
-    
-    // Calculate timestamp
-    unsigned long ms = millis();
-    snprintf(timeBuffer, sizeof(timeBuffer), "[%lus] ", ms / 1000);
-    
-    // Create combined message (avoid String operations)
-    snprintf(messageBuffer, sizeof(messageBuffer), "%s%s", timeBuffer, (const char*)message);
-    
-    // Store in ring buffer (using direct copy)
-    String logEntry = messageBuffer;
-    appState.logBuffer[appState.logIndex] = logEntry;
-    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
-    
-    // Print to Serial
-    Serial.print(messageBuffer);
-    Serial.print(F(" (Mem: "));
-    Serial.print(ESP.getFreeHeap());
-    Serial.println(F(")"));
-}
-#else
-
-void debug(const String &message) {
-    if (message.startsWith("ERROR:") || message.startsWith("CRITICAL:")) {
-        Serial.println(message);
-    }
-}
-
-void debug(const __FlashStringHelper *message) {
-    // Optional: Nur kritische Meldungen
-    if (strstr_P((PGM_P)message, PSTR("ERROR:")) || strstr_P((PGM_P)message, PSTR("CRITICAL:"))) {
-        Serial.println(message);
-    }
-}
-
-#endif
 
 #include "MoodlightUtils.h"
 

@@ -3,6 +3,9 @@
 #include "app_state.h"
 #include <Adafruit_NeoPixel.h>
 
+// Hardware-Instanz — definiert in led_controller.cpp
+extern Adafruit_NeoPixel pixels;
+
 // === Farbdefinitionen ===
 struct ColorDefinition
 {
