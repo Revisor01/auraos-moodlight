@@ -57,24 +57,24 @@ Deferred to future milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FIX-01 | Pending | Pending |
-| BUILD-01 | Pending | Pending |
-| BUILD-02 | Pending | Pending |
-| BUILD-03 | Pending | Pending |
-| BUILD-04 | Pending | Pending |
-| OTA-01 | Pending | Pending |
-| OTA-02 | Pending | Pending |
-| OTA-03 | Pending | Pending |
-| OTA-04 | Pending | Pending |
-| UI-01 | Pending | Pending |
-| UI-02 | Pending | Pending |
-| UI-03 | Pending | Pending |
+| FIX-01 | Phase 3 | Pending |
+| BUILD-01 | Phase 3 | Pending |
+| BUILD-02 | Phase 3 | Pending |
+| BUILD-03 | Phase 3 | Pending |
+| BUILD-04 | Phase 3 | Pending |
+| OTA-01 | Phase 4 | Pending |
+| OTA-02 | Phase 4 | Pending |
+| OTA-03 | Phase 4 | Pending |
+| OTA-04 | Phase 4 | Pending |
+| UI-01 | Phase 5 | Pending |
+| UI-02 | Phase 5 | Pending |
+| UI-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12 ⚠️
+- Mapped to phases: 12
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after initial definition*
+*Last updated: 2026-03-26 after roadmap creation*

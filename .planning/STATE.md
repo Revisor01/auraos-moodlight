@@ -1,30 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Milestone complete
-stopped_at: Completed 02-backend-hardening-02-02-PLAN.md
-last_updated: "2026-03-25T19:28:31.898Z"
+milestone: v2.0
+milestone_name: Combined Update + Build Automation
+status: Ready to plan
+stopped_at: Roadmap created for v2.0
+last_updated: "2026-03-26T00:00:00.000Z"
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-25)
+See: .planning/PROJECT.md (updated 2026-03-26)
 
-**Core value:** Das Moodlight läuft stabil und zuverlässig im Dauerbetrieb — ohne unerklärliches Blinken, Hänger oder unerwartete Neustarts.
-**Current focus:** Phase 02 — backend-hardening
+**Core value:** Ein einziger Klick baut ein Combined Update (UI + Firmware), bumpt die Version und committet.
+**Current focus:** Phase 03 — Build-Fundament
 
 ## Current Position
 
-Phase: 02
+Phase: 03 of 05 (Build-Fundament)
 Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-26 — v2.0 Roadmap erstellt, Phase 3 bereit zur Planung
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -40,18 +44,7 @@ Plan: Not started
 |-------|-------|-------|----------|
 | - | - | - | - |
 
-**Recent Trend:**
-
-- Last 5 plans: —
-- Trend: —
-
 *Updated after each plan completion*
-| Phase 01-firmware-stabilit-t P01 | 311 | 2 tasks | 2 files |
-| Phase 01-firmware-stabilit-t P02 | 15 | 2 tasks | 1 files |
-| Phase 01-firmware-stabilit-t P03 | 3 | 2 tasks | 1 files |
-| Phase 02-backend-hardening P03 | 5 | 1 tasks | 6 files |
-| Phase 02-backend-hardening P01 | 159 | 2 tasks | 4 files |
-| Phase 02-backend-hardening P02 | 152 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -60,20 +53,9 @@ Plan: Not started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Firmware-Fixes inline im Monolith (kein Splitting in diesem Milestone)
-- Gunicorn mit `-w 1 --threads 4` (Background-Worker läuft im Prozess, kein Multi-Worker)
-- NeoPixelBus als Fallback — nur migrieren wenn Core-Pinning + Mutex den Flicker nicht lösen
-- [Phase 01-firmware-stabilit-t]: MAX_LEDS auf 64 gesetzt — deckt alle realistischen LED-Strip-Groessen ab
-- [Phase 01-firmware-stabilit-t]: delete[] ausserhalb Mutex-Block in JsonBufferPool::release() — verhindert Heap-Leak bei Mutex-Timeout
-- [Phase 01-firmware-stabilit-t]: wifiReconnectActive als einzige Bedingung in processLEDUpdates() statt alter mehrteiliger WiFi/MQTT-Logik
-- [Phase 01-firmware-stabilit-t]: 30s Grace-Timer (disconnectStartMs) fuer Status-LED — kurze Verbindungsunterbrechungen aktivieren Status-LED nicht
-- [Phase 01-firmware-stabilit-t]: memMonitor.update() in 5min-Block integriert statt freistehend bei jedem loop()-Durchlauf
-- [Phase 01-firmware-stabilit-t]: API-Responses maskieren Passwoerter mit **** — saveSettingsToFile() bleibt unveraendert
-- [Phase 02-backend-hardening]: History-Bereinigung (BFG/filter-branch) out of scope — Binaerdateien bleiben in Git-History, werden aber nicht mehr getrackt
-- [Phase 02-backend-hardening]: Thresholds 0.30/0.10/-0.20/-0.50 aus background_worker.py als kanonische Werte gewaehlt
-- [Phase 02-backend-hardening]: rss_feeds = RSS_FEEDS Alias in app.py behalten fuer Kompatibilitaet mit /api/feedconfig Route
-- [Phase 02-backend-hardening]: Gunicorn mit -w 1 --threads 4 — Background Worker laeuft im Prozess, kein Multi-Worker
-- [Phase 02-backend-hardening]: requests.get(timeout=15) als Ersatz fuer socket.setdefaulttimeout() — per-Connection statt global
+- [v2.0 Roadmap]: Two-Route-Architektur (`/update/combined-ui` + `/update/combined-firmware`) — kein LittleFS-Staging der Firmware wegen 128 KB Limit
+- [v2.0 Roadmap]: `tarGzStreamUpdater` mit `.ino.bin`-Naming-Convention statt eigenem Firmware-Handler
+- [v2.0 Roadmap]: FIX-01 ist absoluter Blocker — Phase 3 muss mit `esp_task_wdt_init`-Fix beginnen
 
 ### Pending Todos
 
@@ -81,11 +63,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Health-Check-Konsolidierung: `sysHealth.isRestartRecommended()`-Kriterien vor Implementierung in MoodlightUtils.cpp prüfen — Restart-Schwellenwerte dürfen sich nicht verändern
-- Arduino ESP32 Core-Version in platformio.ini prüfen — bekannte Regressionen in 3.0.x, empfohlen: explizit gepinnte Version (z.B. 2.0.17)
+- [Phase 3]: FIX-01 muss als allererstes umgesetzt werden — ohne `pio run` kein Build-Script-Test möglich
+- [Phase 4]: `tarGzStreamUpdater` erwartet kontinuierlichen `Stream*`; ESP8266WebServer liefert Chunks — ChunkStream-Wrapper nötig, vor vollem Handler prototypisch validieren
 
 ## Session Continuity
 
-Last session: 2026-03-25T19:24:34.696Z
-Stopped at: Completed 02-backend-hardening-02-02-PLAN.md
+Last session: 2026-03-26
+Stopped at: Roadmap v2.0 erstellt — bereit für /gsd:plan-phase 3
 Resume file: None
