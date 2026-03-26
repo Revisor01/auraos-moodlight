@@ -1709,6 +1709,145 @@ void handleUiUpload() {
     }
 }
 
+// FreeRTOS-Task fuer Firmware-Flash (laeuft auf Core 0)
+void firmwareFlashTask(void* param) {
+    ChunkStream* stream = (ChunkStream*)param;
+
+    TarGzUnpacker *unpacker = new TarGzUnpacker();
+    unpacker->setTarVerify(false);
+    unpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
+    unpacker->setLoggerCallback(BaseUnpacker::targzPrintLoggerCallback);
+    unpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);
+    unpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
+
+    // KEIN setTarExcludeFilter — tarGzStreamUpdater ignoriert Filter sowieso
+    // tarGzStreamUpdater erkennt .ino.bin automatisch ueber tarHeaderUpdateCallBack
+    // Nicht-.bin-Dateien (VERSION.txt, HTML etc.) werden silent uebersprungen
+    extractTaskSuccess = unpacker->tarGzStreamUpdater(stream);
+
+    if (!extractTaskSuccess) {
+        Serial.printf("Firmware-Flash fehlgeschlagen, Error: %d\n", unpacker->tarGzGetError());
+    }
+
+    delete unpacker;
+
+    xSemaphoreGive(extractDoneSemaphore);
+    extractTaskHandle = nullptr;
+    vTaskDelete(NULL);
+}
+
+void handleCombinedFirmwareUpload() {
+    HTTPUpload& upload = server.upload();
+    static bool isValidFile = false;
+
+    if (upload.status == UPLOAD_FILE_START) {
+        // OTA-04: Expliziter State-Reset
+        isValidFile = false;
+        combinedFwError = false;
+        extractTaskSuccess = false;
+
+        if (extractTaskHandle != nullptr) {
+            vTaskDelete(extractTaskHandle);
+            extractTaskHandle = nullptr;
+        }
+
+        if (!combinedStream) {
+            combinedStream = new ChunkStream(4096);
+        } else {
+            combinedStream->reset();
+        }
+
+        if (!extractDoneSemaphore) {
+            extractDoneSemaphore = xSemaphoreCreateBinary();
+        } else {
+            xSemaphoreTake(extractDoneSemaphore, 0);
+        }
+
+        String filename = upload.filename;
+        Serial.printf("Combined-Firmware Upload: %s\n", filename.c_str());
+        debug(String(F("Combined-Firmware Upload gestartet: ")) + filename);
+
+        isValidFile = filename.endsWith(".tgz") || filename.endsWith(".tar.gz");
+        if (!isValidFile) {
+            debug(F("Fehler: Keine TGZ-Datei"));
+            combinedFwError = true;
+            return;
+        }
+
+        setStatusLED(3); // Update-Modus fuer Status-LED
+
+        // Watchdog deaktivieren (Flash kann >30s dauern)
+        esp_task_wdt_delete(NULL);
+
+        debug(String(F("Freier Heap: ")) + ESP.getFreeHeap());
+
+        // FreeRTOS-Task starten
+        BaseType_t result = xTaskCreatePinnedToCore(
+            firmwareFlashTask,
+            "fwFlash",
+            8192,
+            (void*)combinedStream,
+            1,
+            &extractTaskHandle,
+            0  // Core 0
+        );
+
+        if (result != pdPASS) {
+            debug(F("FEHLER: Konnte Flash-Task nicht starten"));
+            combinedFwError = true;
+            isValidFile = false;
+            return;
+        }
+    }
+    else if (upload.status == UPLOAD_FILE_WRITE && isValidFile) {
+        if (combinedStream) {
+            combinedStream->feed(upload.buf, upload.currentSize);
+        }
+    }
+    else if (upload.status == UPLOAD_FILE_END && isValidFile) {
+        debug(String(F("Combined-Firmware Upload abgeschlossen: ")) + upload.totalSize + F(" Bytes"));
+
+        if (combinedStream) {
+            combinedStream->setEOF();
+        }
+
+        // Warten auf Task-Completion (max 120 Sekunden fuer Firmware-Flash)
+        if (xSemaphoreTake(extractDoneSemaphore, pdMS_TO_TICKS(120000)) == pdTRUE) {
+            if (extractTaskSuccess) {
+                debug(F("Combined-Firmware Flash erfolgreich"));
+                // KEIN LittleFS-Zugriff hier — Version wurde bereits im UI-Pass geschrieben
+                // ESP.restart() erfolgt im Response-Lambda
+            } else {
+                debug(F("Combined-Firmware Flash fehlgeschlagen"));
+                combinedFwError = true;
+            }
+        } else {
+            debug(F("TIMEOUT: Flash-Task nicht innerhalb von 120s beendet"));
+            if (extractTaskHandle != nullptr) {
+                vTaskDelete(extractTaskHandle);
+                extractTaskHandle = nullptr;
+            }
+            combinedFwError = true;
+        }
+
+        // Watchdog NICHT wieder aktivieren — ESP wird sowieso neu gestartet bei Erfolg
+    }
+    else if (upload.status == UPLOAD_FILE_ABORTED) {
+        // OTA-04: Abbruch-Handling
+        debug(F("Combined-Firmware Upload abgebrochen — State zurueckgesetzt"));
+        isValidFile = false;
+        combinedFwError = true;
+
+        if (combinedStream) combinedStream->reset();
+        if (extractTaskHandle != nullptr) {
+            vTaskDelete(extractTaskHandle);
+            extractTaskHandle = nullptr;
+        }
+
+        esp_task_wdt_add(NULL);
+    }
+}
+
 void handleApiStatus() {
     JsonDocument doc;
 
@@ -2269,6 +2408,26 @@ server.on("/update/combined-ui", HTTP_POST,
         }
     },
     handleCombinedUiUpload
+);
+
+server.on("/update/combined-firmware", HTTP_POST,
+    []() {
+        server.sendHeader("Connection", "close");
+        if (combinedFwError) {
+            server.send(500, "text/html",
+                "<html><body><h1>Firmware-Update fehlgeschlagen</h1>"
+                "<a href='/diagnostics.html'>Zurueck</a></body></html>");
+        } else {
+            server.send(200, "text/html",
+                "<html><body><h1>Firmware-Update erfolgreich</h1>"
+                "<p>Geraet wird neu gestartet...</p>"
+                "<script>setTimeout(function(){window.location.href='/';},12000);</script>"
+                "</body></html>");
+            delay(1000);
+            ESP.restart();
+        }
+    },
+    handleCombinedFirmwareUpload
 );
 
 server.on("/api/ui-version", HTTP_GET, []() {
