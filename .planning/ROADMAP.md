@@ -42,7 +42,7 @@ Plans:
 **Plans:** 1/6 plans executed
 Plans:
 - [x] 07-01-PLAN.md — Settings-Manager extrahieren (MOD-05)
-- [ ] 07-02-PLAN.md — WiFi-Manager extrahieren (MOD-01)
+- [x] 07-02-PLAN.md — WiFi-Manager extrahieren (MOD-01)
 - [ ] 07-03-PLAN.md — LED-Controller extrahieren (MOD-02)
 - [ ] 07-04-PLAN.md — Sensor & Sentiment Manager extrahieren (MOD-06)
 - [ ] 07-05-PLAN.md — MQTT/HA-Handler extrahieren (MOD-04)
