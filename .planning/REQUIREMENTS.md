@@ -46,23 +46,23 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MOD-01 | Pending | Pending |
-| MOD-02 | Pending | Pending |
-| MOD-03 | Pending | Pending |
-| MOD-04 | Pending | Pending |
-| MOD-05 | Pending | Pending |
-| MOD-06 | Pending | Pending |
-| ARCH-01 | Pending | Pending |
-| ARCH-02 | Pending | Pending |
-| ARCH-03 | Pending | Pending |
-| QUAL-01 | Pending | Pending |
-| QUAL-02 | Pending | Pending |
-| QUAL-03 | Pending | Pending |
+| ARCH-01 | Phase 6 | Pending |
+| MOD-01 | Phase 7 | Pending |
+| MOD-02 | Phase 7 | Pending |
+| MOD-03 | Phase 7 | Pending |
+| MOD-04 | Phase 7 | Pending |
+| MOD-05 | Phase 7 | Pending |
+| MOD-06 | Phase 7 | Pending |
+| ARCH-02 | Phase 8 | Pending |
+| ARCH-03 | Phase 8 | Pending |
+| QUAL-01 | Phase 8 | Pending |
+| QUAL-02 | Phase 8 | Pending |
+| QUAL-03 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-26*
