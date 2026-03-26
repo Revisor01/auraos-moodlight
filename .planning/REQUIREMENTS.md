@@ -28,7 +28,7 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
 ### ESP32 Integration
 
-- [ ] **ESP-01**: mood.html auf dem ESP32 zeigt die letzten Headlines mit Einzel-Scores (fetch vom Backend)
+- [x] **ESP-01**: mood.html auf dem ESP32 zeigt die letzten Headlines mit Einzel-Scores (fetch vom Backend)
 
 ### GitHub Page
 
@@ -64,7 +64,7 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 | AUTH-01 | Phase 13 | Complete |
 | AUTH-02 | Phase 13 | Complete |
 | AUTH-03 | Phase 13 | Complete |
-| ESP-01 | Phase 15 | Pending |
+| ESP-01 | Phase 15 | Complete |
 | PAGE-01 | Phase 15 | Pending |
 
 **Coverage:**
