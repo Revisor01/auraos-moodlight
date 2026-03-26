@@ -107,7 +107,7 @@ public:
                 if (_available == 0 && _eof) break;
                 if (_available == 0) break; // Timeout
             }
-            size_t canRead = min(len - totalRead, _available);
+            size_t canRead = min(len - totalRead, (size_t)_available);
             for (size_t i = 0; i < canRead; i++) {
                 buf[totalRead + i] = _buffer[_readPos];
                 _readPos = (_readPos + 1) % _bufSize;
