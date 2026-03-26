@@ -409,55 +409,6 @@ def get_news():
         "skipped_feeds": skipped_feeds if skipped_feeds else None
     })
 
-@app.route('/api/feedconfig', methods=['POST'])
-def configure_feeds():
-  global rss_feeds
-  
-  if not request.is_json:
-    return jsonify({"status": "error", "message": "JSON erwartet"}), 400
-  
-  feed_data = request.get_json()
-  
-  if not feed_data or not isinstance(feed_data, dict) or 'feeds' not in feed_data:
-    return jsonify({"status": "error", "message": "Ungültiges Format"}), 400
-  
-  # Feeds aktualisieren
-  custom_feeds = feed_data['feeds']
-  if not custom_feeds or not isinstance(custom_feeds, dict):
-    return jsonify({"status": "error", "message": "Keine gültigen Feeds gefunden"}), 400
-  
-  # Optional: Ändere die globale Variable
-  # rss_feeds = custom_feeds
-  
-  # Oder: Erstelle eine neue Kopie
-  new_feeds = {}
-  for name, url in custom_feeds.items():
-    new_feeds[name] = url
-    
-  # Validiere die URLs
-  invalid_feeds = []
-  for name, url in new_feeds.items():
-    if not url.startswith('http'):
-      invalid_feeds.append(name)
-      
-  # Entferne ungültige Feeds
-  for name in invalid_feeds:
-    del new_feeds[name]
-    
-  # Speichere nur, wenn wir noch gültige Feeds haben
-  if new_feeds:
-    rss_feeds = new_feeds
-    logging.info(f"RSS-Feeds aktualisiert: {len(rss_feeds)} Feeds")
-    return jsonify({
-      "status": "success",
-      "message": f"{len(rss_feeds)} RSS-Feeds aktualisiert",
-      "feeds": list(rss_feeds.keys())
-    })
-  else:
-    return jsonify({
-      "status": "error", 
-      "message": "Keine gültigen Feeds gefunden"
-    }), 400
 
 # --- /api/news/total_sentiment Route (konfigurierbar, gibt gewichteten Score zurück) ---
 @app.route('/api/news/total_sentiment', methods=['GET'])
