@@ -32,6 +32,10 @@
 #define DEBUG_MODE  // AKTIVIERT für besseres Debugging
 // #define CONFIG_FREERTOS_UNICORE
 #include "config.h"
+#include "app_state.h"
+
+// Zentrale AppState-Instanz — alle geteilten Globals migrieren hierher (Plan 02)
+AppState appState;
 
 // 192.168.4.1 - Standard-IP für den Access Point
 #define CAPTIVE_PORTAL_IP \
