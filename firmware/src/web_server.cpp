@@ -704,21 +704,18 @@ void handleApiStorageInfo() {
 
 // ===== UPDATED IN v9.0: Stats from Backend =====
 void handleApiStats() {
-    // Get hours parameter from query string (default: 168 = 7 days)
     int hours = 168;
     if (server.hasArg("hours")) {
         hours = server.arg("hours").toInt();
     }
 
-    // Großes JsonDocument für Backend-Daten (bis zu 48 Datenpunkte * ~150 bytes)
     JsonDocument doc;
     if (fetchBackendStatistics(doc, hours)) {
-        // Forward backend response to client
-        char* jsonBuffer = jsonPool.acquire();
-        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-        server.send(200, "application/json", jsonBuffer);
-        jsonPool.release(jsonBuffer);
-        debug(String(F("Stats from backend sent: ")) + len + F(" bytes"));
+        // String statt Pool-Buffer — History-Daten koennen >16KB sein
+        String response;
+        serializeJson(doc, response);
+        server.send(200, "application/json", response);
+        debug(String(F("Stats from backend sent: ")) + response.length() + F(" bytes"));
     } else {
         debug(F("Backend statistics fetch failed, sending 503"));
         server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
@@ -1934,8 +1931,10 @@ void setupWebServer() {
         handleStaticFile(path);
     });
 
-    server.begin();
-    debug(F("Webserver gestartet"));
+    // server.begin() wird NICHT hier aufgerufen — das passiert in
+    // connectWiFiAndStartServices() (STA) oder startAPModeWithServer() (AP)
+    // nachdem WiFi korrekt initialisiert ist.
+    debug(F("Webserver-Routen registriert"));
 }
 
 // === Watchdog-Timer initialisieren ===
