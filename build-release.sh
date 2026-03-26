@@ -80,10 +80,10 @@ echo "[2/4] Erstelle Combined-TGZ..."
 RELEASE_DIR="releases/v${NEW_VERSION}"
 mkdir -p "$RELEASE_DIR"
 
-# Schritt 1: UI-Dateien als unkomprimiertes TAR
+# Schritt 1: UI-Dateien als unkomprimiertes TAR (macOS BSD tar: --exclude vor Dateien)
 (cd firmware/data && tar -cf /tmp/auraos_combined.tar \
-    index.html setup.html mood.html diagnostics.html js/ css/ \
-    --exclude="*.tmp.*" --exclude="*.tgz" --exclude="*.tar")
+    --exclude="*.tmp.*" --exclude="*.tgz" --exclude="*.tar" \
+    index.html setup.html mood.html diagnostics.html js/ css/)
 
 # Schritt 2: firmware.bin als firmware.ino.bin anhaengen (ESP32-targz Naming-Convention)
 cp firmware/.pio/build/esp32dev/firmware.bin /tmp/firmware.ino.bin
