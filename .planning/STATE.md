@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-26T14:18:40.766Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-03-26T14:26:51.129Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -51,6 +51,7 @@ Plan: 3 of 3
 | Phase 07 P06 | 16min | 1 tasks | 3 files |
 | Phase 08 P01 | 8min | 2 tasks | 6 files |
 | Phase 08-konsolidierung-qualitaet P02 | 15min | 1 tasks | 15 files |
+| Phase 08 P03 | 8min | 1 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 08]: MAX_RECONNECT_DELAY #define benoetigt (unsigned long) Cast in min() — #define hat keinen Typ, Typ-Mismatch bei Template-Deduktion
 - [Phase 08]: debug.cpp definiert #define DEBUG_MODE als erste Zeile — Präprozessor-Schutz für beide debug()-Varianten korrekt
 - [Phase 08]: WiFiClient wifiClientHTTP in sensor_manager.cpp — primärer HTTP-Nutzer für Sentiment/DHT, mqtt_handler greift via sensor_manager.h zu
+- [Phase 08]: updatePulse/initFirstLEDUpdate in led_controller — Pulse-Animation und LED-Init gehoeren semantisch zum LED-Controller
+- [Phase 08]: runSystemHealthCheck/initWatchdog in web_server — MoodlightUtils-Instanzen bereits via extern dort verfuegbar, natuerliche Heimat
+- [Phase 08]: connectMQTTOnStartup/connectWiFiAndStartServices in eigene Module — setup() wird zur reinen Orchestrierungsfunktion ohne Inline-Logik
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T14:18:40.763Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-26T14:26:51.126Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None
