@@ -43,7 +43,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Auth-Infrastruktur: login_required Decorator, /login + /logout Routen, login.html Template, docker-compose Umgebungsvariablen
+- [x] 13-01-PLAN.md — Auth-Infrastruktur: login_required Decorator, /login + /logout Routen, login.html Template, docker-compose Umgebungsvariablen
 - [ ] 13-02-PLAN.md — Auth anwenden: @login_required auf /feeds, api_login_required auf POST/DELETE Endpoints, Abmelden-Link in feeds.html
 
 ### Phase 14: Backend-Dashboard
@@ -75,6 +75,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 12. Headline-Persistenz | 1/1 | Complete    | 2026-03-26 |
-| 13. Authentifizierung | 0/2 | Not started | - |
+| 13. Authentifizierung | 1/2 | In Progress|  |
 | 14. Backend-Dashboard | 0/? | Not started | - |
 | 15. Client-Erweiterungen | 0/? | Not started | - |

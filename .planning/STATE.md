@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Schlagzeilen-Transparenz & Dashboard
-status: verifying
-stopped_at: Completed 12-headline-persistenz-01-PLAN.md
-last_updated: "2026-03-26T23:14:34.921Z"
+status: executing
+stopped_at: Completed 13-authentifizierung-01-PLAN.md
+last_updated: "2026-03-26T23:22:22.270Z"
 last_activity: 2026-03-26
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 3
+  completed_plans: 2
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 12 — headline-persistenz
+**Current focus:** Phase 13 — authentifizierung
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 13 (authentifizierung) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-26
 
 ```
@@ -49,6 +49,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 - [Phase 12-headline-persistenz]: save_headlines() Fehler nicht weitergeworfen — Sentiment-Score bleibt Primär-Invariante
 - [Phase 12-headline-persistenz]: feed_id NULLABLE in headlines — historische Headlines bleiben bei Feed-Löschung erhalten
+- [Phase 13-authentifizierung]: werkzeug.security für Passwort-Hash (Flask-integriert, keine neue Abhängigkeit); 24h Session-Timeout mit session.permanent=True
 
 ### Pending Todos
 
@@ -61,6 +62,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-03-26T23:11:52.132Z
-Stopped at: Completed 12-headline-persistenz-01-PLAN.md
+Last session: 2026-03-26T23:22:22.268Z
+Stopped at: Completed 13-authentifizierung-01-PLAN.md
 Resume file: None

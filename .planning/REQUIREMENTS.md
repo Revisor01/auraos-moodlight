@@ -22,9 +22,9 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 
 ### Authentifizierung
 
-- [ ] **AUTH-01**: Backend-Interface ist durch einfachen Passwort-Login geschützt
+- [x] **AUTH-01**: Backend-Interface ist durch einfachen Passwort-Login geschützt
 - [ ] **AUTH-02**: API-Endpoints für Schreiboperationen (POST/DELETE) erfordern Authentifizierung
-- [ ] **AUTH-03**: Lese-Endpoints (GET /api/moodlight/current, /history) bleiben öffentlich (ESP32 braucht sie)
+- [x] **AUTH-03**: Lese-Endpoints (GET /api/moodlight/current, /history) bleiben öffentlich (ESP32 braucht sie)
 
 ### ESP32 Integration
 
@@ -61,9 +61,9 @@ Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
 | DASH-02 | Phase 14 | Pending |
 | DASH-03 | Phase 14 | Pending |
 | DASH-04 | Phase 14 | Pending |
-| AUTH-01 | Phase 13 | Pending |
+| AUTH-01 | Phase 13 | Complete |
 | AUTH-02 | Phase 13 | Pending |
-| AUTH-03 | Phase 13 | Pending |
+| AUTH-03 | Phase 13 | Complete |
 | ESP-01 | Phase 15 | Pending |
 | PAGE-01 | Phase 15 | Pending |
 
