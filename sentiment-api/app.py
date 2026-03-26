@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 import feedparser
 import logging
 from collections import Counter
@@ -457,6 +457,12 @@ from background_worker import start_background_worker
 
 # Neue Endpunkte registrieren
 register_moodlight_endpoints(app)
+
+# ===== FEED-MANAGEMENT WEB-INTERFACE =====
+@app.route('/feeds')
+def feed_management():
+    """Feed-Verwaltungsseite — UI fuer /api/moodlight/feeds CRUD"""
+    return render_template('feeds.html')
 
 # Background Worker starten - muss ausserhalb __main__ sein damit Gunicorn ihn startet
 start_background_worker(
