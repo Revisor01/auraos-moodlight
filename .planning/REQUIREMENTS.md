@@ -8,7 +8,7 @@
 ### Module-Extraktion
 
 - [x] **MOD-01**: WiFi-Management ist in `wifi_manager.h/.cpp` extrahiert — AP-Mode, Captive Portal, Station-Connect, Reconnect-Logik mit wifiReconnectActive-Flag, disconnectStartMs-Debounce
-- [ ] **MOD-02**: LED-Controller ist in `led_controller.h/.cpp` extrahiert — NeoPixel-Init, updateLEDs(), processLEDUpdates(), Status-LED, Pulse-Animation, ledMutex, ledColors[]
+- [x] **MOD-02**: LED-Controller ist in `led_controller.h/.cpp` extrahiert — NeoPixel-Init, updateLEDs(), processLEDUpdates(), Status-LED, Pulse-Animation, ledMutex, ledColors[]
 - [ ] **MOD-03**: Web-Server ist in `web_server.h/.cpp` extrahiert — Route-Registration, API-Handler (/api/status, /api/settings/*, /api/export/*), statische Datei-Handler, UI/Firmware-Upload-Handler
 - [ ] **MOD-04**: MQTT/HA-Integration ist in `mqtt_handler.h/.cpp` extrahiert — setupHA(), MQTT-Connect/Reconnect, ArduinoHA-Entity-Definitionen, Heartbeat, Command-Handler
 - [x] **MOD-05**: Settings-Management ist in `settings_manager.h/.cpp` extrahiert — loadSettings(), saveSettings(), saveSettingsToFile(), loadSettingsFromJSON(), Preferences-API, JSON-Serialisierung
@@ -48,7 +48,7 @@
 |-------------|-------|--------|
 | ARCH-01 | Phase 6 | Complete |
 | MOD-01 | Phase 7 | Complete |
-| MOD-02 | Phase 7 | Pending |
+| MOD-02 | Phase 7 | Complete |
 | MOD-03 | Phase 7 | Pending |
 | MOD-04 | Phase 7 | Pending |
 | MOD-05 | Phase 7 | Complete |
