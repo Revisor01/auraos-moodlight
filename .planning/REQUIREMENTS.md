@@ -11,7 +11,7 @@
 - [ ] **MOD-02**: LED-Controller ist in `led_controller.h/.cpp` extrahiert — NeoPixel-Init, updateLEDs(), processLEDUpdates(), Status-LED, Pulse-Animation, ledMutex, ledColors[]
 - [ ] **MOD-03**: Web-Server ist in `web_server.h/.cpp` extrahiert — Route-Registration, API-Handler (/api/status, /api/settings/*, /api/export/*), statische Datei-Handler, UI/Firmware-Upload-Handler
 - [ ] **MOD-04**: MQTT/HA-Integration ist in `mqtt_handler.h/.cpp` extrahiert — setupHA(), MQTT-Connect/Reconnect, ArduinoHA-Entity-Definitionen, Heartbeat, Command-Handler
-- [ ] **MOD-05**: Settings-Management ist in `settings_manager.h/.cpp` extrahiert — loadSettings(), saveSettings(), saveSettingsToFile(), loadSettingsFromJSON(), Preferences-API, JSON-Serialisierung
+- [x] **MOD-05**: Settings-Management ist in `settings_manager.h/.cpp` extrahiert — loadSettings(), saveSettings(), saveSettingsToFile(), loadSettingsFromJSON(), Preferences-API, JSON-Serialisierung
 - [ ] **MOD-06**: Sensor & Sentiment ist in `sensor_manager.h/.cpp` extrahiert — DHT-Read, Sentiment-API-Fetch, mapSentimentToLED(), Fehler-Counter, Fallback-Logik
 
 ### Architektur
@@ -51,7 +51,7 @@
 | MOD-02 | Phase 7 | Pending |
 | MOD-03 | Phase 7 | Pending |
 | MOD-04 | Phase 7 | Pending |
-| MOD-05 | Phase 7 | Pending |
+| MOD-05 | Phase 7 | Complete |
 | MOD-06 | Phase 7 | Pending |
 | ARCH-02 | Phase 8 | Pending |
 | ARCH-03 | Phase 8 | Pending |

@@ -39,9 +39,9 @@ Plans:
   2. Nach jeder einzelnen Modul-Extraktion baut `pio run` fehlerfrei — keine Phase-interne Regression
   3. Funktionstest nach allen Extraktionen: Gerät verbindet mit WiFi, LEDs reagieren auf Sentiment, Web-Interface liefert /api/status mit korrekten Werten
   4. MQTT-Heartbeat sendet weiterhin an Home Assistant (wenn mqttEnabled)
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 Plans:
-- [ ] 07-01-PLAN.md — Settings-Manager extrahieren (MOD-05)
+- [x] 07-01-PLAN.md — Settings-Manager extrahieren (MOD-05)
 - [ ] 07-02-PLAN.md — WiFi-Manager extrahieren (MOD-01)
 - [ ] 07-03-PLAN.md — LED-Controller extrahieren (MOD-02)
 - [ ] 07-04-PLAN.md — Sensor & Sentiment Manager extrahieren (MOD-06)
@@ -64,5 +64,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. Shared State Fundament | 2/2 | Complete   | 2026-03-26 |
-| 7. Modul-Extraktion | 0/6 | Planned | - |
+| 7. Modul-Extraktion | 1/6 | In Progress|  |
 | 8. Konsolidierung & Qualitaet | 0/? | Not started | - |
