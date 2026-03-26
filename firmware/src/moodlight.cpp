@@ -1,11 +1,8 @@
 // ========================================================
-// Moodlight mit OpenAI Sentiment Analyse & Home Assistant
+// AuraOS Moodlight — Main Application
 // ========================================================
-// Version: 9.0 - Backend-Optimized Architecture
-// - Removed RSS Feed configuration (hardcoded in backend)
-// - Removed local CSV statistics (fetched from backend)
-// - Uses /api/moodlight/* endpoints with Redis caching
-// Erwartet Sentiment Score von -1.0 bis +1.0 vom Backend
+// Orchestriert Module: WiFi, LED, Web-Server, MQTT, Settings, Sensor
+// Zentrale setup()/loop() mit Modul-Initialisierung
 
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
@@ -27,7 +24,6 @@
 #include "LittleFS.h"
 #include <time.h>
 #define DEBUG_MODE  // AKTIVIERT für besseres Debugging
-// #define CONFIG_FREERTOS_UNICORE
 #include "config.h"
 #include "app_state.h"
 #include "settings_manager.h"
@@ -37,7 +33,7 @@
 #include "mqtt_handler.h"
 #include "web_server.h"
 
-// Zentrale AppState-Instanz — alle geteilten Globals migrieren hierher (Plan 02)
+// Zentrale AppState-Instanz
 AppState appState;
 
 // 192.168.4.1 - Standard-IP für den Access Point
@@ -144,7 +140,6 @@ SystemHealthCheck sysHealth;
 
 
 // === Arduino Setup ===
-// Add NTP initialization to setup function
 void setup() {
     // Initialisiere serielle Kommunikation für Debug-Ausgaben
     Serial.begin(115200);
@@ -165,18 +160,14 @@ void setup() {
     esp_task_wdt_init(30, false);
 #endif
 
-    #ifndef CONFIG_FREERTOS_UNICORE
-        // Stack-Größe für Loop-Task festlegen für bessere Stabilität
-        uint16_t loopTaskStackSize = 16384;
-        
-        // Handle für den aktuellen Loop-Task holen für Stack-Analyse
+    // Stack-Auslastung des Loop-Tasks loggen
+    {
         TaskHandle_t loopTask = xTaskGetCurrentTaskHandle();
         if (loopTask != NULL) {
-            // Stack-Auslastung überwachen
             UBaseType_t stackSize = uxTaskGetStackHighWaterMark(loopTask);
-            debug(String(F("Current loop task stack high water mark: ")) + stackSize);
+            debug(String(F("Loop task stack high water mark: ")) + stackSize);
         }
-    #endif
+    }
     
     // ESP-IDF Log-Level konfigurieren für bessere Diagnose
     esp_log_level_set("*", ESP_LOG_INFO);          // Allgemeines Log-Level
@@ -208,8 +199,6 @@ void setup() {
 
     // Dateisystem initialisieren
     initFS();
-
-    // v9.0: CSV repair and archiving tasks removed - stats managed in backend
 
     // MoodlightUtils initialisieren (Hilfsfunktionen)
     debug(F("Initialisiere MoodlightUtils..."));
@@ -254,8 +243,6 @@ void setup() {
     // DHT-Sensor initialisieren (falls verwendet)
     dht.begin();
 
-    // v9.0: Archivierungsprozess removed - archiving handled in backend
-
     // Webserver-Routen definieren (Server wird später gestartet)
     setupWebServer();
 
@@ -287,9 +274,6 @@ void setup() {
             } else {
                 debug(F("mDNS start fehlgeschlagen"));
             }
-
-            // REMOVED v9.0: RSS configuration now managed in backend
-            // No need to send feed config on startup
 
             // MQTT einrichten für Home Assistant Integration
             if (appState.mqttEnabled && !appState.mqttServer.isEmpty()) {
@@ -402,9 +386,6 @@ void loop() {
         delay(200);
         ESP.restart();
     }
-
-    // Tägliche Archivierung alter Daten
-    // v9.0: Daily archive check removed - archiving handled in backend
 
     // Startup-Grace-Period beenden nach definierter Zeit
     if (appState.initialStartupPhase && (millis() - appState.startupTime > STARTUP_GRACE_PERIOD)) {
