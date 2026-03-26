@@ -12,7 +12,7 @@
 
 ## Phases
 
-- [ ] **Phase 9: DB-Schema & Worker-Integration** - Feed-Liste in PostgreSQL, Background Worker liest Feeds aus DB, Focus-Feed entfernt
+- [x] **Phase 9: DB-Schema & Worker-Integration** - Feed-Liste in PostgreSQL, Background Worker liest Feeds aus DB, Focus-Feed entfernt (completed 2026-03-26)
 - [ ] **Phase 10: Feed-API** - CRUD-Endpoints für Feed-Verwaltung mit Validierung
 - [ ] **Phase 11: Feed-Management Web-Interface** - Setup-Interface mit Feed-Liste, Hinzufügen und Entfernen über Browser
 
@@ -31,7 +31,7 @@
 
 Plans:
 - [x] 09-01-PLAN.md — feeds-Tabelle in init.sql + Migrations-SQL für Produktionssystem
-- [ ] 09-02-PLAN.md — get_active_feeds() in database.py + Worker/app.py auf DB-Pfad umstellen
+- [x] 09-02-PLAN.md — get_active_feeds() in database.py + Worker/app.py auf DB-Pfad umstellen
 
 ### Phase 10: Feed-API
 **Goal**: Externe Clients (Browser, curl) können die Feed-Liste lesen sowie Feeds hinzufügen und entfernen
@@ -60,6 +60,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 9. DB-Schema & Worker-Integration | 0/2 | Not started | - |
+| 9. DB-Schema & Worker-Integration | 2/2 | Complete   | 2026-03-26 |
 | 10. Feed-API | 0/? | Not started | - |
 | 11. Feed-Management Web-Interface | 0/? | Not started | - |
