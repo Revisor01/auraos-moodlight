@@ -18,9 +18,9 @@ Requirements für Milestone v4.0: Konfigurierbare RSS-Feeds.
 
 ### Web-Interface
 
-- [ ] **UI-01**: setup.html zeigt Feed-Management-Sektion mit aktueller Feed-Liste
-- [ ] **UI-02**: User kann Feed über Web-Interface hinzufügen und entfernen
-- [ ] **UI-03**: Feed-Status (letzter Fetch, Fehler-Count) ist pro Feed sichtbar
+- [x] **UI-01**: setup.html zeigt Feed-Management-Sektion mit aktueller Feed-Liste
+- [x] **UI-02**: User kann Feed über Web-Interface hinzufügen und entfernen
+- [x] **UI-03**: Feed-Status (letzter Fetch, Fehler-Count) ist pro Feed sichtbar
 
 ## Future Requirements
 
@@ -52,9 +52,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FEED-03 | Phase 10 | Complete |
 | FEED-04 | Phase 10 | Complete |
 | FEED-05 | Phase 10 | Complete |
-| UI-01 | Phase 11 | Pending |
-| UI-02 | Phase 11 | Pending |
-| UI-03 | Phase 11 | Pending |
+| UI-01 | Phase 11 | Complete |
+| UI-02 | Phase 11 | Complete |
+| UI-03 | Phase 11 | Complete |
 
 **Coverage:**
 - v4.0 requirements: 9 total

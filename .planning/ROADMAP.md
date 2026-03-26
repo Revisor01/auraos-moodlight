@@ -14,7 +14,7 @@
 
 - [x] **Phase 9: DB-Schema & Worker-Integration** - Feed-Liste in PostgreSQL, Background Worker liest Feeds aus DB, Focus-Feed entfernt (completed 2026-03-26)
 - [x] **Phase 10: Feed-API** - CRUD-Endpoints für Feed-Verwaltung mit Validierung (completed 2026-03-26)
-- [ ] **Phase 11: Feed-Management Web-Interface** - Setup-Interface mit Feed-Liste, Hinzufügen und Entfernen über Browser
+- [x] **Phase 11: Feed-Management Web-Interface** - Setup-Interface mit Feed-Liste, Hinzufügen und Entfernen über Browser (completed 2026-03-26)
 
 ## Phase Details
 
@@ -59,7 +59,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 11-01-PLAN.md — Flask-Route /feeds + feeds.html (Tabelle, Formular, JS via fetch())
+- [x] 11-01-PLAN.md — Flask-Route /feeds + feeds.html (Tabelle, Formular, JS via fetch())
 
 ## Progress
 
@@ -67,4 +67,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 9. DB-Schema & Worker-Integration | 2/2 | Complete   | 2026-03-26 |
 | 10. Feed-API | 1/1 | Complete    | 2026-03-26 |
-| 11. Feed-Management Web-Interface | 0/1 | Not started | - |
+| 11. Feed-Management Web-Interface | 1/1 | Complete   | 2026-03-26 |
