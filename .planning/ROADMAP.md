@@ -30,7 +30,7 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — feeds-Tabelle in init.sql + Migrations-SQL für Produktionssystem
+- [x] 09-01-PLAN.md — feeds-Tabelle in init.sql + Migrations-SQL für Produktionssystem
 - [ ] 09-02-PLAN.md — get_active_feeds() in database.py + Worker/app.py auf DB-Pfad umstellen
 
 ### Phase 10: Feed-API

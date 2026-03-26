@@ -9,12 +9,12 @@ Requirements für Milestone v4.0: Konfigurierbare RSS-Feeds.
 
 ### Feed-Management
 
-- [ ] **FEED-01**: Feed-Liste in PostgreSQL persistieren statt hardcoded in Python-Dateien
+- [x] **FEED-01**: Feed-Liste in PostgreSQL persistieren statt hardcoded in Python-Dateien
 - [ ] **FEED-02**: GET /api/moodlight/feeds liefert aktuelle Feed-Liste mit Status
 - [ ] **FEED-03**: POST /api/moodlight/feeds fügt neuen Feed hinzu
 - [ ] **FEED-04**: DELETE /api/moodlight/feeds/<id> entfernt Feed
 - [ ] **FEED-05**: Feed-URL wird beim Hinzufügen auf Erreichbarkeit validiert
-- [ ] **FEED-06**: Focus.de Feed (404) aus Default-Liste entfernen
+- [x] **FEED-06**: Focus.de Feed (404) aus Default-Liste entfernen
 
 ### Web-Interface
 
@@ -46,8 +46,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEED-01 | Phase 9 | Pending |
-| FEED-06 | Phase 9 | Pending |
+| FEED-01 | Phase 9 | Complete |
+| FEED-06 | Phase 9 | Complete |
 | FEED-02 | Phase 10 | Pending |
 | FEED-03 | Phase 10 | Pending |
 | FEED-04 | Phase 10 | Pending |
