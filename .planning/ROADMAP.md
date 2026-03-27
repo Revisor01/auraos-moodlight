@@ -30,7 +30,9 @@
   1. Ein GET-Request auf /api/moodlight/feeds/trends liefert eine JSON-Liste aller Feeds sortiert nach ihrem Durchschnitts-Score
   2. Der Endpoint akzeptiert einen days-Parameter (7 oder 30) und gibt korrekte Zeitfenster-Ergebnisse zurück
   3. Feeds ohne Daten im Zeitfenster werden sauber ausgeschlossen oder mit null-Score zurückgegeben
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 24-01-PLAN.md — DB-Methode get_feed_trends() + Endpoint GET /api/moodlight/feeds/trends
 
 ### Phase 25: Visualisierung & GitHub Page
 **Goal**: Nutzer können im Dashboard und auf der GitHub Page sehen, welche Feeds tendenziell positiver oder negativer bewertet werden — als Ranking mit farbkodierten Balken und Zeitfenster-Umschalter
@@ -48,5 +50,5 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Backend-Trendberechnung | 0/? | Not started | - |
+| 24. Backend-Trendberechnung | 0/1 | Not started | - |
 | 25. Visualisierung & GitHub Page | 0/? | Not started | - |
