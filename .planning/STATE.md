@@ -4,7 +4,7 @@ milestone: v6.0
 milestone_name: Dynamische Bewertungsskala
 status: verifying
 stopped_at: Completed 17-dynamische-skalierung/17-02-PLAN.md — Phase 17 abgeschlossen
-last_updated: "2026-03-27T09:45:48.976Z"
+last_updated: "2026-03-27T09:49:22.936Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 3
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 17 (dynamische-skalierung) — EXECUTING
-Plan: 2 of 2
+Phase: 18
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-03-27
 
