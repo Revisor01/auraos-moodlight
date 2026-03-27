@@ -63,6 +63,6 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete   | 2026-03-27 |
+| 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete    | 2026-03-27 |
 | 20. Manueller Analyse-Trigger | v7.0 | 0/? | Not started | - |
 | 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |
