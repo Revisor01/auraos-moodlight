@@ -12,7 +12,7 @@ import logging
 from flask import jsonify, request, session
 from functools import wraps
 from datetime import datetime, timedelta
-from database import get_database, get_cache
+from database import get_database, get_cache, compute_led_index
 from shared_config import get_sentiment_category as get_category_from_score
 import time
 import requests as http_requests
@@ -32,6 +32,9 @@ def api_login_required(f):
 
 # Farben werden auf dem Moodlight selbst konfiguriert (Teil der User-Config)
 # Wir liefern nur den reinen Sentiment-Score
+
+
+CURRENT_CACHE_KEY = 'moodlight:current:v2'
 
 
 def register_moodlight_endpoints(app):
@@ -63,7 +66,7 @@ def register_moodlight_endpoints(app):
             cache = get_cache()
 
             # 1. Redis-Cache prüfen
-            cached_data = cache.get('moodlight:current')
+            cached_data = cache.get(CURRENT_CACHE_KEY)
             if cached_data:
                 logger.debug(f"Cache HIT für /api/moodlight/current (Device: {device_id})")
 
@@ -97,18 +100,48 @@ def register_moodlight_endpoints(app):
             # 3. Response-Daten vorbereiten
             sentiment_score = latest['sentiment_score']
 
+            # Dynamische Schwellwerte aus DB (7-Tage-Fenster)
+            thresholds = db.get_score_percentiles(days=7)
+            led_index = compute_led_index(sentiment_score, thresholds)
+
+            # Perzentil-Position des aktuellen Scores bestimmen (0.0–1.0)
+            # Lineare Interpolation zwischen min und max
+            score_range = thresholds['max'] - thresholds['min']
+            if score_range > 0:
+                percentile = round((sentiment_score - thresholds['min']) / score_range, 3)
+                percentile = max(0.0, min(1.0, percentile))
+            else:
+                percentile = 0.5
+
             response = {
                 "status": "success",
                 "timestamp": latest['timestamp'].isoformat(),
-                "sentiment": round(sentiment_score, 2),
+                "sentiment": round(sentiment_score, 4),
+                "raw_score": round(sentiment_score, 4),
                 "category": latest['category'],
+                "led_index": led_index,
+                "percentile": percentile,
+                "thresholds": {
+                    "p20": thresholds['p20'],
+                    "p40": thresholds['p40'],
+                    "p60": thresholds['p60'],
+                    "p80": thresholds['p80'],
+                    "fallback": thresholds['fallback']
+                },
+                "historical": {
+                    "min": thresholds['min'],
+                    "max": thresholds['max'],
+                    "median": thresholds['median'],
+                    "count": thresholds['count'],
+                    "window_days": 7
+                },
                 "headlines_analyzed": latest.get('headlines_analyzed', 0),
                 "next_update_minutes": 30,
                 "cached": False
             }
 
             # 4. In Redis cachen (5 Minuten)
-            cache.set('moodlight:current', response, ttl=300)
+            cache.set(CURRENT_CACHE_KEY, response, ttl=300)
 
             # 5. Device-Tracking
             if device_id != 'unknown':
@@ -314,7 +347,8 @@ def register_moodlight_endpoints(app):
         """
         try:
             cache = get_cache()
-            cache.delete('moodlight:current')
+            cache.delete(CURRENT_CACHE_KEY)
+            cache.delete('moodlight:current')  # Alten Key beim nächsten Clear-Aufruf bereinigen
 
             logger.info("Moodlight Cache manuell gelöscht")
 
