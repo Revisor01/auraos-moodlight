@@ -31,7 +31,7 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
 ### Dashboard
 
-- [ ] **VIS-01**: Dashboard zeigt Skalierungs-Transparenz (Perzentil-Position, historischer Bereich)
+- [x] **VIS-01**: Dashboard zeigt Skalierungs-Transparenz (Perzentil-Position, historischer Bereich)
 
 ## Future Requirements
 
@@ -62,7 +62,7 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 | SCALE-03 | Phase 17 | Complete |
 | ESP-01 | Phase 18 | Complete |
 | ESP-02 | Phase 18 | Complete |
-| VIS-01 | Phase 18 | Pending |
+| VIS-01 | Phase 18 | Complete |
 
 **Coverage:**
 - v6.0 requirements: 11 total
