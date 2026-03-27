@@ -44,8 +44,10 @@ Plans:
   1. POST `/api/moodlight/analyze/trigger` startet eine Analyse synchron und gibt das Ergebnis zurück
   2. Während der Analyse läuft, zeigt das Dashboard einen Lade-Indikator (Button deaktiviert, Spinner sichtbar)
   3. Nach Abschluss der Analyse aktualisiert sich der Sentiment-Bereich des Dashboards automatisch mit dem neuen Score
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+Plans:
+- [ ] 20-01-PLAN.md — trigger()-Methode im Worker + POST /api/moodlight/analyze/trigger Endpoint
+- [ ] 20-02-PLAN.md — Dashboard-Button mit Spinner und Auto-Refresh nach Abschluss
 
 ### Phase 21: Dashboard Einstellungs-UI
 **Goal**: Das Dashboard enthält einen vollständigen Einstellungs-Tab, über den alle konfigurierbaren Parameter änderbar sind
@@ -64,5 +66,5 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete    | 2026-03-27 |
-| 20. Manueller Analyse-Trigger | v7.0 | 0/? | Not started | - |
+| 20. Manueller Analyse-Trigger | v7.0 | 0/2 | Not started | - |
 | 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |
