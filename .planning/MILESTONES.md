@@ -1,5 +1,19 @@
 # Milestones
 
+## v7.0 Dashboard-Einstellungen (Shipped: 2026-03-27)
+
+**Phases completed:** 3 phases, 6 plans, 8 tasks
+
+**Key accomplishments:**
+
+- 1. [Rule 3 - Blocking] Reihenfolge: logging.basicConfig vor load_settings_from_db()
+- SentimentUpdateWorker.reconfigure() für Runtime-Reload + GET/PUT /api/moodlight/settings mit sofortiger Worker-Synchronisation
+- POST /api/moodlight/analyze/trigger Endpoint mit SentimentUpdateWorker.trigger() — synchroner manueller Analyse-Auslöser mit vollständiger DB-Persistenz, Cache-Invalidierung und strukturierten Fehler-Responses
+- 'Jetzt analysieren'-Button im Dashboard-Übersichts-Tab mit Spinner-Feedback, Erfolgs-/Fehlermeldung und automatischem Sentiment-Refresh nach Abschluss
+- Vierter Dashboard-Tab mit drei Formularsektionen (Analyse, API Key, Passwort) direkt verdrahtet auf PUT /api/moodlight/settings
+
+---
+
 ## v6.0 Dynamische Bewertungsskala (Shipped: 2026-03-27)
 
 **Phases completed:** 3 phases, 6 plans, 7 tasks

@@ -4,7 +4,7 @@ milestone: v7.0
 milestone_name: Dashboard-Einstellungen
 status: verifying
 stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-03-27T11:37:04.916Z"
+last_updated: "2026-03-27T11:37:21.037Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 3

@@ -53,14 +53,14 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ ESP32 bezieht led_index dynamisch vom Backend — v6.0 Phase 18
 - ✓ Dashboard zeigt Skalierungs-Transparenz — v6.0 Phase 18
 
+- ✓ Einstellungen in PostgreSQL persistiert — v7.0 Phase 19
+- ✓ Analyse-Frequenz + Headlines im Dashboard konfigurierbar — v7.0 Phase 21
+- ✓ API Key + Passwort im Dashboard änderbar — v7.0 Phase 21
+- ✓ Manueller Analyse-Trigger im Dashboard — v7.0 Phase 20
+
 ### Active
 
-- [ ] Analyse-Frequenz im Dashboard konfigurierbar
-- [ ] Headlines pro Quelle im Dashboard konfigurierbar
-- [ ] API Keys (Anthropic) im Dashboard änderbar
-- [ ] Manueller Analyse-Trigger im Dashboard
-- [ ] Einstellungen in DB persistieren statt Umgebungsvariablen
-- [ ] Admin-Passwort im Dashboard änderbar
+(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
 
 ### Out of Scope
 
@@ -129,9 +129,5 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-## Current Milestone: v7.0 Dashboard-Einstellungen
-
-**Goal:** Alle Backend-Konfiguration über das Dashboard verwaltbar machen — Frequenz, Headlines, API Keys, manueller Trigger.
-
 ---
-*Last updated: 2026-03-27 after v7.0 milestone start (Dashboard-Einstellungen)*
+*Last updated: 2026-03-27 after v7.0 milestone complete (Dashboard-Einstellungen)*
