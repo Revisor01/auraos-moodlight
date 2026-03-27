@@ -404,10 +404,10 @@
 
         .stat-card {
             background: var(--surface);
-            padding: 30px;
-            border-radius: 20px;
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px var(--shadow);
+            box-shadow: 0 2px 8px var(--shadow);
             text-align: center;
             transition: all 0.3s ease;
         }
@@ -418,8 +418,8 @@
         }
 
         .stat-icon {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
+            font-size: 2rem;
+            margin-bottom: 12px;
             background: var(--gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -427,18 +427,192 @@
         }
 
         .stat-label {
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
         }
 
         .stat-value {
-            font-size: 2.5rem;
-            font-weight: bold;
+            font-size: 2rem;
+            font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 10px;
+            margin: 0.25rem 0;
+            line-height: 1.2;
+        }
+
+        /* Score-Farbklassen (aus dashboard.html) */
+        .score-sehr-negativ { color: #e74c3c; }
+        .score-negativ       { color: #e67e22; }
+        .score-neutral       { color: #3498db; }
+        .score-positiv       { color: #6c3dbf; }
+        .score-sehr-positiv  { color: #8e44ad; }
+
+        /* Skalierungs-Sektion */
+        .scale-section {
+            padding: 0;
+            margin: 0;
+        }
+
+        .hist-bar-wrap {
+            position: relative;
+            height: 28px;
+            margin-bottom: 8px;
+        }
+
+        .hist-bar-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 8px;
+            transform: translateY(-50%);
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .hist-bar-range {
+            position: absolute;
+            top: 50%;
+            height: 8px;
+            transform: translateY(-50%);
+            background: linear-gradient(to right, #e74c3c, #e67e22, #3498db, #6c3dbf, #8e44ad);
+            border-radius: 4px;
+            opacity: 0.85;
+        }
+
+        .hist-bar-needle {
+            position: absolute;
+            top: 0;
+            width: 3px;
+            height: 28px;
+            background: #2c3e50;
+            border-radius: 2px;
+            transform: translateX(-50%);
+            box-shadow: 0 0 4px rgba(0,0,0,0.4);
+        }
+
+        .threshold-tick {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 28px;
+            background: rgba(44,62,80,0.35);
+            transform: translateX(-50%);
+        }
+
+        .threshold-label {
+            position: absolute;
+            top: -18px;
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+
+        .hist-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .hist-values strong {
+            display: block;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: monospace;
+        }
+
+        .percentile-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 1rem;
+        }
+
+        .percentile-badge {
+            background: #6c3dbf;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 6px 16px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .percentile-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .fallback-hint {
+            display: none;
+            font-size: 0.8rem;
+            color: #e67e22;
+            background: rgba(230,126,34,0.08);
+            border: 1px solid rgba(230,126,34,0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-top: 0.75rem;
+        }
+
+        .formula-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .formula-val {
+            font-family: monospace;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: var(--border-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .formula-arrow {
+            color: var(--text-secondary);
+        }
+
+        .formula-hint {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .bar-track {
+            position: relative;
+            height: 12px;
+            background: var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .bar-needle {
+            position: absolute;
+            top: -4px;
+            width: 4px;
+            height: 20px;
+            background: #2c3e50;
+            border-radius: 2px;
+            transform: translateX(-50%);
+        }
+
+        .bar-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
         }
 
         .trend-indicator {
@@ -831,6 +1005,70 @@
         </div>
     </section>
 
+    <!-- Skalierungs-Sektion -->
+    <section class="section" id="scaling" style="background: var(--surface);">
+        <div class="container">
+            <h2 class="section-title">Wie entsteht die LED-Farbe?</h2>
+            <p style="text-align:center; font-size:1.1rem; margin-bottom:40px; color:var(--text-secondary);">
+                Der Score wird nicht absolut bewertet — er wird relativ zur Verteilung der letzten 7 Tage eingestuft.
+            </p>
+
+            <!-- Score-Berechnungs-Balken -->
+            <div style="background:var(--surface); padding:40px; border-radius:20px; border:1px solid var(--border-color); box-shadow:0 4px 6px var(--shadow); margin-bottom:40px;">
+                <h3 style="margin-bottom:20px; color:var(--text-primary);">Score-Berechnung</h3>
+                <div class="bar-track">
+                    <div class="bar-needle" id="scalingBarNeedle" style="left:50%"></div>
+                </div>
+                <div class="bar-labels">
+                    <span>-1.0 sehr negativ</span><span>-0.5</span><span>0.0 neutral</span><span>+0.5</span><span>+1.0 sehr positiv</span>
+                </div>
+                <div class="formula-row" id="scalingFormulaRow">
+                    <span>Einzel-Ø</span>
+                    <span class="formula-val" id="sfRaw">—</span>
+                    <span class="formula-arrow">×</span><span>2.0</span>
+                    <span class="formula-arrow">=</span>
+                    <span class="formula-val" id="sfStretched">—</span>
+                    <span class="formula-arrow">→</span><span>tanh()</span>
+                    <span class="formula-arrow">=</span>
+                    <span class="formula-val" id="sfFinal">—</span>
+                </div>
+                <p class="formula-hint">Einzelscores von Claude Haiku (-1 bis +1) werden gemittelt, mit 2.0 gestreckt und durch tanh() auf den Bereich [-1, +1] normiert.</p>
+            </div>
+
+            <!-- Skalierungs-Kontext: Historischer Bereich + Schwellwerte -->
+            <div style="background:var(--surface); padding:40px; border-radius:20px; border:1px solid var(--border-color); box-shadow:0 4px 6px var(--shadow);">
+                <h3 style="margin-bottom:20px; color:var(--text-primary);">Dynamische Skalierung (7-Tage-Fenster)</h3>
+                <div class="scale-section">
+                    <div class="hist-bar-wrap" id="scalingHistWrap">
+                        <div class="hist-bar-track"></div>
+                        <div class="hist-bar-range" id="scalingHistRange" style="left:0%;right:0%"></div>
+                        <div class="hist-bar-needle" id="scalingHistNeedle" style="left:50%"></div>
+                        <!-- Schwellwert-Ticks werden per JS eingefügt -->
+                    </div>
+                    <div class="hist-values">
+                        <span>Min<strong id="scalingHistMin">—</strong></span>
+                        <span style="text-align:center">Median<strong id="scalingHistMedian">—</strong></span>
+                        <span style="text-align:right">Max<strong id="scalingHistMax">—</strong></span>
+                    </div>
+                    <div class="percentile-row">
+                        <div class="percentile-badge" id="scalingPercentileBadge">—</div>
+                        <div class="percentile-desc" id="scalingPercentileDesc">Aktuelle Position im historischen Bereich</div>
+                    </div>
+                    <div class="fallback-hint" id="scalingFallbackHint">
+                        Noch zu wenig historische Daten — feste Schwellwerte aktiv (P20=-0.5, P40=-0.2, P60=0.1, P80=0.4)
+                    </div>
+                </div>
+
+                <div style="margin-top:2rem;">
+                    <h4 style="font-size:1rem; margin-bottom:1rem; color:var(--text-primary);">LED-Farbzuordnung via Perzentil-Schwellwerte</h4>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:12px;" id="scalingLedSteps">
+                        <!-- Wird per JS befüllt -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Screenshots Section -->
     <section class="section" id="screenshots" style="background: var(--surface);">
         <div class="container">
@@ -1153,6 +1391,94 @@
             // Klasse nach led_index setzen
             const cls = themeClasses[ledIndex];
             if (cls) body.classList.add(cls);
+        }
+
+        // Skalierungs-Sektion mit Daten aus /api/moodlight/current befüllen
+        function renderScaleSection(data) {
+            if (!data || !data.thresholds || !data.historical) return;
+
+            const th = data.thresholds;
+            const hist = data.historical;
+            const score = data.raw_score || data.sentiment || 0;
+            const range = hist.max - hist.min;
+
+            // Score-Berechnungs-Balken
+            const needle1 = document.getElementById('scalingBarNeedle');
+            if (needle1) needle1.style.left = ((score + 1) / 2 * 100).toFixed(1) + '%';
+
+            const sfRaw = document.getElementById('sfRaw');
+            const sfStretched = document.getElementById('sfStretched');
+            const sfFinal = document.getElementById('sfFinal');
+            // sfRaw = Näherung Einzel-Avg, sfStretched = * 2.0, sfFinal = tanh(stretched) ≈ score
+            if (sfRaw) sfRaw.textContent = (score / 2).toFixed(3);
+            if (sfStretched) sfStretched.textContent = score.toFixed(3); // Einzel-Avg * 2 ≈ final_score
+            if (sfFinal) sfFinal.textContent = score.toFixed(3);
+
+            // Historischer Bereich
+            if (range > 0) {
+                const leftPct  = ((hist.min + 1) / 2 * 100).toFixed(1);
+                const rightPct = (100 - (hist.max + 1) / 2 * 100).toFixed(1);
+                const histRange = document.getElementById('scalingHistRange');
+                if (histRange) { histRange.style.left = leftPct + '%'; histRange.style.right = rightPct + '%'; }
+
+                const scorePct = ((score - hist.min) / range * 100).toFixed(1);
+                const histNeedle = document.getElementById('scalingHistNeedle');
+                if (histNeedle) histNeedle.style.left = scorePct + '%';
+
+                // Schwellwert-Ticks P20/P40/P60/P80
+                const wrap = document.getElementById('scalingHistWrap');
+                if (wrap) {
+                    wrap.querySelectorAll('.threshold-tick, .threshold-label').forEach(el => el.remove());
+                    [['P20', th.p20], ['P40', th.p40], ['P60', th.p60], ['P80', th.p80]].forEach(([label, val]) => {
+                        if (typeof val !== 'number') return;
+                        const pct = ((val - hist.min) / range * 100).toFixed(1);
+                        const tick = document.createElement('div');
+                        tick.className = 'threshold-tick';
+                        tick.style.left = pct + '%';
+                        const lbl = document.createElement('div');
+                        lbl.className = 'threshold-label';
+                        lbl.style.left = pct + '%';
+                        lbl.textContent = label;
+                        wrap.appendChild(tick);
+                        wrap.appendChild(lbl);
+                    });
+                }
+            }
+
+            // Min/Median/Max
+            const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            setEl('scalingHistMin', hist.min.toFixed(3));
+            setEl('scalingHistMedian', hist.median.toFixed(3));
+            setEl('scalingHistMax', hist.max.toFixed(3));
+
+            // Perzentil-Badge
+            const pctBadge = document.getElementById('scalingPercentileBadge');
+            const pctDesc  = document.getElementById('scalingPercentileDesc');
+            if (pctBadge) pctBadge.textContent = 'P' + Math.round((data.percentile || 0.5) * 100);
+            if (pctDesc)  pctDesc.textContent = `Schlechter als ${Math.round((1 - (data.percentile || 0.5)) * 100)} % der Messungen der letzten 7 Tage`;
+
+            // Fallback-Hinweis
+            const fbHint = document.getElementById('scalingFallbackHint');
+            if (fbHint) fbHint.style.display = th.fallback ? 'block' : 'none';
+
+            // LED-Schritt-Karten
+            const ledSteps = document.getElementById('scalingLedSteps');
+            if (ledSteps) {
+                const steps = [
+                    { idx: 0, label: 'Sehr negativ', color: '#e74c3c', range: `< ${th.p20.toFixed(2)} (P20)` },
+                    { idx: 1, label: 'Negativ',      color: '#e67e22', range: `${th.p20.toFixed(2)} – ${th.p40.toFixed(2)} (P40)` },
+                    { idx: 2, label: 'Neutral',      color: '#3498db', range: `${th.p40.toFixed(2)} – ${th.p60.toFixed(2)} (P60)` },
+                    { idx: 3, label: 'Positiv',      color: '#6c3dbf', range: `${th.p60.toFixed(2)} – ${th.p80.toFixed(2)} (P80)` },
+                    { idx: 4, label: 'Sehr positiv', color: '#8e44ad', range: `≥ ${th.p80.toFixed(2)} (P80)` },
+                ];
+                const currentIdx = data.led_index ?? -1;
+                ledSteps.innerHTML = steps.map(s => `
+                    <div style="background:${currentIdx === s.idx ? s.color + '22' : 'var(--surface)'}; border:2px solid ${currentIdx === s.idx ? s.color : 'var(--border-color)'}; border-radius:8px; padding:12px; text-align:center; transition:all 0.3s;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:${s.color};margin:0 auto 8px;"></div>
+                        <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary);">${s.label}</div>
+                        <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px;font-family:monospace;">${s.range}</div>
+                    </div>`).join('');
+            }
         }
 
         // Update sentiment every 30 seconds for real API data
