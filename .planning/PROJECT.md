@@ -58,13 +58,12 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ API Key + Passwort im Dashboard änderbar — v7.0 Phase 21
 - ✓ Manueller Analyse-Trigger im Dashboard — v7.0 Phase 20
 
+- ✓ style.css komplett überarbeitet (1035 Zeilen, CSS-Variablen) — v8.0 Phase 22
+- ✓ Alle 4 ESP32 Seiten an Dashboard-Design angeglichen — v8.0 Phase 23
+
 ### Active
 
-- [ ] style.css komplett überarbeiten (CSS-Variablen vom Dashboard)
-- [ ] index.html: Dashboard-Design (Karten, Score-Farbkodierung)
-- [ ] setup.html: Formular-Design wie Dashboard-Einstellungs-Tab
-- [ ] mood.html: Headlines-Darstellung wie im Dashboard
-- [ ] diagnostics.html: System-Info im Dashboard-Stil
+(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
 
 ### Out of Scope
 
@@ -133,9 +132,5 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-## Current Milestone: v8.0 ESP32 UI-Redesign
-
-**Goal:** ESP32 Web-Interface an das Dashboard-Design angleichen — alle 4 Seiten + CSS.
-
 ---
-*Last updated: 2026-03-27 after v8.0 milestone start (ESP32 UI-Redesign)*
+*Last updated: 2026-03-27 after v8.0 milestone complete (ESP32 UI-Redesign)*

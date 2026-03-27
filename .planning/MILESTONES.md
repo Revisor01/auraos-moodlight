@@ -1,5 +1,19 @@
 # Milestones
 
+## v8.0 ESP32 UI-Redesign (Shipped: 2026-03-27)
+
+**Phases completed:** 2 phases, 5 plans, 3 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- index.html von Inline-Styles auf CSS-Klassen umgestellt: Score-Farbkodierung (.score-neutral), 4 .card-Karten, Icons in h2, alle JS-Hooks erhalten
+- setup.html bereinigt: 3 Inline-Styles entfernt, .update-step und .update-progress-wrapper Klassen in style.css ergaenzt
+- One-liner:
+- diagnostics.html bereinigt: style-Block fuer details/summary entfernt, flex-direction:column Inline-Style aus .buttons-Div entfernt — alle JS-Funktionen und IDs unveraendert
+
+---
+
 ## v7.0 Dashboard-Einstellungen (Shipped: 2026-03-27)
 
 **Phases completed:** 3 phases, 6 plans, 8 tasks

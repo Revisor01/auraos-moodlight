@@ -4,7 +4,7 @@ milestone: v8.0
 milestone_name: ESP32 UI-Redesign
 status: verifying
 stopped_at: Phase 23-02 abgeschlossen — setup.html Inline-Styles bereinigt (7ae19d5)
-last_updated: "2026-03-27T12:39:57.372Z"
+last_updated: "2026-03-27T12:40:16.597Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 2
