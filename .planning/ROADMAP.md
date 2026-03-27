@@ -17,7 +17,7 @@
 ## Phases
 
 - [x] **Phase 16: Claude API Migration** - OpenAI durch Anthropic SDK ersetzen, Prompt optimieren (completed 2026-03-27)
-- [ ] **Phase 17: Dynamische Skalierung** - Perzentil-basiertes Score-Mapping und Backend-Transparenz
+- [x] **Phase 17: Dynamische Skalierung** - Perzentil-basiertes Score-Mapping und Backend-Transparenz (completed 2026-03-27)
 - [ ] **Phase 18: ESP32 + Dashboard Integration** - Dynamische Schwellwerte auf dem Gerät, Skalierungs-Anzeige im Dashboard
 
 ## Phase Details
@@ -47,7 +47,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 17-01-PLAN.md — get_score_percentiles() + compute_led_index() in database.py (SCALE-01, SCALE-02)
-- [ ] 17-02-PLAN.md — /api/moodlight/current um Skalierungs-Kontext erweitern (SCALE-03)
+- [x] 17-02-PLAN.md — /api/moodlight/current um Skalierungs-Kontext erweitern (SCALE-03)
 
 ### Phase 18: ESP32 + Dashboard Integration
 **Goal**: ESP32 bezieht Schwellwerte dynamisch vom Backend und nutzt die volle Farbpalette; Dashboard zeigt Skalierungs-Kontext transparent an
@@ -64,5 +64,5 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 16. Claude API Migration | v6.0 | 2/2 | Complete    | 2026-03-27 |
-| 17. Dynamische Skalierung | v6.0 | 1/2 | In Progress|  |
+| 17. Dynamische Skalierung | v6.0 | 2/2 | Complete   | 2026-03-27 |
 | 18. ESP32 + Dashboard Integration | v6.0 | 0/? | Not started | - |

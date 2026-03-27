@@ -17,7 +17,7 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
 - [x] **SCALE-01**: Score-Mapping nutzt historische Perzentile statt fester Schwellwerte
 - [x] **SCALE-02**: Backend berechnet dynamische Schwellwerte basierend auf den letzten 7 Tagen
-- [ ] **SCALE-03**: API liefert Skalierungs-Kontext (Rohwert, Perzentil, historischer Min/Max/Median)
+- [x] **SCALE-03**: API liefert Skalierungs-Kontext (Rohwert, Perzentil, historischer Min/Max/Median)
 
 ### Prompt-Optimierung
 
@@ -59,7 +59,7 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 | PROMPT-02 | Phase 16 | Complete |
 | SCALE-01 | Phase 17 | Complete |
 | SCALE-02 | Phase 17 | Complete |
-| SCALE-03 | Phase 17 | Pending |
+| SCALE-03 | Phase 17 | Complete |
 | ESP-01 | Phase 18 | Pending |
 | ESP-02 | Phase 18 | Pending |
 | VIS-01 | Phase 18 | Pending |
