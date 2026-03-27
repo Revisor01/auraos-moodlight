@@ -31,7 +31,10 @@
   2. ANTHROPIC_API_KEY ist per Umgebungsvariable konfigurierbar und wird beim Start validiert
   3. Sentiment-Scores verteilen sich erkennbar über den vollen Bereich -1.0 bis +1.0 (nicht nur -0.3 bis +0.1)
   4. Positive Nachrichtenlagen erzeugen Scores > +0.3, nicht nur "weniger negativ"
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 16-01-PLAN.md — OpenAI SDK durch Anthropic SDK ersetzen (requirements.txt, docker-compose.yaml, app.py)
+- [ ] 16-02-PLAN.md — Optimierten Sentiment-Prompt mit Kalibrierungsbeispielen einbauen
 
 ### Phase 17: Dynamische Skalierung
 **Goal**: Score-Mapping basiert auf historischen Perzentilen der letzten 7 Tage, API liefert vollständigen Skalierungs-Kontext
@@ -57,6 +60,6 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 16. Claude API Migration | v6.0 | 0/? | Not started | - |
+| 16. Claude API Migration | v6.0 | 0/2 | Planning done | - |
 | 17. Dynamische Skalierung | v6.0 | 0/? | Not started | - |
 | 18. ESP32 + Dashboard Integration | v6.0 | 0/? | Not started | - |
