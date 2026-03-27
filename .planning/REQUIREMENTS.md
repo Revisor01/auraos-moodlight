@@ -9,8 +9,8 @@ Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 
 ### Backend-Analyse
 
-- [ ] **TREND-01**: Backend berechnet Durchschnitts-Score pro Feed für konfigurierbare Zeitfenster (7 Tage, 30 Tage)
-- [ ] **TREND-02**: API-Endpoint GET /api/moodlight/feeds/trends liefert Feed-Rankings sortiert nach durchschnittlichem Score
+- [x] **TREND-01**: Backend berechnet Durchschnitts-Score pro Feed für konfigurierbare Zeitfenster (7 Tage, 30 Tage)
+- [x] **TREND-02**: API-Endpoint GET /api/moodlight/feeds/trends liefert Feed-Rankings sortiert nach durchschnittlichem Score
 
 ### Dashboard-Visualisierung
 
@@ -34,8 +34,8 @@ Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TREND-01 | Phase 24 | Pending |
-| TREND-02 | Phase 24 | Pending |
+| TREND-01 | Phase 24 | Complete |
+| TREND-02 | Phase 24 | Complete |
 | VIS-01 | Phase 25 | Pending |
 | VIS-02 | Phase 25 | Pending |
 | VIS-03 | Phase 25 | Pending |

@@ -17,7 +17,7 @@
 
 ## Phases
 
-- [ ] **Phase 24: Backend-Trendberechnung** — Durchschnitts-Score pro Feed berechnen und per API liefern
+- [x] **Phase 24: Backend-Trendberechnung** — Durchschnitts-Score pro Feed berechnen und per API liefern (completed 2026-03-27)
 - [ ] **Phase 25: Visualisierung & GitHub Page** — Feed-Ranking im Dashboard und auf der GitHub Page darstellen
 
 ## Phase Details
@@ -32,7 +32,7 @@
   3. Feeds ohne Daten im Zeitfenster werden sauber ausgeschlossen oder mit null-Score zurückgegeben
 **Plans**: 1 plan
 Plans:
-- [ ] 24-01-PLAN.md — DB-Methode get_feed_trends() + Endpoint GET /api/moodlight/feeds/trends
+- [x] 24-01-PLAN.md — DB-Methode get_feed_trends() + Endpoint GET /api/moodlight/feeds/trends
 
 ### Phase 25: Visualisierung & GitHub Page
 **Goal**: Nutzer können im Dashboard und auf der GitHub Page sehen, welche Feeds tendenziell positiver oder negativer bewertet werden — als Ranking mit farbkodierten Balken und Zeitfenster-Umschalter
@@ -50,5 +50,5 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Backend-Trendberechnung | 0/1 | Not started | - |
+| 24. Backend-Trendberechnung | 1/1 | Complete   | 2026-03-27 |
 | 25. Visualisierung & GitHub Page | 0/? | Not started | - |
