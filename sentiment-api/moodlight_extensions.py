@@ -14,8 +14,10 @@ from functools import wraps
 from datetime import datetime, timedelta
 from database import get_database, get_cache, compute_led_index
 from shared_config import get_sentiment_category as get_category_from_score
+from background_worker import get_background_worker
 import time
 import requests as http_requests
+import anthropic as anthropic_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -506,6 +508,152 @@ def register_moodlight_endpoints(app):
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/headlines: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
+
+    # ===== SETTINGS ENDPOINTS (CFG-03, API-01) =====
+
+    @app.route('/api/moodlight/settings', methods=['GET'])
+    @api_login_required
+    def get_moodlight_settings():
+        """
+        Aktuelle Backend-Einstellungen zurückgeben (CFG-01, API-01).
+        API Key wird maskiert zurückgegeben: erste 10 Zeichen + '****'
+        """
+        try:
+            db = get_database()
+            settings = db.get_all_settings()
+
+            # analysis_interval: Sekunden für Anzeige
+            interval_seconds = int(settings.get('analysis_interval', '1800'))
+
+            # anthropic_api_key maskieren
+            raw_key = settings.get('anthropic_api_key', '')
+            if raw_key and len(raw_key) > 10:
+                masked_key = raw_key[:10] + '****'
+            elif raw_key:
+                masked_key = '****'
+            else:
+                masked_key = ''
+
+            # admin_password_hash nie zurückgeben — nur ob gesetzt
+            has_password = bool(settings.get('admin_password_hash', '').strip())
+
+            return jsonify({
+                "status": "success",
+                "settings": {
+                    "analysis_interval_seconds": interval_seconds,
+                    "analysis_interval_minutes": round(interval_seconds / 60, 1),
+                    "headlines_per_source": int(settings.get('headlines_per_source', '1')),
+                    "anthropic_api_key": masked_key,
+                    "has_admin_password": has_password
+                }
+            })
+
+        except Exception as e:
+            logger.error(f"Fehler in GET /api/moodlight/settings: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
+
+    @app.route('/api/moodlight/settings', methods=['PUT'])
+    @api_login_required
+    def update_moodlight_settings():
+        """
+        Einstellungen aktualisieren und sofort wirksam machen (CFG-03, API-01).
+
+        Body (JSON, alle Felder optional):
+          {
+            "analysis_interval_minutes": 30,   -- Analyse-Frequenz in Minuten
+            "headlines_per_source": 2,          -- Headlines pro RSS-Feed
+            "anthropic_api_key": "sk-ant-...",  -- Neuer API Key (leer = unverändert)
+            "admin_password": "neues_pw",       -- Neues Admin-Passwort
+            "current_password": "altes_pw"      -- Pflichtfeld wenn admin_password gesetzt
+          }
+        """
+        try:
+            data = request.get_json(silent=True)
+            if not data:
+                return jsonify({"status": "error", "message": "JSON-Body erwartet"}), 400
+
+            db = get_database()
+            worker = get_background_worker()
+            changes = []
+
+            # --- analysis_interval ---
+            if 'analysis_interval_minutes' in data:
+                try:
+                    minutes = float(data['analysis_interval_minutes'])
+                    if minutes < 1:
+                        return jsonify({"status": "error", "message": "analysis_interval_minutes muss >= 1 sein"}), 400
+                    seconds = int(minutes * 60)
+                    db.set_setting('analysis_interval', str(seconds))
+                    if worker:
+                        worker.reconfigure(interval_seconds=seconds)
+                    changes.append(f"analysis_interval={seconds}s")
+                except (ValueError, TypeError):
+                    return jsonify({"status": "error", "message": "analysis_interval_minutes muss eine Zahl sein"}), 400
+
+            # --- headlines_per_source ---
+            if 'headlines_per_source' in data:
+                try:
+                    count = int(data['headlines_per_source'])
+                    if count < 1:
+                        return jsonify({"status": "error", "message": "headlines_per_source muss >= 1 sein"}), 400
+                    db.set_setting('headlines_per_source', str(count))
+                    if worker:
+                        worker.reconfigure(headlines_per_source=count)
+                    changes.append(f"headlines_per_source={count}")
+                except (ValueError, TypeError):
+                    return jsonify({"status": "error", "message": "headlines_per_source muss eine ganze Zahl sein"}), 400
+
+            # --- anthropic_api_key ---
+            if 'anthropic_api_key' in data:
+                new_key = str(data['anthropic_api_key']).strip()
+                if new_key:  # Leer = unverändert
+                    db.set_setting('anthropic_api_key', new_key)
+                    # anthropic_client in app.py neu initialisieren
+                    try:
+                        import app as main_app
+                        main_app.anthropic_client = anthropic_sdk.Anthropic(api_key=new_key, timeout=45.0)
+                        logger.info("Anthropic Client mit neuem API Key neu initialisiert")
+                    except Exception as e:
+                        logger.error(f"Fehler beim Neu-Initialisieren des Anthropic Client: {e}")
+                    changes.append("anthropic_api_key=****")
+
+            # --- admin_password ---
+            if 'admin_password' in data:
+                new_password = str(data.get('admin_password', '')).strip()
+                current_password = str(data.get('current_password', '')).strip()
+
+                if not new_password:
+                    return jsonify({"status": "error", "message": "admin_password darf nicht leer sein"}), 400
+                if not current_password:
+                    return jsonify({"status": "error", "message": "current_password ist Pflichtfeld beim Passwort-Ändern"}), 400
+
+                # Altes Passwort prüfen
+                try:
+                    import app as main_app
+                    from werkzeug.security import check_password_hash, generate_password_hash
+                    if not main_app._admin_password_hash or not check_password_hash(main_app._admin_password_hash, current_password):
+                        return jsonify({"status": "error", "message": "Aktuelles Passwort falsch"}), 403
+                    new_hash = generate_password_hash(new_password)
+                    db.set_setting('admin_password_hash', new_hash)
+                    main_app._admin_password_hash = new_hash
+                    changes.append("admin_password=****")
+                except Exception as e:
+                    logger.error(f"Fehler beim Passwort-Ändern: {e}")
+                    return jsonify({"status": "error", "message": "Fehler beim Passwort-Ändern"}), 500
+
+            if not changes:
+                return jsonify({"status": "ok", "message": "Keine Änderungen angegeben"}), 200
+
+            logger.info(f"Einstellungen aktualisiert: {', '.join(changes)}")
+            return jsonify({
+                "status": "success",
+                "message": f"Einstellungen gespeichert: {', '.join(changes)}",
+                "changes": changes
+            })
+
+        except Exception as e:
+            logger.error(f"Fehler in PUT /api/moodlight/settings: {e}", exc_info=True)
             return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
     logger.info("Moodlight API-Endpunkte registriert")
