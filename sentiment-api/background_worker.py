@@ -29,6 +29,7 @@ class SentimentUpdateWorker:
         self.app = app
         self.analyze_function = analyze_function
         self.interval_seconds = interval_seconds
+        self.headlines_per_source = 1  # dynamisch via reconfigure() änderbar
         self.running = False
         self.thread = None
 
@@ -49,6 +50,24 @@ class SentimentUpdateWorker:
         if self.thread:
             self.thread.join(timeout=5)
         logger.info("Background Worker gestoppt")
+
+    def reconfigure(self, interval_seconds: int = None, headlines_per_source: int = None):
+        """
+        Rekonfiguriere Worker-Parameter zur Laufzeit (ohne Neustart).
+
+        Args:
+            interval_seconds: Neues Update-Intervall in Sekunden (None = unverändert)
+            headlines_per_source: Neue Headlines-Anzahl pro Feed (None = unverändert)
+        """
+        if interval_seconds is not None and interval_seconds > 0:
+            old_interval = self.interval_seconds
+            self.interval_seconds = interval_seconds
+            logger.info(f"Worker-Intervall geändert: {old_interval}s → {interval_seconds}s")
+
+        if headlines_per_source is not None and headlines_per_source > 0:
+            old_headlines = self.headlines_per_source
+            self.headlines_per_source = headlines_per_source
+            logger.info(f"Worker-Headlines geändert: {old_headlines} → {headlines_per_source}")
 
     def _worker_loop(self):
         """Haupt-Worker-Loop"""
@@ -158,7 +177,7 @@ class SentimentUpdateWorker:
 
         headlines = []
         processed_links = set()
-        num_headlines_per_source = 1  # Für Background-Worker nur 1 Headline/Quelle
+        num_headlines_per_source = self.headlines_per_source
 
         for feed_row in feeds:
             source = feed_row['name']
@@ -239,3 +258,9 @@ def stop_background_worker():
     if _worker is not None:
         _worker.stop()
         _worker = None
+
+
+def get_background_worker() -> 'SentimentUpdateWorker':
+    """Hole die laufende Worker-Instanz (für reconfigure()-Aufrufe aus API-Endpoints)."""
+    global _worker
+    return _worker
