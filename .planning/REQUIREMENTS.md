@@ -45,25 +45,25 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CFG-01 | — | Pending |
-| CFG-02 | — | Pending |
-| CFG-03 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
-| UI-05 | — | Pending |
-| CTRL-01 | — | Pending |
-| CTRL-02 | — | Pending |
-| CTRL-03 | — | Pending |
-| API-01 | — | Pending |
-| API-02 | — | Pending |
+| CFG-01 | Phase 19 | Pending |
+| CFG-02 | Phase 19 | Pending |
+| CFG-03 | Phase 19 | Pending |
+| API-01 | Phase 19 | Pending |
+| CTRL-01 | Phase 20 | Pending |
+| CTRL-02 | Phase 20 | Pending |
+| CTRL-03 | Phase 20 | Pending |
+| API-02 | Phase 20 | Pending |
+| UI-01 | Phase 21 | Pending |
+| UI-02 | Phase 21 | Pending |
+| UI-03 | Phase 21 | Pending |
+| UI-04 | Phase 21 | Pending |
+| UI-05 | Phase 21 | Pending |
 
 **Coverage:**
 - v7.0 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 after roadmap creation (v7.0)*
