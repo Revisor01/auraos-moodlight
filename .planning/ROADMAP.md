@@ -44,7 +44,10 @@ Plans:
   1. `/api/moodlight/current` enthält Felder für Rohwert, Perzentil-Position und historischen Min/Max/Median
   2. Bei gleichem Rohwert ändert sich der skalierte LED-Index, wenn sich der historische Bereich der letzten 7 Tage verschiebt
   3. Backend berechnet dynamische Schwellwerte aus realen DB-Daten, nicht aus festen Konstanten
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 17-01-PLAN.md — get_score_percentiles() + compute_led_index() in database.py (SCALE-01, SCALE-02)
+- [ ] 17-02-PLAN.md — /api/moodlight/current um Skalierungs-Kontext erweitern (SCALE-03)
 
 ### Phase 18: ESP32 + Dashboard Integration
 **Goal**: ESP32 bezieht Schwellwerte dynamisch vom Backend und nutzt die volle Farbpalette; Dashboard zeigt Skalierungs-Kontext transparent an
@@ -61,5 +64,5 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 16. Claude API Migration | v6.0 | 2/2 | Complete    | 2026-03-27 |
-| 17. Dynamische Skalierung | v6.0 | 0/? | Not started | - |
+| 17. Dynamische Skalierung | v6.0 | 0/2 | Not started | - |
 | 18. ESP32 + Dashboard Integration | v6.0 | 0/? | Not started | - |
