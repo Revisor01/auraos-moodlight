@@ -11,10 +11,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="/favicon.png">
-    <style>
-        .dark details summary { color: #adb5bd; }
-        .dark details > div { border-color: #495057; }
-    </style>
 </head>
 <body>
     <div class="header">
@@ -26,7 +22,7 @@
             <button id="theme-btn" class="btn btn-sm" onclick="toggleDarkMode()" aria-label="Zwischen Hell- und Dunkelmodus wechseln">☼</button>
         </div>
     </div>
-    
+
     <div class="dashboard-container">
         <div class="dashboard-item full-width">
             <div class="chart-header">
@@ -43,13 +39,13 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="chart-container">
                 <canvas id="metrics-chart" aria-label="Systemmetriken" role="img"></canvas>
             </div>
         </div>
     </div>
-    
+
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-memory" aria-hidden="true"></i></div>
@@ -94,7 +90,7 @@
                 <h2>Diagnose-Aktionen</h2>
                 <div class="chart-subtitle">Systemwartung</div>
             </div>
-            <div class="buttons" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+            <div class="buttons">
                 <button class="btn" onclick="cleanupFiles()" aria-label="Temporäre Dateien bereinigen">
                     <i class="fas fa-broom" aria-hidden="true"></i> Temporäre Dateien bereinigen
                 </button>
@@ -119,17 +115,17 @@
             .then(data => {
                 // Statuskarten aktualisieren
                 document.getElementById('free-heap').textContent = formatBytes(data.heap);
-                
+
                 const fragPercent = (1 - (data.maxBlock / data.heap)) * 100;
                 document.getElementById('heap-frag').textContent = fragPercent.toFixed(1) + '%';
-                
+
                 document.getElementById('cpu-temp').textContent = data.temperature.toFixed(1) + '°C';
                 document.getElementById('uptime').textContent = formatTime(data.uptime);
-                
+
                 const fsPercent = data.fsPercent;
                 document.getElementById('fs-usage').textContent = fsPercent.toFixed(1) + '%';
                 document.getElementById('fs-free').textContent = formatBytes(data.fsTotal - data.fsUsed);
-                
+
                 if (data.wifiConnected) {
                     document.getElementById('wifi-signal').textContent = data.rssi + ' dBm';
                     document.getElementById('wifi-status').textContent = 'Verbunden';
@@ -139,11 +135,11 @@
                     document.getElementById('wifi-status').textContent = 'Getrennt';
                     document.getElementById('wifi-status').className = 'stat-value negative';
                 }
-                
+
                 // Systembewertung
                 let statusText = "System OK";
                 let statusClass = "positive";
-                
+
                 if (fragPercent > 70 || data.fsPercent > 90 || data.heap < 20000 || data.temperature > 65) {
                     statusText = "Systemprobleme erkannt";
                     statusClass = "negative";
@@ -151,10 +147,10 @@
                     statusText = "Systeme im Normalbereich mit Warnungen";
                     statusClass = "warning";
                 }
-                
+
                 document.getElementById('system-status-text').textContent = statusText;
                 document.getElementById('system-status-text').className = 'chart-subtitle ' + statusClass;
-                
+
                 // Chart aktualisieren
                 updateMetricsChart(data);
             })
@@ -163,7 +159,7 @@
                 document.getElementById('system-status-text').textContent = 'Fehler beim Laden der Metriken';
                 document.getElementById('system-status-text').className = 'chart-subtitle negative';
             });
-            
+
             // Log aktualisieren
             fetch('/logs')
             .then(response => response.text())
@@ -174,16 +170,16 @@
                 console.error('Fehler beim Laden der Logs:', error);
             });
         }
-        
+
         function updateMetricsChart(data) {
             const ctx = document.getElementById('metrics-chart').getContext('2d');
-            
+
             // Vorhandenes Chart zerstören, falls vorhanden
             if (metricsChart) {
                 metricsChart.destroy();
                 metricsChart = null;
             }
-            
+
             // Vereinfacht: Balkenchart statt Linienchart mit Zeitachse
             // Dies vermeidet die Probleme mit dem Moment.js-Adapter
             metricsChart = new Chart(ctx, {
@@ -232,7 +228,7 @@
                                 label: function(context) {
                                     const label = context.dataset.label || '';
                                     const value = context.raw;
-                                    
+
                                     // Format nach Datentyp
                                     if (label.includes('Heap')) {
                                         return label + ': ' + value.toFixed(1) + ' KB';
@@ -249,12 +245,12 @@
                 }
             });
         }
-        
+
         function runFullDiagnostics() {
             if (!confirm('Vollständige Systemdiagnose starten? Dies kann einige Sekunden dauern.')) {
                 return;
             }
-            
+
             // Diagnose-Endpunkt aufrufen
             fetch('/api/system/diagnose')
                 .then(response => response.json())
@@ -267,12 +263,12 @@
                     alert('Fehler bei der Diagnose: ' + error.message);
                 });
         }
-        
+
         function cleanupFiles() {
             if (!confirm('Temporäre Dateien bereinigen?')) {
                 return;
             }
-            
+
             fetch('/api/system/cleanup')
                 .then(response => response.json())
                 .then(data => {
@@ -284,12 +280,12 @@
                     alert('Fehler: ' + error.message);
                 });
         }
-        
+
         function runArchiveProcess() {
             if (!confirm('Archivierungsprozess starten? Daten älter als 90 Tage werden in separate Dateien verschoben.')) {
                 return;
             }
-            
+
             fetch('/api/archives/process')
                 .then(response => response.json())
                 .then(result => {
@@ -305,7 +301,7 @@
                     alert('Fehler bei der Archivierung: ' + error.message);
                 });
         }
-        
+
         function resetAllSettings() {
             fetch('/factoryreset', {
                 method: 'POST'
@@ -323,11 +319,11 @@
                 alert('Fehler beim Zurücksetzen: ' + error.message);
             });
         }
-        
+
         function restartDevice() {
             window.location.href = '/restart';
         }
-        
+
         // Hilfsfunktionen
         function formatBytes(bytes) {
             if (bytes < 1024) {
@@ -338,7 +334,7 @@
                 return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
             }
         }
-        
+
         function formatTime(seconds) {
             const days = Math.floor(seconds / 86400);
             seconds %= 86400;
@@ -346,14 +342,14 @@
             seconds %= 3600;
             const minutes = Math.floor(seconds / 60);
             seconds %= 60;
-            
+
             if (days > 0) {
                 return days + 'd ' + hours + 'h ' + minutes + 'm';
             } else {
                 return hours + 'h ' + minutes + 'm ' + seconds + 's';
             }
         }
-        
+
         // Initialisierung
         document.addEventListener('DOMContentLoaded', function() {
             // Dark mode aus localStorage
@@ -362,10 +358,10 @@
                 const themeBtn = document.getElementById('theme-btn');
                 if (themeBtn) themeBtn.innerHTML = '☀️';
             }
-            
+
             // Initiale Daten laden
             loadMetrics();
-            
+
             // Automatisches Nachladen alle 30 Sekunden
             setInterval(loadMetrics, 30000);
         });
