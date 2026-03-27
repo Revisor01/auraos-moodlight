@@ -601,6 +601,63 @@ class Database:
             logger.error(f"Fehler beim Abrufen der Statistiken: {e}")
             return {}
 
+    def get_score_percentiles(self, days: int = 7) -> Dict[str, Any]:
+        """
+        Berechnet historische Perzentile der Sentiment-Scores der letzten N Tage.
+
+        Args:
+            days: Anzahl Tage für das historische Fenster (default: 7)
+
+        Returns:
+            Dict mit p20, p40, p60, p80, min, max, median, count, fallback.
+            Bei weniger als 3 Datenpunkten: fallback=True mit festen Standardwerten.
+        """
+        FALLBACK = {
+            "p20": -0.5, "p40": -0.2, "p60": 0.1, "p80": 0.4,
+            "min": -1.0, "max": 1.0, "median": 0.0,
+            "count": 0, "fallback": True
+        }
+
+        query = """
+            SELECT
+                COUNT(*) AS count,
+                percentile_cont(0.20) WITHIN GROUP (ORDER BY sentiment_score) AS p20,
+                percentile_cont(0.40) WITHIN GROUP (ORDER BY sentiment_score) AS p40,
+                percentile_cont(0.50) WITHIN GROUP (ORDER BY sentiment_score) AS median,
+                percentile_cont(0.60) WITHIN GROUP (ORDER BY sentiment_score) AS p60,
+                percentile_cont(0.80) WITHIN GROUP (ORDER BY sentiment_score) AS p80,
+                MIN(sentiment_score) AS min,
+                MAX(sentiment_score) AS max
+            FROM sentiment_history
+            WHERE timestamp >= NOW() - INTERVAL '%s days';
+        """
+        try:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, (days,))
+                row = cur.fetchone()
+                if not row or row['count'] < 3:
+                    logger.warning(
+                        f"Zu wenige Datenpunkte für Perzentil-Berechnung "
+                        f"(count={row['count'] if row else 0}, days={days}) — verwende Fallback"
+                    )
+                    if row:
+                        FALLBACK['count'] = int(row['count'])
+                    return FALLBACK
+                return {
+                    "p20": round(float(row['p20']), 4),
+                    "p40": round(float(row['p40']), 4),
+                    "p60": round(float(row['p60']), 4),
+                    "p80": round(float(row['p80']), 4),
+                    "min": round(float(row['min']), 4),
+                    "max": round(float(row['max']), 4),
+                    "median": round(float(row['median']), 4),
+                    "count": int(row['count']),
+                    "fallback": False
+                }
+        except Exception as e:
+            logger.error(f"Fehler bei Perzentil-Berechnung: {e}")
+            return FALLBACK
+
     def check_connection_health(self) -> Dict[str, Any]:
         """
         Prüfe Gesundheit der Datenbankverbindung
@@ -725,3 +782,25 @@ def get_cache() -> RedisCache:
         _cache = RedisCache(redis_url)
         _cache.connect()
     return _cache
+
+
+def compute_led_index(score: float, thresholds: Dict[str, Any]) -> int:
+    """
+    Mappt einen Sentiment-Score auf LED-Index 0–4 basierend auf Perzentil-Schwellwerten.
+
+    Args:
+        score: Sentiment-Score (-1.0 bis +1.0)
+        thresholds: Dict aus get_score_percentiles() mit Schlüsseln p20, p40, p60, p80
+
+    Returns:
+        LED-Index 0 (sehr negativ) bis 4 (sehr positiv)
+    """
+    if score < thresholds.get('p20', -0.5):
+        return 0
+    if score < thresholds.get('p40', -0.2):
+        return 1
+    if score < thresholds.get('p60', 0.1):
+        return 2
+    if score < thresholds.get('p80', 0.4):
+        return 3
+    return 4
