@@ -15,11 +15,11 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 
 ### Dashboard-UI
 
-- [ ] **UI-01**: Einstellungs-Tab im Dashboard zeigt alle konfigurierbaren Parameter
-- [ ] **UI-02**: Analyse-Frequenz ist über ein Eingabefeld änderbar (in Minuten)
-- [ ] **UI-03**: Headlines pro Quelle ist über ein Eingabefeld änderbar
-- [ ] **UI-04**: Anthropic API Key ist änderbar (maskiert angezeigt, Klartext nur beim Editieren)
-- [ ] **UI-05**: Admin-Passwort ist änderbar (altes Passwort zur Bestätigung erforderlich)
+- [x] **UI-01**: Einstellungs-Tab im Dashboard zeigt alle konfigurierbaren Parameter
+- [x] **UI-02**: Analyse-Frequenz ist über ein Eingabefeld änderbar (in Minuten)
+- [x] **UI-03**: Headlines pro Quelle ist über ein Eingabefeld änderbar
+- [x] **UI-04**: Anthropic API Key ist änderbar (maskiert angezeigt, Klartext nur beim Editieren)
+- [x] **UI-05**: Admin-Passwort ist änderbar (altes Passwort zur Bestätigung erforderlich)
 
 ### Manuelle Steuerung
 
@@ -53,11 +53,11 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 | CTRL-02 | Phase 20 | Complete |
 | CTRL-03 | Phase 20 | Complete |
 | API-02 | Phase 20 | Complete |
-| UI-01 | Phase 21 | Pending |
-| UI-02 | Phase 21 | Pending |
-| UI-03 | Phase 21 | Pending |
-| UI-04 | Phase 21 | Pending |
-| UI-05 | Phase 21 | Pending |
+| UI-01 | Phase 21 | Complete |
+| UI-02 | Phase 21 | Complete |
+| UI-03 | Phase 21 | Complete |
+| UI-04 | Phase 21 | Complete |
+| UI-05 | Phase 21 | Complete |
 
 **Coverage:**
 - v7.0 requirements: 13 total

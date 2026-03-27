@@ -17,7 +17,7 @@
 
 - [x] **Phase 19: Einstellungs-Persistenz** - DB-Tabelle, Settings-API und Runtime-Reload (completed 2026-03-27)
 - [x] **Phase 20: Manueller Analyse-Trigger** - Trigger-Endpoint mit Worker-Integration und Feedback (completed 2026-03-27)
-- [ ] **Phase 21: Dashboard Einstellungs-UI** - Einstellungs-Tab mit allen konfigurierbaren Feldern
+- [x] **Phase 21: Dashboard Einstellungs-UI** - Einstellungs-Tab mit allen konfigurierbaren Feldern (completed 2026-03-27)
 
 ## Phase Details
 
@@ -60,7 +60,7 @@ Plans:
   4. Das Admin-Passwort ist änderbar; dabei wird das alte Passwort zur Bestätigung abgefragt
 **Plans**: 1 plan
 Plans:
-- [ ] 21-01-PLAN.md — Einstellungs-Tab: CSS + HTML-Struktur + JS (loadSettings, saveAnalysis, saveAuth, savePassword)
+- [x] 21-01-PLAN.md — Einstellungs-Tab: CSS + HTML-Struktur + JS (loadSettings, saveAnalysis, saveAuth, savePassword)
 
 ## Progress
 
@@ -68,4 +68,4 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete    | 2026-03-27 |
 | 20. Manueller Analyse-Trigger | v7.0 | 2/2 | Complete    | 2026-03-27 |
-| 21. Dashboard Einstellungs-UI | v7.0 | 0/1 | Not started | - |
+| 21. Dashboard Einstellungs-UI | v7.0 | 1/1 | Complete   | 2026-03-27 |
