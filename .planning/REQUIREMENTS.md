@@ -20,7 +20,7 @@ Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 
 ### GitHub Page
 
-- [ ] **PAGE-01**: GitHub Page zeigt Feed-Vergleichs-Ansicht mit Trend-Daten
+- [x] **PAGE-01**: GitHub Page zeigt Feed-Vergleichs-Ansicht mit Trend-Daten
 
 ## Out of Scope
 
@@ -39,7 +39,7 @@ Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 | VIS-01 | Phase 25 | Pending |
 | VIS-02 | Phase 25 | Pending |
 | VIS-03 | Phase 25 | Pending |
-| PAGE-01 | Phase 25 | Pending |
+| PAGE-01 | Phase 25 | Complete |
 
 **Coverage:**
 - v9.0 requirements: 6 total

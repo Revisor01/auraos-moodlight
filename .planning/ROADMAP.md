@@ -18,7 +18,7 @@
 ## Phases
 
 - [x] **Phase 24: Backend-Trendberechnung** — Durchschnitts-Score pro Feed berechnen und per API liefern (completed 2026-03-27)
-- [ ] **Phase 25: Visualisierung & GitHub Page** — Feed-Ranking im Dashboard und auf der GitHub Page darstellen
+- [x] **Phase 25: Visualisierung & GitHub Page** — Feed-Ranking im Dashboard und auf der GitHub Page darstellen (completed 2026-03-27)
 
 ## Phase Details
 
@@ -45,12 +45,12 @@ Plans:
   4. Die GitHub Page zeigt dieselben Feed-Trenddaten in einer vergleichenden Ansicht
 **Plans**: 2 plans
 Plans:
-- [ ] 25-01-PLAN.md — Dashboard-Tab "Feed-Trends" mit Ranking-Tabelle, Farbbalken und Zeitfenster-Umschalter
-- [ ] 25-02-PLAN.md — GitHub Page Sektion "Feed-Vergleich" mit Feed-Ranking und Zeitfenster-Umschalter
+- [x] 25-01-PLAN.md — Dashboard-Tab "Feed-Trends" mit Ranking-Tabelle, Farbbalken und Zeitfenster-Umschalter
+- [x] 25-02-PLAN.md — GitHub Page Sektion "Feed-Vergleich" mit Feed-Ranking und Zeitfenster-Umschalter
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 24. Backend-Trendberechnung | 1/1 | Complete    | 2026-03-27 |
-| 25. Visualisierung & GitHub Page | 0/2 | Not started | - |
+| 25. Visualisierung & GitHub Page | 2/2 | Complete   | 2026-03-27 |
