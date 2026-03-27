@@ -146,6 +146,8 @@ def analyze_sentiment_claude(headlines_batch: list) -> list:
         "WICHTIG:",
         "- Bewerte die TONALITÄT der Schlagzeile, nicht das allgemeine Thema.",
         "- Sachliche Berichte über Probleme sind NICHT automatisch -0.5 oder schlechter.",
+        "- Regulierung, Verbraucherschutz, neue Gesetze zum Schutz der Bürger → POSITIV (+0.2 bis +0.4).",
+        "- Tarifeinigungen, Kompromisse, gelöste Konflikte → POSITIV (+0.3 bis +0.6).",
         "- Nutze den vollen Bereich: positive Nachrichten sollen positive Werte bekommen.",
         "- Im Zweifel: ausgewogene Einschätzung, kein negativer Bias.",
         "",
