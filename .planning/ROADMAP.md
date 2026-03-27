@@ -69,4 +69,4 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 16. Claude API Migration | v6.0 | 2/2 | Complete    | 2026-03-27 |
 | 17. Dynamische Skalierung | v6.0 | 2/2 | Complete    | 2026-03-27 |
-| 18. ESP32 + Dashboard Integration | v6.0 | 2/2 | Complete   | 2026-03-27 |
+| 18. ESP32 + Dashboard Integration | v6.0 | 2/2 | Complete    | 2026-03-27 |
