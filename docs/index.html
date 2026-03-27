@@ -505,7 +505,7 @@
 
         .threshold-label {
             position: absolute;
-            top: -18px;
+            top: 30px;
             font-size: 0.65rem;
             color: var(--text-secondary);
             transform: translateX(-50%);
@@ -517,7 +517,7 @@
             justify-content: space-between;
             font-size: 0.78rem;
             color: var(--text-secondary);
-            margin-top: 4px;
+            margin-top: 2.25rem;
         }
 
         .hist-values strong {
@@ -531,7 +531,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-top: 1rem;
+            margin-bottom: 1rem;
         }
 
         .percentile-badge {
@@ -1190,25 +1190,39 @@
 
             <!-- Skalierungs-Kontext: Historischer Bereich + Schwellwerte -->
             <div style="background:var(--surface); padding:40px; border-radius:20px; border:1px solid var(--border-color); box-shadow:0 4px 6px var(--shadow);">
-                <h3 style="margin-bottom:20px; color:var(--text-primary);">Dynamische Skalierung (7-Tage-Fenster)</h3>
+                <h3 style="margin-bottom:8px; color:var(--text-primary);"><i class="fas fa-chart-line" style="margin-right:8px;"></i>Einordnung des Scores</h3>
+                <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:24px; line-height:1.6;">
+                    Die LED-Farbe basiert nicht auf dem absoluten Score, sondern auf dem <strong>Vergleich mit den letzten 7 Tagen</strong>.
+                    Ein negativer Score kann trotzdem eine "bessere" Farbe zeigen, wenn die Woche insgesamt noch negativer war.
+                </p>
                 <div class="scale-section">
-                    <div class="hist-bar-wrap" id="scalingHistWrap">
-                        <div class="hist-bar-track"></div>
-                        <div class="hist-bar-range" id="scalingHistRange" style="left:0%;right:0%"></div>
-                        <div class="hist-bar-needle" id="scalingHistNeedle" style="left:50%"></div>
-                        <!-- Schwellwert-Ticks werden per JS eingefügt -->
-                    </div>
-                    <div class="hist-values">
-                        <span>Min<strong id="scalingHistMin">—</strong></span>
-                        <span style="text-align:center">Median<strong id="scalingHistMedian">—</strong></span>
-                        <span style="text-align:right">Max<strong id="scalingHistMax">—</strong></span>
-                    </div>
+                    <!-- Perzentil-Badge -->
                     <div class="percentile-row">
                         <div class="percentile-badge" id="scalingPercentileBadge">—</div>
                         <div class="percentile-desc" id="scalingPercentileDesc">Aktuelle Position im historischen Bereich</div>
                     </div>
+
+                    <!-- Historischer Bereich-Balken -->
+                    <div class="hist-bar-wrap" id="scalingHistWrap">
+                        <div class="hist-bar-track"></div>
+                        <div class="hist-bar-range" id="scalingHistRange" style="left:0%;right:0%"></div>
+                        <div class="hist-bar-needle" id="scalingHistNeedle" style="left:50%"></div>
+                    </div>
+                    <div class="hist-values">
+                        <span><strong id="scalingHistMin">—</strong>Min (7 Tage)</span>
+                        <span style="text-align:center"><strong id="scalingHistMedian">—</strong>Median</span>
+                        <span style="text-align:right"><strong id="scalingHistMax">—</strong>Max (7 Tage)</span>
+                    </div>
+                    <p style="font-size:0.78rem; color:var(--text-secondary); margin-top:0.25rem;" id="scalingHistCount">— Datenpunkte in den letzten 7 Tagen</p>
+
+                    <!-- LED-Farb-Erklärung -->
+                    <div id="scalingLedExplain" style="display:flex; align-items:center; gap:0.75rem; margin-top:1rem; padding:0.75rem 1rem; background:var(--border-color); border-radius:8px;">
+                        <div id="scalingLedDot" style="width:18px; height:18px; border-radius:50%; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+                        <div id="scalingLedText" style="font-size:0.82rem; color:var(--text-primary); line-height:1.45;">Wird berechnet…</div>
+                    </div>
+
                     <div class="fallback-hint" id="scalingFallbackHint">
-                        Noch zu wenig historische Daten — feste Schwellwerte aktiv (P20=-0.5, P40=-0.2, P60=0.1, P80=0.4)
+                        Wenige Datenpunkte — Backend nutzt Fallback-Schwellwerte. Anzeige wird genauer nach 3+ Analysen.
                     </div>
                 </div>
 
@@ -1625,10 +1639,35 @@
             setEl('scalingHistMax', hist.max.toFixed(3));
 
             // Perzentil-Badge
+            const pct = Math.round((data.percentile || 0.5) * 100);
             const pctBadge = document.getElementById('scalingPercentileBadge');
             const pctDesc  = document.getElementById('scalingPercentileDesc');
-            if (pctBadge) pctBadge.textContent = 'P' + Math.round((data.percentile || 0.5) * 100);
-            if (pctDesc)  pctDesc.textContent = `Schlechter als ${Math.round((1 - (data.percentile || 0.5)) * 100)} % der Messungen der letzten 7 Tage`;
+            if (pctBadge) pctBadge.textContent = pct + '. Pzt.';
+            if (pctDesc) pctDesc.textContent = `Der aktuelle Score (${score.toFixed(2)}) liegt über ${pct} % der Werte der letzten 7 Tage.`;
+
+            // Datenpunkt-Zähler
+            const histCount = document.getElementById('scalingHistCount');
+            if (histCount) histCount.textContent = (hist.count || '—') + ' Datenpunkte in den letzten 7 Tagen';
+
+            // LED-Farb-Erklärung
+            const ledColors = [
+                {r:255,g:0,b:0, name:'Rot', label:'sehr negativ'},
+                {r:255,g:165,b:0, name:'Orange', label:'negativ'},
+                {r:0,g:105,b:210, name:'Blau', label:'neutral'},
+                {r:84,g:93,b:240, name:'Indigo', label:'positiv'},
+                {r:142,g:68,b:173, name:'Violett', label:'sehr positiv'}
+            ];
+            const ledIdx = data.led_index != null ? data.led_index : 2;
+            const led = ledColors[ledIdx] || ledColors[2];
+            const dot = document.getElementById('scalingLedDot');
+            const ledText = document.getElementById('scalingLedText');
+            if (dot) dot.style.background = `rgb(${led.r},${led.g},${led.b})`;
+            if (ledText) ledText.innerHTML =
+                `Das Moodlight zeigt <strong style="color:var(--primary-color);">${led.name}</strong> (LED-Index ${ledIdx} = \u201E${led.label}\u201C). ` +
+                `Der aktuelle Score ist relativ zur letzten Woche im <strong style="color:var(--primary-color);">${pct}. Perzentil</strong> \u2014 ` +
+                (pct >= 60 ? 'besser als die meisten Tage.' :
+                 pct >= 40 ? 'im Mittelfeld der Woche.' :
+                 'schlechter als die meisten Tage.');
 
             // Fallback-Hinweis
             const fbHint = document.getElementById('scalingFallbackHint');
