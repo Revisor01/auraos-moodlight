@@ -33,7 +33,7 @@
   4. Positive Nachrichtenlagen erzeugen Scores > +0.3, nicht nur "weniger negativ"
 **Plans**: 2 plans
 Plans:
-- [ ] 16-01-PLAN.md — OpenAI SDK durch Anthropic SDK ersetzen (requirements.txt, docker-compose.yaml, app.py)
+- [x] 16-01-PLAN.md — OpenAI SDK durch Anthropic SDK ersetzen (requirements.txt, docker-compose.yaml, app.py)
 - [ ] 16-02-PLAN.md — Optimierten Sentiment-Prompt mit Kalibrierungsbeispielen einbauen
 
 ### Phase 17: Dynamische Skalierung
@@ -60,6 +60,6 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 16. Claude API Migration | v6.0 | 0/2 | Planning done | - |
+| 16. Claude API Migration | v6.0 | 1/2 | In Progress|  |
 | 17. Dynamische Skalierung | v6.0 | 0/? | Not started | - |
 | 18. ESP32 + Dashboard Integration | v6.0 | 0/? | Not started | - |

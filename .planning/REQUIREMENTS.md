@@ -9,9 +9,9 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
 ### API-Migration
 
-- [ ] **API-01**: Backend nutzt Claude API (Anthropic SDK) statt OpenAI für Sentiment-Analyse
-- [ ] **API-02**: Anthropic API Key konfigurierbar über Umgebungsvariable (ANTHROPIC_API_KEY)
-- [ ] **API-03**: Bestehende Analyse-Qualität bleibt erhalten oder verbessert sich
+- [x] **API-01**: Backend nutzt Claude API (Anthropic SDK) statt OpenAI für Sentiment-Analyse
+- [x] **API-02**: Anthropic API Key konfigurierbar über Umgebungsvariable (ANTHROPIC_API_KEY)
+- [x] **API-03**: Bestehende Analyse-Qualität bleibt erhalten oder verbessert sich
 
 ### Dynamische Skalierung
 
@@ -52,9 +52,9 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | Phase 16 | Pending |
-| API-02 | Phase 16 | Pending |
-| API-03 | Phase 16 | Pending |
+| API-01 | Phase 16 | Complete |
+| API-02 | Phase 16 | Complete |
+| API-03 | Phase 16 | Complete |
 | PROMPT-01 | Phase 16 | Pending |
 | PROMPT-02 | Phase 16 | Pending |
 | SCALE-01 | Phase 17 | Pending |
