@@ -50,5 +50,5 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Backend-Trendberechnung | 1/1 | Complete   | 2026-03-27 |
+| 24. Backend-Trendberechnung | 1/1 | Complete    | 2026-03-27 |
 | 25. Visualisierung & GitHub Page | 0/? | Not started | - |
