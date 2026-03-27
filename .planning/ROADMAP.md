@@ -47,9 +47,9 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 23-01-PLAN.md — index.html: Score-Farbklassen + Dashboard-Karten-Layout
+- [x] 23-01-PLAN.md — index.html: Score-Farbklassen + Dashboard-Karten-Layout
 - [ ] 23-02-PLAN.md — setup.html: Formular-Design konsistent, alle 7 Tabs funktional
-- [ ] 23-03-PLAN.md — mood.html: Schlagzeilen-Farbkodierung per CSS-Klassen
+- [x] 23-03-PLAN.md — mood.html: Schlagzeilen-Farbkodierung per CSS-Klassen
 - [ ] 23-04-PLAN.md — diagnostics.html: System-Info-Karten im Dashboard-Stil
 
 ## Progress
@@ -57,4 +57,4 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. CSS-Fundament | 1/1 | Complete    | 2026-03-27 |
-| 23. Seiten-Redesign | 0/4 | Planned | - |
+| 23. Seiten-Redesign | 2/4 | In Progress|  |
