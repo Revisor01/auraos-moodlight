@@ -64,17 +64,13 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ Feed-Trend-Analyse mit 7/30-Tage-Fenster — v9.0 Phase 24
 - ✓ Feed-Ranking im Dashboard + GitHub Page — v9.0 Phase 25
 
+- ✓ Firmware-Stabilität: Watchdog, MQTT Race Condition, WiFi-Hysterese — v10.0 Phase 26
+- ✓ Perzentil-Kontext auf ESP32 mood.html (Badge, Balken, LED-Erklärung) — v10.0 Phase 27
+- ✓ Perzentil-Kontext auf GitHub Page angeglichen — v10.0 Phase 28
+
 ### Active
 
-- Watchdog-Feed während aller blockierenden Operationen — v10.0 FW-01
-- MQTT Refresh nur Flag, HTTP in loop() — v10.0 FW-02
-- initialStatesPending als einzelne AppState-Variable — v10.0 FW-03
-- WiFi-Hysterese: 3s Pause nach Reconnect vor HTTP — v10.0 FW-04
-- WiFi.disconnect() nicht während laufender HTTP-Op — v10.0 FW-05
-- ESP32 mood.html zeigt Perzentil-Kontext (Badge, Balken, Erklärung) — v10.0 PZ-01..03
-- GitHub Page zeigt identische Perzentil-Visualisierung — v10.0 PZ-04
-- Fallback-Hinweis bei wenigen Datenpunkten — v10.0 PZ-05
-- Attraktives, responsives Layout mit Dark/Light Mode — v10.0 PZ-06
+(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
 
 ### Out of Scope
 
@@ -142,4 +138,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 ---
-*Last updated: 2026-03-27 after v9.0 milestone complete (Sentiment-Trend pro Feed)*
+*Last updated: 2026-03-28 after v10.0 milestone complete (Perzentil-Transparenz & Firmware-Stabilität)*
