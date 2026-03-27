@@ -23,14 +23,14 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 
 ### Manuelle Steuerung
 
-- [ ] **CTRL-01**: Button im Dashboard löst sofortige Sentiment-Analyse aus
+- [x] **CTRL-01**: Button im Dashboard löst sofortige Sentiment-Analyse aus
 - [ ] **CTRL-02**: Während der manuellen Analyse zeigt das Dashboard einen Lade-Indikator
 - [ ] **CTRL-03**: Nach Abschluss der manuellen Analyse aktualisiert sich das Dashboard automatisch
 
 ### API-Endpoints
 
 - [x] **API-01**: GET/PUT /api/moodlight/settings für Einstellungs-CRUD
-- [ ] **API-02**: POST /api/moodlight/analyze/trigger für manuellen Analyse-Start
+- [x] **API-02**: POST /api/moodlight/analyze/trigger für manuellen Analyse-Start
 
 ## Out of Scope
 
@@ -49,10 +49,10 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 | CFG-02 | Phase 19 | Complete |
 | CFG-03 | Phase 19 | Complete |
 | API-01 | Phase 19 | Complete |
-| CTRL-01 | Phase 20 | Pending |
+| CTRL-01 | Phase 20 | Complete |
 | CTRL-02 | Phase 20 | Pending |
 | CTRL-03 | Phase 20 | Pending |
-| API-02 | Phase 20 | Pending |
+| API-02 | Phase 20 | Complete |
 | UI-01 | Phase 21 | Pending |
 | UI-02 | Phase 21 | Pending |
 | UI-03 | Phase 21 | Pending |

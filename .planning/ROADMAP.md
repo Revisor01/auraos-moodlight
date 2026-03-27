@@ -46,7 +46,7 @@ Plans:
   3. Nach Abschluss der Analyse aktualisiert sich der Sentiment-Bereich des Dashboards automatisch mit dem neuen Score
 **Plans**: 2 plans
 Plans:
-- [ ] 20-01-PLAN.md — trigger()-Methode im Worker + POST /api/moodlight/analyze/trigger Endpoint
+- [x] 20-01-PLAN.md — trigger()-Methode im Worker + POST /api/moodlight/analyze/trigger Endpoint
 - [ ] 20-02-PLAN.md — Dashboard-Button mit Spinner und Auto-Refresh nach Abschluss
 
 ### Phase 21: Dashboard Einstellungs-UI
@@ -66,5 +66,5 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete    | 2026-03-27 |
-| 20. Manueller Analyse-Trigger | v7.0 | 0/2 | Not started | - |
+| 20. Manueller Analyse-Trigger | v7.0 | 1/2 | In Progress|  |
 | 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |
