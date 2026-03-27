@@ -29,8 +29,10 @@
   1. style.css definiert alle Farben, Abstände, border-radius und Schriften über CSS-Variablen, die mit dem Backend-Dashboard übereinstimmen
   2. Dark Mode und Light Mode funktionieren weiterhin vollständig — kein Theme-Wechsel ist gebrochen
   3. Alle vier ESP32-Seiten laden ohne visuelle Fehler, wenn nur das neue style.css aktiv ist
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 1 plan
+
+Plans:
+- [ ] 22-01-PLAN.md — style.css komplett neu schreiben mit Dashboard-Design-Variablen und Dark-Mode
 
 ### Phase 23: Seiten-Redesign
 **Goal**: Alle vier ESP32-Seiten sehen aus und verhalten sich konsistent wie das Backend-Dashboard, ohne Funktionsverlust
@@ -49,5 +51,5 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 22. CSS-Fundament | 0/? | Not started | - |
+| 22. CSS-Fundament | 0/1 | Not started | - |
 | 23. Seiten-Redesign | 0/? | Not started | - |
