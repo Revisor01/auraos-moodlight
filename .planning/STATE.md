@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Dashboard-Einstellungen
 status: executing
-stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-03-27T10:46:40.156Z"
+stopped_at: Completed 19-02-PLAN.md
+last_updated: "2026-03-27T10:49:38.956Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 19 (einstellungs-persistenz) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-27
 
@@ -42,6 +42,7 @@ Progress: [░░░░░░░░░░] 0%
 - v7.0: API Key maskiert anzeigen, nur beim aktiven Editieren als Klartext
 - [Phase 19]: settings als Key-Value-Tabelle (VARCHAR PRIMARY KEY) — minimal, direkt via psycopg2 abfragbar
 - [Phase 19]: ON CONFLICT DO NOTHING für Default-Einträge — bestehende Produktionswerte bleiben beim Re-Deploy erhalten
+- [Phase 19]: load_settings_from_db() lokal importiert (from database import get_database) — vermeidet zirkulaere Imports
 
 ### Pending Todos
 
@@ -53,6 +54,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T10:46:40.153Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-03-27T10:49:38.954Z
+Stopped at: Completed 19-02-PLAN.md
 Resume file: None
