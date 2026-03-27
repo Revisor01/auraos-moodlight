@@ -34,18 +34,18 @@ Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TREND-01 | — | Pending |
-| TREND-02 | — | Pending |
-| VIS-01 | — | Pending |
-| VIS-02 | — | Pending |
-| VIS-03 | — | Pending |
-| PAGE-01 | — | Pending |
+| TREND-01 | Phase 24 | Pending |
+| TREND-02 | Phase 24 | Pending |
+| VIS-01 | Phase 25 | Pending |
+| VIS-02 | Phase 25 | Pending |
+| VIS-03 | Phase 25 | Pending |
+| PAGE-01 | Phase 25 | Pending |
 
 **Coverage:**
 - v9.0 requirements: 6 total
-- Mapped to phases: 0
-- Unmapped: 6 ⚠️
+- Mapped to phases: 6
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 after roadmap definition (v9.0)*
