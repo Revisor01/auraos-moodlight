@@ -722,6 +722,15 @@ input[type="color"] {
 }
 
 /* ===== UPLOAD-FORTSCHRITT ===== */
+.update-progress-wrapper {
+    margin: 20px 0;
+}
+
+.update-step {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
 .upload-progress {
     width: 100%;
     background-color: var(--border);
