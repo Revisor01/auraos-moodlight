@@ -14,9 +14,9 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
 ### Hauptseite (index.html)
 
-- [ ] **IDX-01**: Score-Anzeige nutzt Farbkodierung wie im Dashboard (5 Farbstufen)
-- [ ] **IDX-02**: Karten-Layout (border-radius 8px, kompaktes Padding) wie Dashboard
-- [ ] **IDX-03**: LED-Steuerung und Helligkeit behalten volle Funktionalität
+- [x] **IDX-01**: Score-Anzeige nutzt Farbkodierung wie im Dashboard (5 Farbstufen)
+- [x] **IDX-02**: Karten-Layout (border-radius 8px, kompaktes Padding) wie Dashboard
+- [x] **IDX-03**: LED-Steuerung und Helligkeit behalten volle Funktionalität
 
 ### Einstellungen (setup.html)
 
@@ -25,8 +25,8 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
 ### Stimmung (mood.html)
 
-- [ ] **MOOD-01**: Headlines-Darstellung mit Farbkodierung wie im Dashboard
-- [ ] **MOOD-02**: Score-Verlauf und Statistiken im Dashboard-Karten-Stil
+- [x] **MOOD-01**: Headlines-Darstellung mit Farbkodierung wie im Dashboard
+- [x] **MOOD-02**: Score-Verlauf und Statistiken im Dashboard-Karten-Stil
 
 ### Diagnose (diagnostics.html)
 
@@ -47,13 +47,13 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 |-------------|-------|--------|
 | CSS-01 | Phase 22 | Complete |
 | CSS-02 | Phase 22 | Complete |
-| IDX-01 | Phase 23 | Pending |
-| IDX-02 | Phase 23 | Pending |
-| IDX-03 | Phase 23 | Pending |
+| IDX-01 | Phase 23 | Complete |
+| IDX-02 | Phase 23 | Complete |
+| IDX-03 | Phase 23 | Complete |
 | SET-01 | Phase 23 | Pending |
 | SET-02 | Phase 23 | Pending |
-| MOOD-01 | Phase 23 | Pending |
-| MOOD-02 | Phase 23 | Pending |
+| MOOD-01 | Phase 23 | Complete |
+| MOOD-02 | Phase 23 | Complete |
 | DIAG-01 | Phase 23 | Pending |
 | DIAG-02 | Phase 23 | Pending |
 
