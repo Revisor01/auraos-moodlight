@@ -30,8 +30,8 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
 ### Diagnose (diagnostics.html)
 
-- [ ] **DIAG-01**: System-Info-Karten im Dashboard-Stil (Speicher, WiFi, Uptime)
-- [ ] **DIAG-02**: Update-Bereich behält volle Funktionalität (Firmware + UI Upload)
+- [x] **DIAG-01**: System-Info-Karten im Dashboard-Stil (Speicher, WiFi, Uptime)
+- [x] **DIAG-02**: Update-Bereich behält volle Funktionalität (Firmware + UI Upload)
 
 ## Out of Scope
 
@@ -54,8 +54,8 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 | SET-02 | Phase 23 | Pending |
 | MOOD-01 | Phase 23 | Complete |
 | MOOD-02 | Phase 23 | Complete |
-| DIAG-01 | Phase 23 | Pending |
-| DIAG-02 | Phase 23 | Pending |
+| DIAG-01 | Phase 23 | Complete |
+| DIAG-02 | Phase 23 | Complete |
 
 **Coverage:**
 - v8.0 requirements: 11 total

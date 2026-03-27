@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: ESP32 UI-Redesign
 status: executing
-stopped_at: Phase 23-03 abgeschlossen — mood.html scoreClass() committed (52eef9f)
-last_updated: "2026-03-27T12:38:59.443Z"
+stopped_at: Completed 23-04-PLAN.md — diagnostics.html bereinigt (6243f38)
+last_updated: "2026-03-27T12:39:06.568Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 2
@@ -45,6 +45,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 23-seiten-redesign]: #mode-text nutzt class='version' statt Inline-Style fuer gleiche Optik
 - [Phase 23-03]: scoreClass() gibt CSS-Klassenstrings zurück statt Hex-Farben — Dark-Mode-kompatibel durch style.css
 - [Phase 23-03]: headline-* Hilfsklassen mit CSS-Variablen im <head> definiert — minimaler LittleFS-Footprint
+- [Phase 23-seiten-redesign]: diagnostics.html: style-Block fuer details/summary entfernt (nicht verwendet), .buttons ohne flex-direction:column Inline-Style
 
 ### Pending Todos
 
@@ -56,6 +57,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T12:38:53.501Z
-Stopped at: Phase 23-03 abgeschlossen — mood.html scoreClass() committed (52eef9f)
+Last session: 2026-03-27T12:39:06.565Z
+Stopped at: Completed 23-04-PLAN.md — diagnostics.html bereinigt (6243f38)
 Resume file: None
