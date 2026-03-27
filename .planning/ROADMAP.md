@@ -16,7 +16,7 @@
 
 ## Phases
 
-- [ ] **Phase 16: Claude API Migration** - OpenAI durch Anthropic SDK ersetzen, Prompt optimieren
+- [x] **Phase 16: Claude API Migration** - OpenAI durch Anthropic SDK ersetzen, Prompt optimieren (completed 2026-03-27)
 - [ ] **Phase 17: Dynamische Skalierung** - Perzentil-basiertes Score-Mapping und Backend-Transparenz
 - [ ] **Phase 18: ESP32 + Dashboard Integration** - Dynamische Schwellwerte auf dem Gerät, Skalierungs-Anzeige im Dashboard
 
@@ -34,7 +34,7 @@
 **Plans**: 2 plans
 Plans:
 - [x] 16-01-PLAN.md — OpenAI SDK durch Anthropic SDK ersetzen (requirements.txt, docker-compose.yaml, app.py)
-- [ ] 16-02-PLAN.md — Optimierten Sentiment-Prompt mit Kalibrierungsbeispielen einbauen
+- [x] 16-02-PLAN.md — Optimierten Sentiment-Prompt mit Kalibrierungsbeispielen einbauen
 
 ### Phase 17: Dynamische Skalierung
 **Goal**: Score-Mapping basiert auf historischen Perzentilen der letzten 7 Tage, API liefert vollständigen Skalierungs-Kontext
@@ -60,6 +60,6 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 16. Claude API Migration | v6.0 | 1/2 | In Progress|  |
+| 16. Claude API Migration | v6.0 | 2/2 | Complete   | 2026-03-27 |
 | 17. Dynamische Skalierung | v6.0 | 0/? | Not started | - |
 | 18. ESP32 + Dashboard Integration | v6.0 | 0/? | Not started | - |

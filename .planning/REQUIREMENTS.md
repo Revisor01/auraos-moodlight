@@ -21,8 +21,8 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
 ### Prompt-Optimierung
 
-- [ ] **PROMPT-01**: Sentiment-Prompt erzeugt ausgewogenere Scores über den vollen Bereich -1.0 bis +1.0
-- [ ] **PROMPT-02**: Positive Nachrichten werden als solche erkannt (nicht nur "weniger negativ")
+- [x] **PROMPT-01**: Sentiment-Prompt erzeugt ausgewogenere Scores über den vollen Bereich -1.0 bis +1.0
+- [x] **PROMPT-02**: Positive Nachrichten werden als solche erkannt (nicht nur "weniger negativ")
 
 ### ESP32 Integration
 
@@ -55,8 +55,8 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 | API-01 | Phase 16 | Complete |
 | API-02 | Phase 16 | Complete |
 | API-03 | Phase 16 | Complete |
-| PROMPT-01 | Phase 16 | Pending |
-| PROMPT-02 | Phase 16 | Pending |
+| PROMPT-01 | Phase 16 | Complete |
+| PROMPT-02 | Phase 16 | Complete |
 | SCALE-01 | Phase 17 | Pending |
 | SCALE-02 | Phase 17 | Pending |
 | SCALE-03 | Phase 17 | Pending |
