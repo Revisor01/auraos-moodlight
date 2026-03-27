@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: ESP32 UI-Redesign
-status: Defining requirements
+status: Ready to plan
 stopped_at: null
 last_updated: "2026-03-27T12:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,14 +19,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Defining requirements for v8.0
+**Current focus:** Phase 22 — CSS-Fundament
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-27 — Milestone v8.0 started
+Phase: 22 of 23 (CSS-Fundament)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-03-27 — Roadmap für v8.0 ESP32 UI-Redesign erstellt (2 Phasen, 11 Requirements)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
@@ -34,6 +36,7 @@ Last activity: 2026-03-27 — Milestone v8.0 started
 
 - Alle 4 ESP32 HTML-Seiten + CSS werden redesigned
 - Dashboard-Design (dashboard.html) als Referenz für CSS-Variablen, Typografie, Karten
+- 2 Phasen statt 4 (coarse granularity) — CSS zuerst, dann alle Seiten parallel da sie voneinander unabhängig sind
 
 ### Pending Todos
 
@@ -46,5 +49,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-27
-Stopped at: Milestone v8.0 initialized
+Stopped at: Roadmap erstellt, STATE.md aktualisiert — bereit für /gsd:plan-phase 22
 Resume file: None

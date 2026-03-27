@@ -45,23 +45,23 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CSS-01 | — | Pending |
-| CSS-02 | — | Pending |
-| IDX-01 | — | Pending |
-| IDX-02 | — | Pending |
-| IDX-03 | — | Pending |
-| SET-01 | — | Pending |
-| SET-02 | — | Pending |
-| MOOD-01 | — | Pending |
-| MOOD-02 | — | Pending |
-| DIAG-01 | — | Pending |
-| DIAG-02 | — | Pending |
+| CSS-01 | Phase 22 | Pending |
+| CSS-02 | Phase 22 | Pending |
+| IDX-01 | Phase 23 | Pending |
+| IDX-02 | Phase 23 | Pending |
+| IDX-03 | Phase 23 | Pending |
+| SET-01 | Phase 23 | Pending |
+| SET-02 | Phase 23 | Pending |
+| MOOD-01 | Phase 23 | Pending |
+| MOOD-02 | Phase 23 | Pending |
+| DIAG-01 | Phase 23 | Pending |
+| DIAG-02 | Phase 23 | Pending |
 
 **Coverage:**
 - v8.0 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 after roadmap creation (v8.0)*
