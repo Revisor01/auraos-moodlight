@@ -111,6 +111,37 @@ COMMENT ON COLUMN headlines.sentiment_history_id IS 'FK zu sentiment_history —
 COMMENT ON COLUMN headlines.feed_id IS 'FK zu feeds — NULLABLE falls Feed gelöscht wurde';
 COMMENT ON COLUMN headlines.strength IS 'Kategorie: sehr negativ, negativ, neutral, positiv, sehr positiv';
 
+-- ===== SETTINGS TABLE =====
+-- Key-Value-Store für Backend-Konfiguration (Phase 19)
+CREATE TABLE IF NOT EXISTS settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE settings IS 'Key-Value-Store für Backend-Konfiguration';
+COMMENT ON COLUMN settings.key IS 'Einstellungs-Schlüssel: analysis_interval, headlines_per_source, anthropic_api_key, admin_password_hash';
+COMMENT ON COLUMN settings.value IS 'Einstellungs-Wert als TEXT (Zahlen werden als String gespeichert)';
+
+-- Trigger: Auto-Update updated_at bei Änderung
+DROP TRIGGER IF EXISTS trigger_update_settings ON settings;
+CREATE TRIGGER trigger_update_settings
+    BEFORE UPDATE ON settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Default-Werte — werden beim Start durch DB-Werte oder Env-Variablen überschrieben
+-- analysis_interval: Sekunden zwischen Sentiment-Updates (1800 = 30 Min)
+-- headlines_per_source: Headlines pro RSS-Feed pro Analyse
+-- anthropic_api_key: Leer — wird aus ANTHROPIC_API_KEY Env-Variable geladen
+-- admin_password_hash: Leer — wird aus ADMIN_PASSWORD Env-Variable berechnet
+INSERT INTO settings (key, value) VALUES
+    ('analysis_interval', '1800'),
+    ('headlines_per_source', '1'),
+    ('anthropic_api_key', ''),
+    ('admin_password_hash', '')
+ON CONFLICT (key) DO NOTHING;
+
 -- Default-Feeds (ohne Focus.de — FEED-06)
 INSERT INTO feeds (name, url) VALUES
     ('Zeit', 'https://newsfeed.zeit.de/index'),
