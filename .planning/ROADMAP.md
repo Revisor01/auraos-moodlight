@@ -44,12 +44,17 @@ Plans:
   3. setup.html verwendet Formular-Design konsistent mit dem Dashboard-Einstellungs-Tab; alle Einstellungen (WiFi, MQTT, Hardware, Farben) bleiben vollständig bedienbar
   4. mood.html zeigt Headlines mit Farbkodierung und Score-Verlauf im Karten-Stil des Dashboards
   5. diagnostics.html zeigt System-Info (Speicher, WiFi, Uptime) in Dashboard-Karten; Firmware- und UI-Upload funktionieren ohne Einschränkung
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 4 plans
+
+Plans:
+- [ ] 23-01-PLAN.md — index.html: Score-Farbklassen + Dashboard-Karten-Layout
+- [ ] 23-02-PLAN.md — setup.html: Formular-Design konsistent, alle 7 Tabs funktional
+- [ ] 23-03-PLAN.md — mood.html: Schlagzeilen-Farbkodierung per CSS-Klassen
+- [ ] 23-04-PLAN.md — diagnostics.html: System-Info-Karten im Dashboard-Stil
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. CSS-Fundament | 1/1 | Complete    | 2026-03-27 |
-| 23. Seiten-Redesign | 0/? | Not started | - |
+| 23. Seiten-Redesign | 0/4 | Planned | - |
