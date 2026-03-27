@@ -2,8 +2,8 @@
 #include "led_controller.h"
 #include "sensor_manager.h"
 #include "debug.h"
+#include "MoodlightUtils.h"
 #include <WiFi.h>
-#include <HTTPClient.h>
 #include <ArduinoJson.h>
 
 // === ArduinoHA Globals ===
@@ -27,6 +27,7 @@ HASensor haSystemStatus("system_status");
 
 // === Extern-Deklarationen fuer abhaengige Globals ===
 extern AppState appState;
+extern WatchdogManager watchdog;
 extern void updateLEDs();
 extern void setStatusLED(int mode);
 extern void saveSettings();
@@ -179,69 +180,13 @@ void onDHTIntervalCommand(HANumeric value, HANumber *sender)
 
 void onRefreshButtonPressed(HAButton *sender)
 {
-    debug(F("Sentiment Refresh über Home Assistant ausgelöst"));
-
-    // Direkt einen HTTP-Abruf starten
-    HTTPClient http;
-    bool success = false;
-    float receivedSentiment = 0.0;
-
-    http.setReuse(false);
-    http.setUserAgent("MoodlightClient/1.0");
-
+    // HTTP-Requests dürfen NICHT im Callback-Kontext ausgeführt werden
+    // (mqtt.loop() → Callback → HTTP blockiert → WDT-Timeout / Stack-Korruption).
+    // Stattdessen: Flag setzen, loop() führt den Abruf sicher aus.
+    debug(F("Sentiment Refresh über Home Assistant ausgelöst — wird in loop() ausgeführt"));
+    appState.mqttRefreshPending = true;
     appState.isPulsing = true;
     appState.pulseStartTime = millis();
-
-    debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
-    // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
-    if (http.begin(wifiClientHTTP, appState.apiUrl))
-    {
-        http.setTimeout(10000);
-        int httpCode = http.GET();
-
-        if (httpCode == HTTP_CODE_OK)
-        {
-            WiFiClient *stream = http.getStreamPtr();
-            JsonDocument doc;
-            DeserializationError error = deserializeJson(doc, *stream);
-            if (!error) {
-                if (doc["sentiment"].is<float>()) {
-                    receivedSentiment = doc["sentiment"].as<float>();
-                    success = true;
-                    debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
-                    appState.lastMoodUpdate = millis();
-                } else {
-                    debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
-                }
-            }
-            else
-            {
-                debug(String(F("JSON Parsing Fehler: ")) + error.c_str());
-            }
-        }
-        else
-        {
-            debug(String(F("HTTP Fehler: ")) + String(httpCode));
-        }
-        http.end();
-    }
-    else
-    {
-        debug(String(F("HTTP Verbindungsfehler zu: ")) + String(appState.apiUrl));
-        if (wifiClientHTTP.connected())
-        {
-            wifiClientHTTP.stop();
-        }
-    }
-
-    if (success)
-    {
-        handleSentiment(receivedSentiment);
-        appState.initialAnalysisDone = true;
-    }
-
-    appState.isPulsing = false;
-    updateLEDs();
 }
 
 // ============================================================
@@ -421,12 +366,9 @@ void sendInitialStates()
     // Licht & Modus (aus globalen Variablen)
     haLight.setState(appState.lightOn);
     haLight.setBrightness(appState.manualBrightness);
-    // v9.0: haHeadlinesPerSource removed
-    uint32_t initialColor = appState.autoMode ? pixels.Color(
-                                           getColorDefinition(appState.currentLedIndex).r,
-                                           getColorDefinition(appState.currentLedIndex).g,
-                                           getColorDefinition(appState.currentLedIndex).b)
-                                     : appState.manualColor;
+    // Farbe direkt aus customColors lesen — ohne pixels.Color() (vermeidet Crash bei uninitialisiertem NeoPixel)
+    int safeIndex = constrain(appState.currentLedIndex, 0, 4);
+    uint32_t initialColor = appState.autoMode ? appState.customColors[safeIndex] : appState.manualColor;
     HALight::RGBColor color;
     color.red = (initialColor >> 16) & 0xFF;
     color.green = (initialColor >> 8) & 0xFF;
@@ -544,6 +486,7 @@ void checkAndReconnectMQTT() {
                 while (!mqtt.isConnected() && millis() - mqttStart < 3000) {
                     mqtt.loop(); // WICHTIG: mqtt.loop() hier aufrufen!
                     delay(100);
+                    watchdog.feed(); // Watchdog füttern während MQTT-Reconnect-Wartezeit
                 }
 
                 appState.lastMqttReconnectAttempt = currentMillis;
@@ -553,10 +496,8 @@ void checkAndReconnectMQTT() {
                     appState.mqttWasConnected = true;
                     mqttReconnectBackoff = 10000; // Reset backoff on success
 
-                    // Schedule initial state sending for next loop cycle
-                    // instead of doing it immediately
-                    static bool initialStatesPending = true;
-                    initialStatesPending = true;
+                    // Initiale Zustände für nächsten Loop-Zyklus einplanen
+                    appState.mqttInitialStatesPending = true;
 
                     // Update status LED without direct update
                     appState.statusLedMode = 0; // Normal mode
@@ -574,9 +515,8 @@ void checkAndReconnectMQTT() {
         } else if (!appState.mqttWasConnected) {
             debug(F("MQTT wieder verbunden. Sende Zustände..."));
 
-            // Schedule state sending for next loop cycle
-            static bool initialStatesPending = true;
-            initialStatesPending = true;
+            // Initiale Zustände für nächsten Loop-Zyklus einplanen
+            appState.mqttInitialStatesPending = true;
 
             appState.mqttWasConnected = true;
 
@@ -589,14 +529,10 @@ void checkAndReconnectMQTT() {
             }
         }
 
-        // Process deferred initial state sending
-        static bool initialStatesPending = false;
-        if (initialStatesPending && mqtt.isConnected()) {
-            // Wait for a safe moment to send states
-            yield();
-            delay(10);
+        // Verzögerte initiale Zustände senden (AppState-Flag statt static local)
+        if (appState.mqttInitialStatesPending && mqtt.isConnected()) {
+            appState.mqttInitialStatesPending = false;
             sendInitialStates();
-            initialStatesPending = false;
         }
     }
 }
@@ -621,6 +557,7 @@ void connectMQTTOnStartup() {
         while (!mqtt.isConnected() && (millis() - mqttStartTime < 5000)) {
             mqtt.loop();
             delay(100);
+            watchdog.feed(); // Watchdog füttern während MQTT-Startup-Wartezeit
         }
         mqttInitSuccess = mqtt.isConnected();
     } catch (...) {

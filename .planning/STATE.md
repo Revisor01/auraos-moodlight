@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 25-01-PLAN.md
-last_updated: "2026-03-27T16:19:20.324Z"
+milestone: v10.0
+milestone_name: Perzentil-Transparenz & Firmware-Stabilität
+status: planned
+stopped_at: Milestone created
+last_updated: "2026-03-27T21:30:00.000Z"
 last_activity: 2026-03-27
 progress:
-  total_phases: 2
-  completed_phases: 2
+  total_phases: 3
+  completed_phases: 0
   total_plans: 3
-  completed_plans: 3
+  completed_plans: 0
 ---
 
 # Project State
@@ -20,31 +20,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 25 — visualisierung-github-page
+**Current focus:** v10.0 — Perzentil-Transparenz & Firmware-Stabilität
 
 ## Current Position
 
-Phase: 25
+Phase: 26 (firmware-stabilitaet)
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Milestone created — ready for /gsd:plan-phase 26
 Last activity: 2026-03-27
 
-Progress: [░░░░░░░░░░] 0/2 Phasen abgeschlossen
+Progress: [░░░░░░░░░░] 0/3 Phasen abgeschlossen
 
 ## Accumulated Context
 
 ### Decisions
 
-- headlines-Tabelle hat feed_id FK — Aggregation per Feed direkt möglich
-- 11 aktive Feeds mit Einzel-Scores seit v5.0
-- Granularität: coarse → 2 Phasen für 6 Requirements
-- [Phase 24-backend-trendberechnung]: Kein Redis-Cache für /feeds/trends — 30-Min-Update-Intervall macht Latenz tolerierbar
-- [Phase 24-backend-trendberechnung]: days-Parameter auf 7 und 30 beschränkt — verhindert hohe DB-Last durch beliebige Zeitfenster
-- [Phase 24-backend-trendberechnung]: Kein Redis-Cache fuer /feeds/trends — 30-Min-Update-Intervall macht Latenz tolerierbar
-- [Phase 24-backend-trendberechnung]: days-Parameter auf 7 und 30 beschraenkt — verhindert hohe DB-Last durch beliebige Zeitfenster
-- [Phase 25-visualisierung-github-page]: IntersectionObserver fuer Lazy-Loading von Feed-Daten — Daten werden erst beim Einblenden der Sektion geladen
-- [Phase 25-visualisierung-github-page]: scoreToBarColor() mit 5 diskreten Schwellwerten statt CSS-Gradient fuer einfachere Wartbarkeit
-- [Phase 25-visualisierung-github-page]: trendsLoaded-Flag verhindert doppeltes Laden beim Tab-Wechsel
+- Firmware-Fixes aus Debug-Session werden als Phase 26 committed (nicht separat)
+- Perzentil-Visualisierung wird 1:1 vom Backend-Dashboard übernommen
+- ESP32 mood.html und GitHub Page bekommen identisches Layout
 
 ### Pending Todos
 
@@ -52,10 +45,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Braucht genug historische Daten für aussagekräftige Trends
+- Firmware-Fixes sind bereits im Code, aber noch uncommitted
+- mood.html und docs/index.html brauchen API-Zugriff auf /api/moodlight/current (percentile, thresholds, historical)
 
 ## Session Continuity
 
-Last session: 2026-03-27T16:18:32.139Z
-Stopped at: Completed 25-01-PLAN.md
+Last session: 2026-03-27
+Stopped at: Milestone created
 Resume file: None

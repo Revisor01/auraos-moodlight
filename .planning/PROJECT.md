@@ -66,7 +66,15 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 
 ### Active
 
-(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
+- Watchdog-Feed während aller blockierenden Operationen — v10.0 FW-01
+- MQTT Refresh nur Flag, HTTP in loop() — v10.0 FW-02
+- initialStatesPending als einzelne AppState-Variable — v10.0 FW-03
+- WiFi-Hysterese: 3s Pause nach Reconnect vor HTTP — v10.0 FW-04
+- WiFi.disconnect() nicht während laufender HTTP-Op — v10.0 FW-05
+- ESP32 mood.html zeigt Perzentil-Kontext (Badge, Balken, Erklärung) — v10.0 PZ-01..03
+- GitHub Page zeigt identische Perzentil-Visualisierung — v10.0 PZ-04
+- Fallback-Hinweis bei wenigen Datenpunkten — v10.0 PZ-05
+- Attraktives, responsives Layout mit Dark/Light Mode — v10.0 PZ-06
 
 ### Out of Scope
 

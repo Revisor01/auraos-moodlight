@@ -1,6 +1,7 @@
 #include "sensor_manager.h"
 #include "led_controller.h"
 #include "debug.h"
+#include "MoodlightUtils.h"
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
@@ -15,6 +16,7 @@ extern HASensor haSentimentScore;
 extern HASensor haSentimentCategory;
 extern HASensor haTemperature;
 extern HASensor haHumidity;
+extern WatchdogManager watchdog;
 
 // Hardware-Instanzen — definiert in diesem Modul
 DHT* dhtSensor = nullptr;
@@ -25,9 +27,11 @@ void initDHT() {
     if (dhtSensor) {
         delete dhtSensor;
     }
+    // Internen Pull-Up aktivieren (ersetzt externen 4.7kΩ Widerstand)
+    pinMode(appState.dhtPin, INPUT_PULLUP);
     dhtSensor = new DHT(appState.dhtPin, DHT22);
     dhtSensor->begin();
-    debug(String(F("DHT22 initialisiert auf Pin ")) + String(appState.dhtPin));
+    debug(String(F("DHT22 initialisiert auf Pin ")) + String(appState.dhtPin) + F(" (mit internem Pull-Up)"));
 }
 
 // === Map Sentiment Score (-1 bis +1) zu LED Index (0-4) ===
@@ -46,6 +50,7 @@ int mapSentimentToLED(float sentimentScore)
 }
 
 // === Verarbeite den empfangenen Sentiment Score (-1 bis +1) ===
+// Aktualisiert nur MQTT/HA-Werte — LED-Steuerung erfolgt über led_index aus der API
 void handleSentiment(float sentimentScore)
 {
     sentimentScore = constrain(sentimentScore, -1.0, 1.0);
@@ -64,29 +69,20 @@ void handleSentiment(float sentimentScore)
         debug("Neuer Sentiment Score: " + haValue);
     }
 
-    int newLedIndex = mapSentimentToLED(sentimentScore);
-
-    String categoryText;
-    switch (newLedIndex)
+    // Kategorie aus API-Response nutzen falls vorhanden, sonst lokal bestimmen
+    String categoryText = appState.sentimentCategory;
+    if (categoryText.isEmpty())
     {
-    case 4:
-        categoryText = "sehr positiv";
-        break;
-    case 3:
-        categoryText = "positiv";
-        break;
-    case 2:
-        categoryText = "neutral";
-        break;
-    case 1:
-        categoryText = "negativ";
-        break;
-    case 0:
-        categoryText = "sehr negativ";
-        break;
-    default:
-        categoryText = "unbekannt";
-        break;
+        int localIndex = mapSentimentToLED(sentimentScore);
+        switch (localIndex)
+        {
+        case 4: categoryText = "sehr positiv"; break;
+        case 3: categoryText = "positiv"; break;
+        case 2: categoryText = "neutral"; break;
+        case 1: categoryText = "negativ"; break;
+        case 0: categoryText = "sehr negativ"; break;
+        default: categoryText = "unbekannt"; break;
+        }
     }
 
     // Sende Kategorie an HA nur bei Änderung
@@ -99,18 +95,6 @@ void handleSentiment(float sentimentScore)
 
         appState.sentimentCategory = categoryText;
         debug("Neue Sentiment Kategorie: " + categoryText);
-    }
-
-    // Aktualisiere LED Index & LEDs nur bei Änderung
-    if (newLedIndex != appState.currentLedIndex || !appState.initialAnalysisDone)
-    { // Auch beim ersten Mal aktualisieren
-        debug("LED Index geändert von " + String(appState.currentLedIndex) + " zu " + String(newLedIndex) + " (" + categoryText + ")");
-        appState.currentLedIndex = newLedIndex;
-        appState.lastLedIndex = appState.currentLedIndex;
-        if (appState.autoMode && appState.lightOn)
-        {
-            updateLEDs(); // Ruft optimierte Funktion auf
-        }
     }
 
     // API ist erreichbar
@@ -165,6 +149,9 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
         http.end();
         return false;
     }
+
+    // WDT nach blockierendem HTTP-Call sofort füttern (kann bis zu 15s dauern)
+    watchdog.feed();
 
     if (httpCode == HTTP_CODE_OK) {
         // Parse JSON direkt vom Stream wie safeHttpGet
@@ -223,6 +210,9 @@ bool safeHttpGet(const String &url, JsonDocument &doc)
         catch (...) {
             debug(F("Exception during HTTP GET"));
         }
+
+        // WDT nach blockierendem HTTP-Call sofort füttern (kann bis zu 10s dauern)
+        watchdog.feed();
 
         if (httpCode == HTTP_CODE_OK) {
             // Parse JSON directly from stream to avoid memory copies
@@ -329,19 +319,22 @@ void getSentiment()
             debug(F("led_index nicht in Response — lokaler Fallback über mapSentimentToLED()"));
         }
 
-        // handleSentiment() mit exaktem Rohwert aufrufen (MQTT + HA-Werte)
-        // (setzt currentLedIndex intern via mapSentimentToLED)
+        // Kategorie aus API-Response übernehmen (für MQTT/HA)
+        if (doc["category"].is<const char*>())
+        {
+            appState.sentimentCategory = doc["category"].as<String>();
+        }
+
+        // handleSentiment() für MQTT/HA-Werte (Score + Kategorie)
         handleSentiment(receivedSentiment);
 
-        // LED-Index aus API direkt setzen (überschreibt mapSentimentToLED() aus handleSentiment)
-        if (apiLedIndex != appState.currentLedIndex || !appState.initialAnalysisDone)
+        // LED-Index aus API setzen — einzige Stelle die LEDs steuert
+        debug(String(F("LED-Index setzen: ")) + String(apiLedIndex));
+        appState.currentLedIndex = apiLedIndex;
+        appState.lastLedIndex = apiLedIndex;
+        if (appState.autoMode && appState.lightOn)
         {
-            appState.currentLedIndex = apiLedIndex;
-            appState.lastLedIndex = apiLedIndex;
-            if (appState.autoMode && appState.lightOn)
-            {
-                updateLEDs();
-            }
+            updateLEDs();
         }
 
         appState.initialAnalysisDone = true;

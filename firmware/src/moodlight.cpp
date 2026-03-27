@@ -172,7 +172,18 @@ void loop() {
     }
 
     // Sentiment und Sensor bei aktiver WiFi-Verbindung
-    if (WiFi.status() == WL_CONNECTED) {
+    // WiFi-Stabilitäts-Hysterese: 3s nach Verbindungsaufbau warten bevor HTTP-Calls erlaubt sind.
+    // Verhindert LoadProhibited bei fluktuierendem Signal (Verbindung bricht während http.GET() ab).
+    bool wifiStable = (WiFi.status() == WL_CONNECTED) &&
+                      (appState.wifiConnectedSince > 0) &&
+                      (millis() - appState.wifiConnectedSince >= 3000);
+    if (wifiStable) {
+        // Force-Refresh aus HA-Button: lastMoodUpdate zurücksetzen damit getSentiment() sofort läuft
+        if (appState.mqttRefreshPending) {
+            appState.mqttRefreshPending = false;
+            appState.lastMoodUpdate = 0; // Erzwingt sofortigen Abruf in getSentiment()
+            debug(F("Force-Refresh: lastMoodUpdate zurückgesetzt für sofortigen Abruf"));
+        }
         if (appState.autoMode) getSentiment();
         readAndPublishDHT();
     } else if (appState.isPulsing) {
