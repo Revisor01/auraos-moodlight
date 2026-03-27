@@ -565,12 +565,20 @@ def feed_management():
     """Feed-Verwaltungsseite — UI fuer /api/moodlight/feeds CRUD"""
     return render_template('feeds.html')
 
-# Background Worker starten - muss ausserhalb __main__ sein damit Gunicorn ihn startet
+# Background Worker starten — Intervall und Headlines aus DB-Settings (Fallback: Defaults)
+_worker_interval = int(_startup_settings.get('analysis_interval', 1800)) if _startup_settings else 1800
+_worker_headlines = int(_startup_settings.get('headlines_per_source', 1)) if _startup_settings else 1
 start_background_worker(
     app=app,
     analyze_function=analyze_headlines_batch,
-    interval_seconds=1800
+    interval_seconds=_worker_interval
 )
+# Headlines-Anzahl auf den Worker übertragen
+from background_worker import get_background_worker
+_worker = get_background_worker()
+if _worker:
+    _worker.headlines_per_source = _worker_headlines
+    logging.info(f"Worker gestartet: Intervall={_worker_interval}s, Headlines/Quelle={_worker_headlines}")
 
 # Hauptausführungspunkt
 if __name__ == '__main__':
