@@ -121,3 +121,16 @@ None.
 ---
 *Phase: 12-headline-persistenz*
 *Completed: 2026-03-26*
+
+## Self-Check: PASSED
+
+- FOUND: sentiment-api/init.sql
+- FOUND: sentiment-api/migration_phase12.sql
+- FOUND: sentiment-api/database.py
+- FOUND: sentiment-api/background_worker.py
+- FOUND: sentiment-api/app.py
+- FOUND: .planning/phases/12-headline-persistenz/12-01-SUMMARY.md
+- Commit ec25f59 (Task 1): FOUND
+- Commit cbce808 (Task 2): FOUND
+- Commit 4d4a5f5 (Task 3): FOUND
+- Commit 3e78cf4 (docs): FOUND
