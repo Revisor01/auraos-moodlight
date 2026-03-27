@@ -782,6 +782,159 @@
             padding: 40px 0;
             font-size: 1rem;
         }
+
+        /* ===== FEED-VERGLEICH (PAGE-01) ===== */
+        .feed-trends-intro {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 2.5rem;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .feed-trends-controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .ft-window-toggle {
+            display: inline-flex;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px var(--shadow);
+        }
+
+        .ft-window-btn {
+            padding: 8px 20px;
+            background: var(--surface);
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: inherit;
+            color: var(--text-secondary);
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .ft-window-btn.active {
+            background: var(--gradient);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .ft-window-btn:hover:not(.active) {
+            background: var(--background);
+            color: var(--text-primary);
+        }
+
+        .feed-rank-grid {
+            display: grid;
+            gap: 0.75rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .feed-rank-row {
+            display: grid;
+            grid-template-columns: 2rem 1fr 180px 70px;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.85rem 1.25rem;
+            box-shadow: 0 2px 4px var(--shadow);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .feed-rank-row:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .ft-rank-nr {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .ft-rank-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ft-bar-track {
+            height: 10px;
+            background: var(--border-color);
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ft-bar-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+
+        .ft-score {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .ft-score.pos { color: #28a745; }
+        .ft-score.neg { color: #e74c3c; }
+        .ft-score.neu { color: #17a2b8; }
+
+        .ft-loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .ft-error {
+            text-align: center;
+            padding: 3rem;
+            color: #e74c3c;
+            background: rgba(231,76,60,0.05);
+            border: 1px solid rgba(231,76,60,0.2);
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 0.95rem;
+        }
+
+        .ft-count-badge {
+            display: inline-block;
+            background: var(--gradient);
+            color: #fff;
+            border-radius: 20px;
+            padding: 2px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 600px) {
+            .feed-rank-row {
+                grid-template-columns: 1.5rem 1fr 70px;
+            }
+            .ft-bar-track { display: none; }
+        }
     </style>
 </head>
 <body>
