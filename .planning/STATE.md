@@ -1,17 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.0
-milestone_name: ESP32 UI-Redesign
-status: verifying
-stopped_at: Phase 23-02 abgeschlossen — setup.html Inline-Styles bereinigt (7ae19d5)
-last_updated: "2026-03-27T12:40:16.597Z"
-last_activity: 2026-03-27
+milestone: v9.0
+milestone_name: Sentiment-Trend pro Feed
+status: Defining requirements
+stopped_at: null
+last_updated: "2026-03-27T14:00:00.000Z"
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 0
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -21,32 +19,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 23 — seiten-redesign
+**Current focus:** Defining requirements for v9.0
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-03-27
-
-Progress: [░░░░░░░░░░] 0%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-27 — Milestone v9.0 started
 
 ## Accumulated Context
 
 ### Decisions
 
-- Alle 4 ESP32 HTML-Seiten + CSS werden redesigned
-- Dashboard-Design (dashboard.html) als Referenz für CSS-Variablen, Typografie, Karten
-- 2 Phasen statt 4 (coarse granularity) — CSS zuerst, dann alle Seiten parallel da sie voneinander unabhängig sind
-- [Phase 22-css-fundament]: CSS-Variablen identisch zum Backend-Dashboard (--primary #8A2BE2) für konsistente Designsprache
-- [Phase 22-css-fundament]: Dark Mode via .dark Klasse auf body — bestehende HTML-Seiten toggleDarkMode() bleibt unverändert
-- [Phase 23-seiten-redesign]: style='text-align:center' auf .section behalten — kein Utility-Helper in style.css vorhanden
-- [Phase 23-seiten-redesign]: #mode-text nutzt class='version' statt Inline-Style fuer gleiche Optik
-- [Phase 23-03]: scoreClass() gibt CSS-Klassenstrings zurück statt Hex-Farben — Dark-Mode-kompatibel durch style.css
-- [Phase 23-03]: headline-* Hilfsklassen mit CSS-Variablen im <head> definiert — minimaler LittleFS-Footprint
-- [Phase 23-seiten-redesign]: diagnostics.html: style-Block fuer details/summary entfernt (nicht verwendet), .buttons ohne flex-direction:column Inline-Style
-- [Phase 23-seiten-redesign]: style='display:none' fuer #update-progress behalten — JS setzt display:'block' direkt
+- headlines-Tabelle hat feed_id FK — Aggregation per Feed direkt möglich
+- 11 aktive Feeds mit Einzel-Scores seit v5.0
 
 ### Pending Todos
 
@@ -54,10 +41,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- ESP32 LittleFS Speicher begrenzt (min_spiffs Partition) — Dateigröße beachten
+- Braucht genug historische Daten für aussagekräftige Trends
 
 ## Session Continuity
 
-Last session: 2026-03-27T12:39:23.222Z
-Stopped at: Phase 23-02 abgeschlossen — setup.html Inline-Styles bereinigt (7ae19d5)
+Last session: 2026-03-27
+Stopped at: Milestone v9.0 initialized
 Resume file: None

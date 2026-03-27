@@ -63,24 +63,25 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 
 ### Active
 
-(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
+- [ ] Durchschnitts-Score pro Feed berechnen (7-Tage/30-Tage)
+- [ ] API-Endpoint für Feed-Trends
+- [ ] Dashboard Feed-Trend-Visualisierung
+- [ ] GitHub Page Feed-Vergleichs-Ansicht
 
 ### Out of Scope
 
-- Authentifizierung/Autorisierung über Authentik/OAuth — Over-Engineering, einfacher Passwort-Schutz reicht
-- HTTPS auf ESP32 — gab Probleme in der Vergangenheit, eigener Milestone später
-- BLE Proxy für Bermuda — braucht vollen BLE-Scanner (~70KB RAM), ESPHome-Protokoll nicht kompatibel mit Custom-Firmware, eigener Milestone wenn überhaupt
-- Firmware-Aufsplittung (Monolith → Module) — erledigt in v3.0
+- Authentifizierung/Autorisierung über Authentik/OAuth — einfacher Passwort-Schutz reicht (v5.0)
+- HTTPS auf ESP32 — gestrichen, kein Bedarf im Heimnetz
+- Combined Update (ein Upload statt zwei) — gestrichen, funktioniert so
+- BLE Proxy für Bermuda — RAM reicht (228KB frei), aber ESPHome-Protokoll inkompatibel, vertagt
+- Historische Headline-Suche — gestrichen, kein Bedarf
 - Feed-Import/Export — kein Bedarf bei ~12 Feeds
-- Feed-Kategorien/Tags — Over-Engineering für privates Projekt
-- Automatische Feed-Discovery — manuelle Verwaltung reicht
 - Mobile App — Web-Interface reicht
 - Multi-Device-Support — ein Gerät im Einsatz
-- Automatische Tests — wünschenswert, aber nicht in diesem Milestone
 
 ## Context
 
-- Hardware: ESP32 dev board, 12 NeoPixel LEDs, DHT-Sensor, im Wohnzimmer unter http://192.168.0.140/
+- Hardware: ESP32 dev board, 12 NeoPixel LEDs, DHT-Sensor, im Wohnzimmer unter http://192.168.0.37/
 - Backend: Docker Stack auf server.godsapp.de, erreichbar unter http://analyse.godsapp.de
 - v1.0 Stabilisierung shipped: LED-Flicker, Buffer-Overflow, RAII, Health-Check, Gunicorn, shared_config
 - **Aktueller Build-Workflow**: `build-release.sh` liest Version aus `config.h`, baut UI-TGZ + Firmware-BIN getrennt in `releases/vX.X/`
@@ -106,11 +107,11 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | BLE Proxy vertagt | ~70KB RAM, ESPHome-Protokoll inkompatibel, Stabilität hat Vorrang | — Pending |
-| Firmware-Splitting als eigener Milestone | Risiko für Regressionen zu hoch während Stabilitäts-Arbeiten | — Pending |
-| HTTPS als eigener Milestone | Gab vorher Probleme, braucht WiFiClientSecure + Zertifikate | — Pending |
+| Firmware-Splitting als eigener Milestone | Risiko für Regressionen zu hoch während Stabilitäts-Arbeiten | ✓ Good (v3.0) |
+| HTTPS gestrichen | Kein Bedarf im Heimnetz | ✓ Good |
 | Kein Auth | Privates Projekt im Heimnetz | ✓ Good |
-| Unified Version statt getrennte UI/Firmware-Versionen | Eine Combined-Datei = eine Version, weniger Verwirrung | — Pending |
-| Combined TGZ statt zwei Dateien | Ein Upload statt zwei, weniger Fehlerquellen | — Pending |
+| Unified Version gestrichen | Funktioniert so, kein Bedarf | ✓ Good |
+| Combined TGZ gestrichen | Zwei Uploads reichen | ✓ Good |
 | Feed-Management als eigenständige Backend-Seite statt ESP32 setup.html | Feeds sind Backend-Concern, ESP32 hat keinen Backend-Zugriff | ✓ Good |
 | Firmware-Splitting erledigt | v3.0 hat moodlight.cpp in 6 Module aufgeteilt | ✓ Good |
 
@@ -132,5 +133,9 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
+## Current Milestone: v9.0 Sentiment-Trend pro Feed
+
+**Goal:** Zeigen welcher Feed tendenziell positiver/negativer bewertet wird.
+
 ---
-*Last updated: 2026-03-27 after v8.0 milestone complete (ESP32 UI-Redesign)*
+*Last updated: 2026-03-27 after v9.0 milestone start (Sentiment-Trend pro Feed)*
