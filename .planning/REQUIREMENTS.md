@@ -3,65 +3,49 @@
 **Defined:** 2026-03-27
 **Core Value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
 
-## v8.0 Requirements
+## v9.0 Requirements
 
-Requirements für Milestone v8.0: ESP32 UI-Redesign.
+Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 
-### CSS-Fundament
+### Backend-Analyse
 
-- [x] **CSS-01**: style.css nutzt CSS-Variablen konsistent mit dem Backend-Dashboard (Farben, Abstände, border-radius, Schriften)
-- [x] **CSS-02**: Dark/Light Mode funktioniert weiterhin über CSS-Variablen
+- [ ] **TREND-01**: Backend berechnet Durchschnitts-Score pro Feed für konfigurierbare Zeitfenster (7 Tage, 30 Tage)
+- [ ] **TREND-02**: API-Endpoint GET /api/moodlight/feeds/trends liefert Feed-Rankings sortiert nach durchschnittlichem Score
 
-### Hauptseite (index.html)
+### Dashboard-Visualisierung
 
-- [x] **IDX-01**: Score-Anzeige nutzt Farbkodierung wie im Dashboard (5 Farbstufen)
-- [x] **IDX-02**: Karten-Layout (border-radius 8px, kompaktes Padding) wie Dashboard
-- [x] **IDX-03**: LED-Steuerung und Helligkeit behalten volle Funktionalität
+- [ ] **VIS-01**: Dashboard zeigt Feed-Ranking-Tabelle (positivster bis negativster Feed)
+- [ ] **VIS-02**: Farbkodierte Score-Balken pro Feed zeigen relative Position
+- [ ] **VIS-03**: Zeitfenster-Umschalter (7 Tage / 30 Tage) im Dashboard
 
-### Einstellungen (setup.html)
+### GitHub Page
 
-- [x] **SET-01**: Formular-Design konsistent mit Dashboard-Einstellungs-Tab (Input-Felder, Labels, Buttons)
-- [x] **SET-02**: Alle bestehenden Einstellungen (WiFi, MQTT, Hardware, Farben) bleiben funktional
-
-### Stimmung (mood.html)
-
-- [x] **MOOD-01**: Headlines-Darstellung mit Farbkodierung wie im Dashboard
-- [x] **MOOD-02**: Score-Verlauf und Statistiken im Dashboard-Karten-Stil
-
-### Diagnose (diagnostics.html)
-
-- [x] **DIAG-01**: System-Info-Karten im Dashboard-Stil (Speicher, WiFi, Uptime)
-- [x] **DIAG-02**: Update-Bereich behält volle Funktionalität (Firmware + UI Upload)
+- [ ] **PAGE-01**: GitHub Page zeigt Feed-Vergleichs-Ansicht mit Trend-Daten
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Neue Funktionen hinzufügen | Nur visuelles Redesign, keine neuen Features |
-| JavaScript-Refactoring | Nur CSS/HTML, bestehende JS-Logik bleibt |
-| Font Awesome entfernen | Wird weiterhin für Icons genutzt |
+| Feed-Score-Verlauf als Chart (Linie pro Feed) | Zu komplex für v9.0, evtl. v10.0 |
+| ESP32 mood.html Feed-Trends | Zu viel Daten für das kleine Display |
+| Automatische Feed-Bewertung (schlechte Feeds deaktivieren) | Manuelle Kontrolle reicht |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CSS-01 | Phase 22 | Complete |
-| CSS-02 | Phase 22 | Complete |
-| IDX-01 | Phase 23 | Complete |
-| IDX-02 | Phase 23 | Complete |
-| IDX-03 | Phase 23 | Complete |
-| SET-01 | Phase 23 | Complete |
-| SET-02 | Phase 23 | Complete |
-| MOOD-01 | Phase 23 | Complete |
-| MOOD-02 | Phase 23 | Complete |
-| DIAG-01 | Phase 23 | Complete |
-| DIAG-02 | Phase 23 | Complete |
+| TREND-01 | — | Pending |
+| TREND-02 | — | Pending |
+| VIS-01 | — | Pending |
+| VIS-02 | — | Pending |
+| VIS-03 | — | Pending |
+| PAGE-01 | — | Pending |
 
 **Coverage:**
-- v8.0 requirements: 11 total
-- Mapped to phases: 11
-- Unmapped: 0 ✓
+- v9.0 requirements: 6 total
+- Mapped to phases: 0
+- Unmapped: 6 ⚠️
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after roadmap creation (v8.0)*
+*Last updated: 2026-03-27 after initial definition*
