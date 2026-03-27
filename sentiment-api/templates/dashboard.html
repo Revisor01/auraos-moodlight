@@ -826,6 +826,154 @@
         min-width: 100%;
       }
     }
+
+    /* ===== FEED-TRENDS (VIS-01/02/03) ===== */
+    .trends-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .trends-header h2 {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .window-toggle {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .window-btn {
+      padding: 6px 16px;
+      background: var(--surface);
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-family: inherit;
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .window-btn.active {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .window-btn:hover:not(.active) {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .feed-rank-section {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .feed-rank-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .feed-rank-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .feed-rank-table td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .feed-rank-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .rank-nr {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      width: 2rem;
+      text-align: right;
+    }
+
+    .rank-name {
+      font-weight: 600;
+      color: var(--text);
+      min-width: 120px;
+    }
+
+    .rank-bar-cell {
+      width: 40%;
+    }
+
+    .rank-bar-track {
+      height: 10px;
+      background: var(--border);
+      border-radius: 5px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .rank-bar-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      border-radius: 5px;
+      transition: width 0.4s ease;
+    }
+
+    .rank-score {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+
+    .rank-count {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .trends-loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .trends-error {
+      text-align: center;
+      padding: 2rem;
+      color: var(--danger);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 600px) {
+      .rank-bar-cell { display: none; }
+      .rank-count    { display: none; }
+    }
   </style>
 </head>
 <body>
