@@ -30,7 +30,11 @@
   2. Beim Container-Start liest das Backend Einstellungen aus der DB; fehlen sie, greift es auf Umgebungsvariablen zurück
   3. Ein PUT-Aufruf auf `/api/moodlight/settings` ändert den laufenden Background Worker ohne Neustart
   4. GET `/api/moodlight/settings` liefert aktuelle Werte als JSON zurück
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 19-01-PLAN.md — settings-Tabelle in init.sql + migrate_settings.sql für Produktions-DB
+- [ ] 19-02-PLAN.md — Database-Methoden (get/set/get_all) + App-Startup auf DB-First umstellen
+- [ ] 19-03-PLAN.md — Worker reconfigure() + GET/PUT /api/moodlight/settings Endpoints
 
 ### Phase 20: Manueller Analyse-Trigger
 **Goal**: Benutzer können über das Dashboard eine sofortige Sentiment-Analyse auslösen und erhalten visuelles Feedback über den Fortschritt
@@ -59,6 +63,6 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 19. Einstellungs-Persistenz | v7.0 | 0/? | Not started | - |
+| 19. Einstellungs-Persistenz | v7.0 | 0/3 | Planned | - |
 | 20. Manueller Analyse-Trigger | v7.0 | 0/? | Not started | - |
 | 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |
