@@ -22,9 +22,9 @@
 
 | Phase | Name | Reqs | Status |
 |-------|------|------|--------|
-| 26 | firmware-stabilitaet | FW-01..FW-05 | planned |
-| 27 | perzentil-mood-html | PZ-01..PZ-03, PZ-05, PZ-06 | planned |
-| 28 | perzentil-github-page | PZ-04, PZ-06 | planned |
+| 26 | firmware-stabilitaet | FW-01..FW-05 | **done** |
+| 27 | perzentil-mood-html | PZ-01..PZ-03, PZ-05, PZ-06 | **done** |
+| 28 | perzentil-github-page | PZ-04, PZ-06 | **done** |
 
 ### Phase 26: firmware-stabilitaet
 **Goal:** Alle Firmware-Stabilitätsfixes aus der Debug-Session sind committed und auf dem Gerät deployed.
