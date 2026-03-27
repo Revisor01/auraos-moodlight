@@ -684,6 +684,77 @@ class Database:
 
         return health
 
+    def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        Lese einen Einstellungs-Wert aus der settings-Tabelle.
+
+        Args:
+            key: Einstellungs-Schlüssel (z.B. 'analysis_interval')
+            default: Rückgabewert wenn Key nicht gefunden
+
+        Returns:
+            Wert als String oder default
+        """
+        query = "SELECT value FROM settings WHERE key = %s;"
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query, (key,))
+                result = cur.fetchone()
+                return result[0] if result else default
+        except Exception as e:
+            logger.error(f"Fehler beim Lesen von setting '{key}': {e}")
+            return default
+
+    def set_setting(self, key: str, value: str) -> bool:
+        """
+        Speichere oder aktualisiere einen Einstellungs-Wert (UPSERT).
+
+        Args:
+            key: Einstellungs-Schlüssel
+            value: Einstellungs-Wert als String
+
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        query = """
+            INSERT INTO settings (key, value)
+            VALUES (%s, %s)
+            ON CONFLICT (key) DO UPDATE SET
+                value = EXCLUDED.value,
+                updated_at = NOW();
+        """
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query, (key, value))
+                self.conn.commit()
+                logger.info(f"Einstellung gespeichert: {key}='{value}'")
+                return True
+        except Exception as e:
+            if self.conn:
+                try:
+                    self.conn.rollback()
+                except Exception:
+                    pass
+            logger.error(f"Fehler beim Speichern von setting '{key}': {e}")
+            return False
+
+    def get_all_settings(self) -> Dict[str, str]:
+        """
+        Alle Einstellungen als Dict zurückgeben.
+
+        Returns:
+            Dict[key -> value], leer bei Fehler
+        """
+        query = "SELECT key, value FROM settings ORDER BY key ASC;"
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query)
+                results = cur.fetchall()
+                return {row[0]: row[1] for row in results}
+        except Exception as e:
+            logger.error(f"Fehler beim Laden aller Einstellungen: {e}")
+            return {}
+
 
 class RedisCache:
     """Redis Cache-Wrapper"""
