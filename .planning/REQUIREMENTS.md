@@ -1,77 +1,74 @@
 # Requirements: AuraOS Moodlight
 
-**Defined:** 2026-03-26
+**Defined:** 2026-03-27
 **Core Value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
 
-## v5.0 Requirements
+## v6.0 Requirements
 
-Requirements für Milestone v5.0: Schlagzeilen-Transparenz & Dashboard.
+Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
-### Headline-Transparenz
+### API-Migration
 
-- [x] **HEAD-01**: Backend speichert bei jeder Analyse die einzelnen Headlines mit ihren Einzel-Scores in der DB
-- [x] **HEAD-02**: API-Endpoint liefert die letzten analysierten Headlines mit Einzel-Scores, Feed-Zuordnung und Zeitstempel
-- [x] **HEAD-03**: Visualisierung zeigt wie der Gesamt-Score aus den Einzelwerten berechnet wird
+- [ ] **API-01**: Backend nutzt Claude API (Anthropic SDK) statt OpenAI für Sentiment-Analyse
+- [ ] **API-02**: Anthropic API Key konfigurierbar über Umgebungsvariable (ANTHROPIC_API_KEY)
+- [ ] **API-03**: Bestehende Analyse-Qualität bleibt erhalten oder verbessert sich
 
-### Backend-Dashboard
+### Dynamische Skalierung
 
-- [x] **DASH-01**: Übersichtsseite zeigt aktuellen Sentiment-Score, Anzahl Feeds, letzten Analyse-Zeitpunkt
-- [x] **DASH-02**: Headlines-Ansicht zeigt letzte analysierte Schlagzeilen mit Einzel-Scores und Feed-Zuordnung
-- [x] **DASH-03**: Feed-Verwaltung ist ins Dashboard integriert (bestehende /feeds Funktionalität)
-- [x] **DASH-04**: Navigation zwischen Dashboard-Bereichen (Übersicht, Headlines, Feeds)
+- [ ] **SCALE-01**: Score-Mapping nutzt historische Perzentile statt fester Schwellwerte
+- [ ] **SCALE-02**: Backend berechnet dynamische Schwellwerte basierend auf den letzten 7 Tagen
+- [ ] **SCALE-03**: API liefert Skalierungs-Kontext (Rohwert, Perzentil, historischer Min/Max/Median)
 
-### Authentifizierung
+### Prompt-Optimierung
 
-- [x] **AUTH-01**: Backend-Interface ist durch einfachen Passwort-Login geschützt
-- [x] **AUTH-02**: API-Endpoints für Schreiboperationen (POST/DELETE) erfordern Authentifizierung
-- [x] **AUTH-03**: Lese-Endpoints (GET /api/moodlight/current, /history) bleiben öffentlich (ESP32 braucht sie)
+- [ ] **PROMPT-01**: Sentiment-Prompt erzeugt ausgewogenere Scores über den vollen Bereich -1.0 bis +1.0
+- [ ] **PROMPT-02**: Positive Nachrichten werden als solche erkannt (nicht nur "weniger negativ")
 
 ### ESP32 Integration
 
-- [x] **ESP-01**: mood.html auf dem ESP32 zeigt die letzten Headlines mit Einzel-Scores (fetch vom Backend)
+- [ ] **ESP-01**: ESP32 bezieht Schwellwerte dynamisch vom Backend statt hardcoded
+- [ ] **ESP-02**: LED-Farbverteilung nutzt die volle Skala bei typischen Nachrichtenlagen
 
-### GitHub Page
+### Dashboard
 
-- [x] **PAGE-01**: GitHub Page zeigt Headline-Darstellung mit Einzel-Scores und Feed-Zuordnung
+- [ ] **VIS-01**: Dashboard zeigt Skalierungs-Transparenz (Perzentil-Position, historischer Bereich)
 
 ## Future Requirements
 
-### Erweiterte Analyse (v6.0+)
+### Erweiterte Analyse (v7.0+)
 
-- **ANAL-01**: Sentiment-Trend pro Feed (welcher Feed ist tendenziell positiver/negativer)
+- **ANAL-01**: Sentiment-Trend pro Feed
 - **ANAL-02**: Historische Headline-Suche
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| OAuth/Authentik-Integration | Over-Engineering für privates Projekt, einfacher Passwort-Schutz reicht |
-| Benutzer-Verwaltung (mehrere Accounts) | Ein User, ein Passwort |
-| ESP32 Firmware-Änderungen außer mood.html | Feeds sind Backend-Concern |
-| Echtzeit-Updates (WebSocket) | Polling alle 30 Minuten reicht |
+| Mehrere LLM-Provider gleichzeitig | Ein Provider reicht, konfigurierbar per Env-Variable |
+| Eigenes ML-Modell trainieren | LLM-API ist kosteneffizienter und einfacher |
+| Echtzeit-Skalierung (pro Minute) | 7-Tage-Fenster reicht für stabile Skala |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HEAD-01 | Phase 12 | Complete |
-| HEAD-02 | Phase 14 | Complete |
-| HEAD-03 | Phase 14 | Complete |
-| DASH-01 | Phase 14 | Complete |
-| DASH-02 | Phase 14 | Complete |
-| DASH-03 | Phase 14 | Complete |
-| DASH-04 | Phase 14 | Complete |
-| AUTH-01 | Phase 13 | Complete |
-| AUTH-02 | Phase 13 | Complete |
-| AUTH-03 | Phase 13 | Complete |
-| ESP-01 | Phase 15 | Complete |
-| PAGE-01 | Phase 15 | Complete |
+| API-01 | — | Pending |
+| API-02 | — | Pending |
+| API-03 | — | Pending |
+| SCALE-01 | — | Pending |
+| SCALE-02 | — | Pending |
+| SCALE-03 | — | Pending |
+| PROMPT-01 | — | Pending |
+| PROMPT-02 | — | Pending |
+| ESP-01 | — | Pending |
+| ESP-02 | — | Pending |
+| VIS-01 | — | Pending |
 
 **Coverage:**
-- v5.0 requirements: 12 total
-- Mapped to phases: 12
-- Unmapped: 0 ✓
+- v6.0 requirements: 11 total
+- Mapped to phases: 0
+- Unmapped: 11 ⚠️
 
 ---
-*Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after v5.0 roadmap creation (all 12 requirements mapped)*
+*Requirements defined: 2026-03-27*
+*Last updated: 2026-03-27 after initial definition*
