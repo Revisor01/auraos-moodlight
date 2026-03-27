@@ -68,4 +68,4 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete    | 2026-03-27 |
 | 20. Manueller Analyse-Trigger | v7.0 | 2/2 | Complete    | 2026-03-27 |
-| 21. Dashboard Einstellungs-UI | v7.0 | 1/1 | Complete   | 2026-03-27 |
+| 21. Dashboard Einstellungs-UI | v7.0 | 1/1 | Complete    | 2026-03-27 |
