@@ -3,72 +3,67 @@
 **Defined:** 2026-03-27
 **Core Value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
 
-## v6.0 Requirements
+## v7.0 Requirements
 
-Requirements für Milestone v6.0: Dynamische Bewertungsskala.
+Requirements für Milestone v7.0: Dashboard-Einstellungen.
 
-### API-Migration
+### Einstellungs-Persistenz
 
-- [x] **API-01**: Backend nutzt Claude API (Anthropic SDK) statt OpenAI für Sentiment-Analyse
-- [x] **API-02**: Anthropic API Key konfigurierbar über Umgebungsvariable (ANTHROPIC_API_KEY)
-- [x] **API-03**: Bestehende Analyse-Qualität bleibt erhalten oder verbessert sich
+- [ ] **CFG-01**: Einstellungen (Frequenz, Headlines-Anzahl, API Keys) werden in PostgreSQL gespeichert
+- [ ] **CFG-02**: Beim Start liest das Backend Einstellungen aus der DB, Umgebungsvariablen dienen als Fallback
+- [ ] **CFG-03**: Änderungen an Einstellungen werden sofort wirksam ohne Container-Neustart
 
-### Dynamische Skalierung
+### Dashboard-UI
 
-- [x] **SCALE-01**: Score-Mapping nutzt historische Perzentile statt fester Schwellwerte
-- [x] **SCALE-02**: Backend berechnet dynamische Schwellwerte basierend auf den letzten 7 Tagen
-- [x] **SCALE-03**: API liefert Skalierungs-Kontext (Rohwert, Perzentil, historischer Min/Max/Median)
+- [ ] **UI-01**: Einstellungs-Tab im Dashboard zeigt alle konfigurierbaren Parameter
+- [ ] **UI-02**: Analyse-Frequenz ist über ein Eingabefeld änderbar (in Minuten)
+- [ ] **UI-03**: Headlines pro Quelle ist über ein Eingabefeld änderbar
+- [ ] **UI-04**: Anthropic API Key ist änderbar (maskiert angezeigt, Klartext nur beim Editieren)
+- [ ] **UI-05**: Admin-Passwort ist änderbar (altes Passwort zur Bestätigung erforderlich)
 
-### Prompt-Optimierung
+### Manuelle Steuerung
 
-- [x] **PROMPT-01**: Sentiment-Prompt erzeugt ausgewogenere Scores über den vollen Bereich -1.0 bis +1.0
-- [x] **PROMPT-02**: Positive Nachrichten werden als solche erkannt (nicht nur "weniger negativ")
+- [ ] **CTRL-01**: Button im Dashboard löst sofortige Sentiment-Analyse aus
+- [ ] **CTRL-02**: Während der manuellen Analyse zeigt das Dashboard einen Lade-Indikator
+- [ ] **CTRL-03**: Nach Abschluss der manuellen Analyse aktualisiert sich das Dashboard automatisch
 
-### ESP32 Integration
+### API-Endpoints
 
-- [x] **ESP-01**: ESP32 bezieht Schwellwerte dynamisch vom Backend statt hardcoded
-- [x] **ESP-02**: LED-Farbverteilung nutzt die volle Skala bei typischen Nachrichtenlagen
-
-### Dashboard
-
-- [x] **VIS-01**: Dashboard zeigt Skalierungs-Transparenz (Perzentil-Position, historischer Bereich)
-
-## Future Requirements
-
-### Erweiterte Analyse (v7.0+)
-
-- **ANAL-01**: Sentiment-Trend pro Feed
-- **ANAL-02**: Historische Headline-Suche
+- [ ] **API-01**: GET/PUT /api/moodlight/settings für Einstellungs-CRUD
+- [ ] **API-02**: POST /api/moodlight/analyze/trigger für manuellen Analyse-Start
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Mehrere LLM-Provider gleichzeitig | Ein Provider reicht, konfigurierbar per Env-Variable |
-| Eigenes ML-Modell trainieren | LLM-API ist kosteneffizienter und einfacher |
-| Echtzeit-Skalierung (pro Minute) | 7-Tage-Fenster reicht für stabile Skala |
+| Mehrere Benutzer-Accounts | Ein Admin reicht |
+| Einstellungs-Historie/Audit-Log | Over-Engineering |
+| Scheduler (Cron-basiert statt Intervall) | Intervall reicht |
+| ESP32 Einstellungen im Backend | ESP32 hat eigenes Web-Interface |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | Phase 16 | Complete |
-| API-02 | Phase 16 | Complete |
-| API-03 | Phase 16 | Complete |
-| PROMPT-01 | Phase 16 | Complete |
-| PROMPT-02 | Phase 16 | Complete |
-| SCALE-01 | Phase 17 | Complete |
-| SCALE-02 | Phase 17 | Complete |
-| SCALE-03 | Phase 17 | Complete |
-| ESP-01 | Phase 18 | Complete |
-| ESP-02 | Phase 18 | Complete |
-| VIS-01 | Phase 18 | Complete |
+| CFG-01 | — | Pending |
+| CFG-02 | — | Pending |
+| CFG-03 | — | Pending |
+| UI-01 | — | Pending |
+| UI-02 | — | Pending |
+| UI-03 | — | Pending |
+| UI-04 | — | Pending |
+| UI-05 | — | Pending |
+| CTRL-01 | — | Pending |
+| CTRL-02 | — | Pending |
+| CTRL-03 | — | Pending |
+| API-01 | — | Pending |
+| API-02 | — | Pending |
 
 **Coverage:**
-- v6.0 requirements: 11 total
-- Mapped to phases: 11
-- Unmapped: 0 ✓
+- v7.0 requirements: 13 total
+- Mapped to phases: 0
+- Unmapped: 13 ⚠️
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 — Traceability nach Roadmap v6.0 ergänzt*
+*Last updated: 2026-03-27 after initial definition*
