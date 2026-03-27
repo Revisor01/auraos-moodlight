@@ -48,7 +48,12 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 
 ### Active
 
-(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
+- [ ] Sentiment-Analyse von OpenAI auf Claude API (Anthropic SDK) umstellen
+- [ ] Dynamische Score-Skalierung basierend auf historischen Perzentilen
+- [ ] Prompt-Optimierung für ausgewogenere Einzel-Scores
+- [ ] Backend liefert Skalierungs-Kontext (Rohwert, Perzentil, historischer Bereich)
+- [ ] ESP32 bezieht Schwellwerte dynamisch vom Backend
+- [ ] Dashboard zeigt Skalierungs-Transparenz
 
 ### Out of Scope
 
@@ -117,5 +122,17 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
+## Current Milestone: v6.0 Dynamische Bewertungsskala
+
+**Goal:** Scoring-Pipeline von OpenAI auf Claude API umstellen, Bewertungsskala dynamisch machen, volle Farbpalette ausreizen.
+
+**Target features:**
+- Claude API (Anthropic SDK) statt OpenAI für Sentiment-Analyse
+- Dynamische Skalierung basierend auf historischen Perzentilen
+- Prompt-Optimierung für ausgewogenere Scores
+- Backend-Transparenz (Rohwert, Perzentil, historischer Bereich)
+- ESP32 dynamische Schwellwerte vom Backend
+- Dashboard Skalierungs-Anzeige
+
 ---
-*Last updated: 2026-03-27 after v5.0 milestone complete (Schlagzeilen-Transparenz & Dashboard)*
+*Last updated: 2026-03-27 after v6.0 milestone start (Dynamische Bewertungsskala)*

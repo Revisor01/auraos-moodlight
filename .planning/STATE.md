@@ -1,37 +1,32 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Schlagzeilen-Transparenz & Dashboard
-status: verifying
-stopped_at: Completed 15-client-erweiterungen-02-PLAN.md
-last_updated: "2026-03-26T23:59:22.884Z"
-last_activity: 2026-03-26
+milestone: v6.0
+milestone_name: Dynamische Bewertungsskala
+status: Defining requirements
+stopped_at: null
+last_updated: "2026-03-27T01:00:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-26)
+See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 15 — client-erweiterungen
+**Current focus:** Defining requirements for v6.0
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-03-26
-
-```
-Progress: ░░░░░░░░░░ 0/4 phases
-```
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-27 — Milestone v6.0 started
 
 ## Performance Metrics
 
@@ -45,31 +40,20 @@ Progress: ░░░░░░░░░░ 0/4 phases
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-
-- [Phase 12-headline-persistenz]: save_headlines() Fehler nicht weitergeworfen — Sentiment-Score bleibt Primär-Invariante
-- [Phase 12-headline-persistenz]: feed_id NULLABLE in headlines — historische Headlines bleiben bei Feed-Löschung erhalten
-- [Phase 13-authentifizierung]: werkzeug.security für Passwort-Hash (Flask-integriert, keine neue Abhängigkeit); 24h Session-Timeout mit session.permanent=True
-- [Phase 13-authentifizierung]: api_login_required statt login_required für API-Endpoints — REST-Clients erwarten 401 JSON, kein HTML-Redirect
-- [Phase 14-backend-dashboard]: Endpoint /api/moodlight/headlines ist öffentlich ohne @api_login_required — ESP32 und Dashboard können ohne Session abrufen
-- [Phase 14-backend-dashboard]: max limit=500 für /api/moodlight/headlines — verhindert überlastende DB-Queries
-- [Phase 14-backend-dashboard]: /dashboard als primärer Einstiegspunkt: / und /login POST leiten dorthin; feeds.html bleibt separat erreichbar
-- [Phase 14-backend-dashboard]: Roh-Durchschnitt in Formelzeile via atanh(score)/2 näherungsweise angezeigt — echter Wert nicht in API verfügbar
-- [Phase 15-client-erweiterungen]: Backend-URL in mood.html hardcoded als https://analyse.godsapp.de — apiUrl-Variable nicht im mood.js-Scope verfügbar
-- [Phase 15-client-erweiterungen]: Headlines-Sektion als .info-card ohne neue CSS-Klassen — IIFE-Inline-Script für isolierten Scope
-- [Phase 15-client-erweiterungen]: Vanilla JS IIFE in docs/index.html — maximale Browser-Kompatibilität ohne Build-Step
+- OpenAI → Claude API (Anthropic SDK) für Sentiment-Analyse
+- Dynamische Skalierung statt fester Schwellwerte
 
 ### Pending Todos
 
-- Phase 12 planen: DB-Migration für headlines-Tabelle, Background Worker anpassen
+None yet.
 
 ### Blockers/Concerns
 
-- Backend speichert aktuell nur den Durchschnitts-Score, nicht die Einzel-Headlines — wird in Phase 12 behoben
-- Einfacher Login reicht — kein OAuth/Authentik nötig (Session-Cookie + Passwort-Hash)
+- User braucht Anthropic API Account + API Key für Claude API
+- Score-Verteilung clustert bei -0.2 bis -0.6 — Skala wird kaum genutzt
 
 ## Session Continuity
 
-Last session: 2026-03-26T23:56:06.748Z
-Stopped at: Completed 15-client-erweiterungen-02-PLAN.md
+Last session: 2026-03-27
+Stopped at: Milestone v6.0 initialized
 Resume file: None
