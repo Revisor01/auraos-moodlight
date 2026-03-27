@@ -990,6 +990,7 @@
   <button class="tab-btn active" data-tab="overview">Übersicht</button>
   <button class="tab-btn" data-tab="headlines">Schlagzeilen</button>
   <button class="tab-btn" data-tab="feeds">Feeds</button>
+  <button class="tab-btn" data-tab="trends">Feed-Trends</button>
   <button class="tab-btn" data-tab="settings">Einstellungen</button>
 </nav>
 
@@ -1225,6 +1226,22 @@
 
   </div>
 
+  <!-- ===== TAB: FEED-TRENDS (VIS-01/02/03) ===== -->
+  <div id="tab-trends" class="tab-pane">
+    <div class="feed-rank-section">
+      <div class="trends-header">
+        <h2>Feed-Ranking <span class="count-badge" id="trendsCount"></span></h2>
+        <div class="window-toggle">
+          <button class="window-btn active" data-days="7" onclick="switchWindow(7)">7 Tage</button>
+          <button class="window-btn" data-days="30" onclick="switchWindow(30)">30 Tage</button>
+        </div>
+      </div>
+      <div id="feedRankBody">
+        <p class="trends-loading">Wird geladen…</p>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -1244,6 +1261,7 @@ function showTab(tabId) {
   if (tabId === 'headlines' && !headlinesLoaded) loadHeadlines();
   if (tabId === 'feeds'     && !feedsLoaded)     loadFeeds();
   if (tabId === 'settings'  && !settingsLoaded)  loadSettings();
+  if (tabId === 'trends' && !trendsLoaded) loadFeedTrends(currentTrendDays);
 }
 
 document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -1820,6 +1838,97 @@ function showSettingsMsg(el, type, text) {
   el.className = 'settings-msg' + (type ? ' ' + type : '');
   el.textContent = text;
   el.style.display = text ? 'block' : 'none';
+}
+
+// ===== FEED-TRENDS (VIS-01/02/03) =====
+var trendsLoaded = false;
+var currentTrendDays = 7;
+
+function scoreToBarColor(score) {
+  // Interpoliert Hex-Farbe von Rot (#e74c3c) über Blau (#3498db) zu Grün (#28a745)
+  if (score === null || score === undefined) return '#ced4da';
+  if (score >= 0.30)  return '#28a745';
+  if (score >= 0.10)  return '#6c3dbf';
+  if (score >= -0.10) return '#3498db';
+  if (score >= -0.30) return '#e67e22';
+  return '#e74c3c';
+}
+
+function scoreToBarWidth(score) {
+  // Score [-1, +1] -> Breite 0 % bis 100 %
+  if (score === null || score === undefined) return '0%';
+  return ((score + 1) / 2 * 100).toFixed(1) + '%';
+}
+
+async function loadFeedTrends(days) {
+  days = days || currentTrendDays;
+  var bodyEl = document.getElementById('feedRankBody');
+  bodyEl.innerHTML = '<p class="trends-loading">Lade Feed-Ranking…</p>';
+
+  try {
+    var res  = await fetch('/api/moodlight/feeds/trends?days=' + days);
+    var data = await res.json();
+
+    if (data.status !== 'success' || !Array.isArray(data.feeds)) {
+      bodyEl.innerHTML = '<p class="trends-error">Daten konnten nicht geladen werden.</p>';
+      return;
+    }
+
+    var feeds = data.feeds;
+    document.getElementById('trendsCount').textContent = feeds.length;
+
+    if (feeds.length === 0) {
+      bodyEl.innerHTML = '<p class="trends-loading">Keine Feed-Daten im gewählten Zeitfenster.</p>';
+      trendsLoaded = true;
+      return;
+    }
+
+    var rows = '';
+    feeds.forEach(function(f, i) {
+      var score    = (f.avg_score !== null && f.avg_score !== undefined) ? parseFloat(f.avg_score) : null;
+      var scoreStr = score !== null ? (score >= 0 ? '+' : '') + score.toFixed(3) : '—';
+      var cls      = score !== null ? scoreClass(score) : 'score-neutral';
+      var barColor = scoreToBarColor(score);
+      var barWidth = scoreToBarWidth(score);
+      var count    = f.headline_count || '—';
+
+      rows += '<tr>';
+      rows += '<td class="rank-nr">' + (i + 1) + '</td>';
+      rows += '<td class="rank-name">' + escapeHtml(f.feed_name || '—') + '</td>';
+      rows += '<td class="rank-bar-cell">';
+      rows += '<div class="rank-bar-track">';
+      rows += '<div class="rank-bar-fill" style="width:' + barWidth + ';background:' + barColor + '"></div>';
+      rows += '</div></td>';
+      rows += '<td class="rank-score ' + cls + '">' + scoreStr + '</td>';
+      rows += '<td class="rank-count">' + count + ' Schlagz.</td>';
+      rows += '</tr>';
+    });
+
+    bodyEl.innerHTML =
+      '<table class="feed-rank-table">' +
+      '<thead><tr>' +
+      '<th>#</th><th>Feed</th><th>Score-Verteilung</th><th>Ø Score</th><th>Schlagzeilen</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+      '</table>';
+
+    trendsLoaded = true;
+  } catch (e) {
+    bodyEl.innerHTML = '<p class="trends-error">Netzwerkfehler — Backend nicht erreichbar.</p>';
+    console.error('Fehler beim Laden der Feed-Trends:', e);
+  }
+}
+
+function switchWindow(days) {
+  currentTrendDays = days;
+  trendsLoaded = false;
+
+  // Button-Status aktualisieren
+  document.querySelectorAll('.window-btn').forEach(function(btn) {
+    btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+  });
+
+  loadFeedTrends(days);
 }
 
 // ===== INITIALISIERUNG =====
