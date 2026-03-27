@@ -815,6 +815,19 @@
       </div>
     </div>
 
+    <!-- ===== MANUELLER ANALYSE-TRIGGER (CTRL-01/02/03) ===== -->
+    <div class="trigger-section">
+      <div>
+        <strong>Analyse jetzt starten</strong>
+        <p>Startet sofort eine neue Sentiment-Analyse aller aktiven Feeds (ca. 10–30 Sek.).</p>
+        <div class="trigger-result" id="triggerResult"></div>
+        <div class="trigger-error" id="triggerError"></div>
+      </div>
+      <button class="btn-trigger" id="analyzeBtn" onclick="triggerAnalysis()">
+        Jetzt analysieren
+      </button>
+    </div>
+
   </div>
 
   <!-- ===== TAB: SCHLAGZEILEN ===== -->
@@ -1045,6 +1058,50 @@ async function loadOverview() {
   } catch (e) {
     console.error('Fehler beim Laden der Übersicht:', e);
     document.getElementById('headerStatus').textContent = 'Fehler beim Laden der Daten';
+  }
+}
+
+// ===== MANUELLER ANALYSE-TRIGGER (CTRL-01/02/03) =====
+async function triggerAnalysis() {
+  var btn      = document.getElementById('analyzeBtn');
+  var resultEl = document.getElementById('triggerResult');
+  var errorEl  = document.getElementById('triggerError');
+
+  // UI: Button deaktivieren, Spinner anzeigen
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analysiere…';
+  resultEl.style.display = 'none';
+  errorEl.style.display  = 'none';
+
+  try {
+    var res  = await fetch('/api/moodlight/analyze/trigger', { method: 'POST' });
+    var data = await res.json();
+
+    if (res.ok && data.status === 'success') {
+      // Erfolg: Meldung zeigen, Dashboard-Übersicht neu laden
+      resultEl.textContent = 'Analyse abgeschlossen: Score ' +
+        parseFloat(data.sentiment_score).toFixed(3) +
+        ' (' + (data.category || '') + ')' +
+        ', ' + (data.headlines_analyzed || '?') + ' Schlagzeilen' +
+        ' in ' + (data.duration_seconds || '?') + 's';
+      resultEl.style.display = 'block';
+
+      // Übersicht neu laden (CTRL-03)
+      overviewLoaded = false;
+      await loadOverview();
+    } else {
+      // API-Fehler mit Meldung
+      errorEl.textContent = 'Fehler: ' + (data.message || 'Unbekannter Fehler (HTTP ' + res.status + ')');
+      errorEl.style.display = 'block';
+    }
+  } catch (e) {
+    errorEl.textContent = 'Netzwerkfehler — API nicht erreichbar.';
+    errorEl.style.display = 'block';
+    console.error('Fehler beim Analyse-Trigger:', e);
+  } finally {
+    // UI: Button wieder aktivieren
+    btn.disabled = false;
+    btn.innerHTML = 'Jetzt analysieren';
   }
 }
 
