@@ -24,8 +24,8 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 ### Manuelle Steuerung
 
 - [x] **CTRL-01**: Button im Dashboard löst sofortige Sentiment-Analyse aus
-- [ ] **CTRL-02**: Während der manuellen Analyse zeigt das Dashboard einen Lade-Indikator
-- [ ] **CTRL-03**: Nach Abschluss der manuellen Analyse aktualisiert sich das Dashboard automatisch
+- [x] **CTRL-02**: Während der manuellen Analyse zeigt das Dashboard einen Lade-Indikator
+- [x] **CTRL-03**: Nach Abschluss der manuellen Analyse aktualisiert sich das Dashboard automatisch
 
 ### API-Endpoints
 
@@ -50,8 +50,8 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 | CFG-03 | Phase 19 | Complete |
 | API-01 | Phase 19 | Complete |
 | CTRL-01 | Phase 20 | Complete |
-| CTRL-02 | Phase 20 | Pending |
-| CTRL-03 | Phase 20 | Pending |
+| CTRL-02 | Phase 20 | Complete |
+| CTRL-03 | Phase 20 | Complete |
 | API-02 | Phase 20 | Complete |
 | UI-01 | Phase 21 | Pending |
 | UI-02 | Phase 21 | Pending |

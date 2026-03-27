@@ -16,7 +16,7 @@
 ## Phases
 
 - [x] **Phase 19: Einstellungs-Persistenz** - DB-Tabelle, Settings-API und Runtime-Reload (completed 2026-03-27)
-- [ ] **Phase 20: Manueller Analyse-Trigger** - Trigger-Endpoint mit Worker-Integration und Feedback
+- [x] **Phase 20: Manueller Analyse-Trigger** - Trigger-Endpoint mit Worker-Integration und Feedback (completed 2026-03-27)
 - [ ] **Phase 21: Dashboard Einstellungs-UI** - Einstellungs-Tab mit allen konfigurierbaren Feldern
 
 ## Phase Details
@@ -47,7 +47,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 20-01-PLAN.md — trigger()-Methode im Worker + POST /api/moodlight/analyze/trigger Endpoint
-- [ ] 20-02-PLAN.md — Dashboard-Button mit Spinner und Auto-Refresh nach Abschluss
+- [x] 20-02-PLAN.md — Dashboard-Button mit Spinner und Auto-Refresh nach Abschluss
 
 ### Phase 21: Dashboard Einstellungs-UI
 **Goal**: Das Dashboard enthält einen vollständigen Einstellungs-Tab, über den alle konfigurierbaren Parameter änderbar sind
@@ -66,5 +66,5 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete    | 2026-03-27 |
-| 20. Manueller Analyse-Trigger | v7.0 | 1/2 | In Progress|  |
+| 20. Manueller Analyse-Trigger | v7.0 | 2/2 | Complete   | 2026-03-27 |
 | 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |
