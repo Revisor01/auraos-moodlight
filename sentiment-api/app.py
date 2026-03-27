@@ -19,11 +19,94 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-schluessel-aendern')
 app.permanent_session_lifetime = timedelta(hours=24)
 
-# Admin-Passwort-Hash beim Start berechnen (einmal, nicht bei jedem Request)
-_admin_password_raw = os.environ.get('ADMIN_PASSWORD', '')
-_admin_password_hash = generate_password_hash(_admin_password_raw) if _admin_password_raw else None
-if not _admin_password_raw:
-    logging.warning("ADMIN_PASSWORD Umgebungsvariable nicht gesetzt — Login deaktiviert!")
+# Logging-Konfiguration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+
+def load_settings_from_db():
+    """
+    Lade Einstellungen aus PostgreSQL; fällt auf Env-Variablen zurück wenn DB-Wert fehlt oder leer.
+    Gibt Dict mit geladenen Werten zurück.
+    """
+    from database import get_database
+    try:
+        db = get_database()
+        result = {}
+
+        # analysis_interval: DB-Wert in Sekunden, Env-Fallback: 1800
+        val = db.get_setting('analysis_interval')
+        try:
+            result['analysis_interval'] = int(val) if val and int(val) > 0 else 1800
+        except (ValueError, TypeError):
+            result['analysis_interval'] = 1800
+
+        # headlines_per_source: DB-Wert, Env-Fallback: DEFAULT_HEADLINES_PER_SOURCE
+        val = db.get_setting('headlines_per_source')
+        try:
+            env_val = int(os.environ.get('DEFAULT_HEADLINES_PER_SOURCE', '1'))
+            result['headlines_per_source'] = int(val) if val and int(val) > 0 else env_val
+        except (ValueError, TypeError):
+            result['headlines_per_source'] = 1
+
+        # anthropic_api_key: DB-Wert, Env-Fallback: ANTHROPIC_API_KEY
+        val = db.get_setting('anthropic_api_key')
+        env_key = os.environ.get('ANTHROPIC_API_KEY', '')
+        result['anthropic_api_key'] = val.strip() if val and val.strip() else env_key
+
+        # admin_password_hash: DB-Wert, Env-Fallback: Hash von ADMIN_PASSWORD
+        val = db.get_setting('admin_password_hash')
+        if val and val.strip():
+            result['admin_password_hash'] = val.strip()
+        else:
+            env_pwd = os.environ.get('ADMIN_PASSWORD', '')
+            result['admin_password_hash'] = generate_password_hash(env_pwd) if env_pwd else None
+
+        logging.info(f"Einstellungen aus DB geladen: interval={result['analysis_interval']}s, "
+                     f"headlines={result['headlines_per_source']}, "
+                     f"api_key={'gesetzt' if result['anthropic_api_key'] else 'FEHLT'}")
+        return result
+
+    except Exception as e:
+        logging.warning(f"DB-Einstellungen konnten nicht geladen werden, nutze Env-Variablen: {e}")
+        env_pwd = os.environ.get('ADMIN_PASSWORD', '')
+        return {
+            'analysis_interval': 1800,
+            'headlines_per_source': int(os.environ.get('DEFAULT_HEADLINES_PER_SOURCE', '1')),
+            'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY', ''),
+            'admin_password_hash': generate_password_hash(env_pwd) if env_pwd else None,
+        }
+
+
+# --- Admin-Passwort und API-Keys aus DB laden (Env-Variablen als Fallback) ---
+_startup_settings = load_settings_from_db()
+_admin_password_hash = _startup_settings['admin_password_hash']
+if not _admin_password_hash:
+    logging.warning("ADMIN_PASSWORD nicht gesetzt (weder DB noch Env) — Login deaktiviert!")
+
+# --- Konfiguration & Standardwerte ---
+# Standardanzahl Headlines pro Quelle, wenn nichts anderes angegeben
+DEFAULT_HEADLINES_PER_SOURCE_MAIN = 2
+DEFAULT_HEADLINES_PER_SOURCE_TOTAL = 1
+# DEFAULT_HEADLINES_FROM_ENV aus DB oder Env
+DEFAULT_HEADLINES_FROM_ENV = _startup_settings['headlines_per_source']
+
+# --- Anthropic Client initialisieren ---
+anthropic_api_key = _startup_settings['anthropic_api_key']
+anthropic_client = None
+if anthropic_api_key:
+    try:
+        anthropic_client = Anthropic(api_key=anthropic_api_key, timeout=45.0)
+        logging.info("Anthropic Client erfolgreich initialisiert.")
+    except Exception as e:
+        logging.error(f"Fehler bei der Initialisierung des Anthropic Clients: {e}")
+else:
+    logging.error("############################################################")
+    logging.error("FEHLER: Anthropic API Key nicht verfügbar (weder DB noch Env)!")
+    logging.error("Sentiment-Analyse wird nicht funktionieren.")
+    logging.error("############################################################")
 
 
 # --- Authentifizierungs-Decorator ---
@@ -35,43 +118,6 @@ def login_required(f):
             return redirect(url_for('login_page'))
         return f(*args, **kwargs)
     return decorated_function
-
-# --- Konfiguration & Standardwerte ---
-# Standardanzahl Headlines pro Quelle, wenn nichts anderes angegeben
-DEFAULT_HEADLINES_PER_SOURCE_MAIN = 2
-DEFAULT_HEADLINES_PER_SOURCE_TOTAL = 1
-# Umgebungsvariable für Standard (optional)
-try:
-    # Versuche, den Wert aus der Umgebungsvariable zu lesen und in eine Zahl umzuwandeln
-    DEFAULT_HEADLINES_FROM_ENV = int(os.environ.get('DEFAULT_HEADLINES_PER_SOURCE', ''))
-    # Stelle sicher, dass der Wert sinnvoll ist (mindestens 1)
-    if DEFAULT_HEADLINES_FROM_ENV < 1:
-        DEFAULT_HEADLINES_FROM_ENV = None # Ungültigen Wert ignorieren
-    else:
-         logging.info(f"Umgebungsvariable DEFAULT_HEADLINES_PER_SOURCE gefunden: {DEFAULT_HEADLINES_FROM_ENV}")
-except (ValueError, TypeError):
-    DEFAULT_HEADLINES_FROM_ENV = None # Variable nicht gesetzt oder keine Zahl
-
-# Logging-Konfiguration
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
-# --- Anthropic Client initialisieren ---
-anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
-anthropic_client = None
-if anthropic_api_key:
-    try:
-        anthropic_client = Anthropic(api_key=anthropic_api_key, timeout=45.0)
-        logging.info("Anthropic Client erfolgreich initialisiert.")
-    except Exception as e:
-        logging.error(f"Fehler bei der Initialisierung des Anthropic Clients: {e}")
-else:
-    logging.error("############################################################")
-    logging.error("FEHLER: ANTHROPIC_API_KEY Umgebungsvariable nicht gesetzt!")
-    logging.error("Sentiment-Analyse über Anthropic API wird nicht funktionieren.")
-    logging.error("############################################################")
 
 
 # --- Funktion zur Sentiment-Analyse mit Anthropic API ---
