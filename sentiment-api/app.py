@@ -82,10 +82,26 @@ def analyze_sentiment_claude(headlines_batch: list) -> list:
     if not headlines_batch:
         return []
 
-    # Prompt-Aufbau (Kalibrierungs-Ankerpunkte — in Plan 02 weiter optimiert)
+    # Kalibrierter Prompt — Ankerpunkte und Anti-Bias-Anweisung (Plan 02)
     prompt_lines = [
         "Analysiere das Sentiment jeder der folgenden deutschen Nachrichtenschlagzeilen.",
         "Gib für jede Schlagzeile eine Fließkommazahl zwischen -1.0 und +1.0 zurück.",
+        "",
+        "KALIBRIERUNG — diese Beispiele zeigen die erwartete Skala:",
+        "- 'Flugzeugabsturz mit 200 Toten' → -0.9",
+        "- 'Wirtschaftskrise verschärft sich' → -0.6",
+        "- 'Regierung schließt neue Haushaltslücke' → -0.3",
+        "- 'Wetterbericht für die Woche' → 0.0",
+        "- 'Forschungsergebnisse veröffentlicht' → 0.0",
+        "- 'Wirtschaftswachstum über Erwartungen' → +0.5",
+        "- 'Friedensverhandlungen beginnen' → +0.7",
+        "- 'Historischer Durchbruch bei Krebstherapie' → +0.9",
+        "",
+        "WICHTIG:",
+        "- Bewerte die TONALITÄT der Schlagzeile, nicht das allgemeine Thema.",
+        "- Sachliche Berichte über Probleme sind NICHT automatisch -0.5 oder schlechter.",
+        "- Nutze den vollen Bereich: positive Nachrichten sollen positive Werte bekommen.",
+        "- Im Zweifel: ausgewogene Einschätzung, kein negativer Bias.",
         "",
         "Format: Nur \"Nummer: Score\" pro Zeile (z.B. \"1: -0.3\"). Keine Erklärungen.",
         "",
