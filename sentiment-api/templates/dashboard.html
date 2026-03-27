@@ -241,6 +241,131 @@
       font-style: italic;
     }
 
+    /* ===== SKALIERUNGS-KONTEXT (VIS-01) ===== */
+    .scale-section {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .scale-section h2 {
+      font-size: 1rem;
+      margin-bottom: 1.25rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Historischer Bereich: Balken mit positioniertem Score */
+    .hist-bar-wrap {
+      position: relative;
+      height: 28px;
+      margin: 0.75rem 0 0.5rem;
+    }
+
+    .hist-bar-track {
+      position: absolute;
+      top: 7px;
+      left: 0;
+      right: 0;
+      height: 14px;
+      background: var(--border);
+      border-radius: 7px;
+    }
+
+    .hist-bar-range {
+      position: absolute;
+      top: 7px;
+      height: 14px;
+      background: linear-gradient(to right, #e74c3c, #e67e22, #3498db, #6c3dbf, #8e44ad);
+      border-radius: 7px;
+    }
+
+    .hist-bar-needle {
+      position: absolute;
+      top: 2px;
+      width: 4px;
+      height: 24px;
+      background: var(--text);
+      border-radius: 2px;
+      transform: translateX(-50%);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    }
+
+    /* Schwellwert-Marker P20/P40/P60/P80 */
+    .threshold-tick {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 28px;
+      background: rgba(0,0,0,0.25);
+      transform: translateX(-50%);
+    }
+
+    .threshold-label {
+      position: absolute;
+      top: 30px;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    /* Werte-Zeile Min/Median/Max */
+    .hist-values {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .hist-values span strong {
+      display: block;
+      font-size: 0.95rem;
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    /* Perzentil-Karte */
+    .percentile-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .percentile-badge {
+      background: var(--primary);
+      color: white;
+      border-radius: 6px;
+      padding: 0.4rem 1rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .percentile-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Fallback-Hinweis */
+    .fallback-hint {
+      background: #fff8e1;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      color: #856404;
+      margin-top: 0.75rem;
+      display: none;
+    }
+
     /* ===== ALLGEMEINE SECTION-STYLES ===== */
     section {
       background: var(--surface);
