@@ -46,14 +46,16 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ ESP32 mood.html zeigt Headlines mit Einzel-Scores — v5.0 Phase 15
 - ✓ GitHub Page erweitert mit Headline-Darstellung — v5.0 Phase 15
 
+- ✓ Sentiment-Analyse auf Claude API (Anthropic SDK) umgestellt — v6.0 Phase 16
+- ✓ Dynamische Score-Skalierung mit Perzentilen — v6.0 Phase 17
+- ✓ Kalibrierter Prompt für ausgewogenere Scores — v6.0 Phase 16
+- ✓ API liefert Skalierungs-Kontext (Rohwert, Perzentil, Bereich) — v6.0 Phase 17
+- ✓ ESP32 bezieht led_index dynamisch vom Backend — v6.0 Phase 18
+- ✓ Dashboard zeigt Skalierungs-Transparenz — v6.0 Phase 18
+
 ### Active
 
-- [ ] Sentiment-Analyse von OpenAI auf Claude API (Anthropic SDK) umstellen
-- [ ] Dynamische Score-Skalierung basierend auf historischen Perzentilen
-- [ ] Prompt-Optimierung für ausgewogenere Einzel-Scores
-- [ ] Backend liefert Skalierungs-Kontext (Rohwert, Perzentil, historischer Bereich)
-- [ ] ESP32 bezieht Schwellwerte dynamisch vom Backend
-- [ ] Dashboard zeigt Skalierungs-Transparenz
+(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
 
 ### Out of Scope
 
@@ -122,17 +124,5 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-## Current Milestone: v6.0 Dynamische Bewertungsskala
-
-**Goal:** Scoring-Pipeline von OpenAI auf Claude API umstellen, Bewertungsskala dynamisch machen, volle Farbpalette ausreizen.
-
-**Target features:**
-- Claude API (Anthropic SDK) statt OpenAI für Sentiment-Analyse
-- Dynamische Skalierung basierend auf historischen Perzentilen
-- Prompt-Optimierung für ausgewogenere Scores
-- Backend-Transparenz (Rohwert, Perzentil, historischer Bereich)
-- ESP32 dynamische Schwellwerte vom Backend
-- Dashboard Skalierungs-Anzeige
-
 ---
-*Last updated: 2026-03-27 after v6.0 milestone start (Dynamische Bewertungsskala)*
+*Last updated: 2026-03-27 after v6.0 milestone complete (Dynamische Bewertungsskala)*

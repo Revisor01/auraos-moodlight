@@ -1,5 +1,20 @@
 # Milestones
 
+## v6.0 Dynamische Bewertungsskala (Shipped: 2026-03-27)
+
+**Phases completed:** 3 phases, 6 plans, 7 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- One-liner:
+- PostgreSQL percentile_cont()-Abfrage in Database-Klasse + module-level compute_led_index() mit Fallback bei weniger als 3 historischen Datenpunkten
+- `/api/moodlight/current` liefert jetzt raw_score, led_index via compute_led_index(), percentile via linearer Interpolation, thresholds (p20/p40/p60/p80/fallback) und historical (min/max/median/count) mit Redis-Cache auf Key moodlight:current:v2
+- ESP32 liest led_index direkt aus /api/moodlight/current Response und ueberschreibt die lokale mapSentimentToLED()-Berechnung; Fallback fuer aeltere Backends ohne led_index-Feld bleibt erhalten.
+- One-liner:
+
+---
+
 ## v5.0 Schlagzeilen-Transparenz & Dashboard (Shipped: 2026-03-26)
 
 **Phases completed:** 4 phases, 7 plans, 11 tasks

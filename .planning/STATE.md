@@ -4,7 +4,7 @@ milestone: v6.0
 milestone_name: Dynamische Bewertungsskala
 status: verifying
 stopped_at: Completed 18-esp32-dashboard-integration/18-02-PLAN.md — Phase 18 abgeschlossen
-last_updated: "2026-03-27T10:01:08.618Z"
+last_updated: "2026-03-27T10:01:50.236Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 3
