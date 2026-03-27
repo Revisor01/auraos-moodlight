@@ -43,12 +43,14 @@ Plans:
   2. Jeder Feed hat einen farbkodierten Balken, der die relative Position im Score-Bereich visualisiert
   3. Ein Umschalter wechselt zwischen 7-Tage- und 30-Tage-Ansicht ohne Seiten-Reload
   4. Die GitHub Page zeigt dieselben Feed-Trenddaten in einer vergleichenden Ansicht
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 2 plans
+Plans:
+- [ ] 25-01-PLAN.md — Dashboard-Tab "Feed-Trends" mit Ranking-Tabelle, Farbbalken und Zeitfenster-Umschalter
+- [ ] 25-02-PLAN.md — GitHub Page Sektion "Feed-Vergleich" mit Feed-Ranking und Zeitfenster-Umschalter
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 24. Backend-Trendberechnung | 1/1 | Complete    | 2026-03-27 |
-| 25. Visualisierung & GitHub Page | 0/? | Not started | - |
+| 25. Visualisierung & GitHub Page | 0/2 | Not started | - |
