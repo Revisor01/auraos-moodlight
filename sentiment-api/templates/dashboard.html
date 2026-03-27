@@ -708,6 +708,40 @@
       </p>
     </div>
 
+    <!-- Skalierungs-Kontext (VIS-01) -->
+    <div class="scale-section" id="scaleSection">
+      <h2>Skalierungs-Kontext <span class="count-badge" id="histDays">7 Tage</span></h2>
+
+      <!-- Perzentil-Anzeige -->
+      <div class="percentile-row">
+        <div class="percentile-badge" id="percentileVal">—</div>
+        <div class="percentile-desc" id="percentileDesc">Wird geladen…</div>
+      </div>
+
+      <!-- Historischer Bereich mit Score-Position + Schwellwert-Markierungen -->
+      <div class="hist-bar-wrap" id="histBarWrap">
+        <div class="hist-bar-track"></div>
+        <div class="hist-bar-range" id="histBarRange"></div>
+        <!-- Schwellwert-Ticks werden per JS eingefügt -->
+        <div class="hist-bar-needle" id="histNeedle"></div>
+      </div>
+
+      <!-- Min / Median / Max -->
+      <div class="hist-values">
+        <span><strong id="histMin">—</strong>Min (7 Tage)</span>
+        <span style="text-align:center"><strong id="histMedian">—</strong>Median</span>
+        <span style="text-align:right"><strong id="histMax">—</strong>Max (7 Tage)</span>
+      </div>
+
+      <!-- Datenpunkt-Zähler -->
+      <p class="formula-hint" id="histCount">— Datenpunkte in den letzten 7 Tagen</p>
+
+      <!-- Fallback-Hinweis -->
+      <div class="fallback-hint" id="fallbackHint">
+        Wenige Datenpunkte — Backend nutzt Fallback-Schwellwerte. Anzeige genauer nach 3+ Analysen.
+      </div>
+    </div>
+
   </div>
 
   <!-- ===== TAB: SCHLAGZEILEN ===== -->
@@ -854,6 +888,62 @@ async function loadOverview() {
 
       // Zeiger auf Farbverlauf positionieren
       document.getElementById('barNeedle').style.left = scoreToPercent(score);
+
+      // VIS-01: Skalierungs-Kontext befüllen
+      if (current.percentile !== undefined && current.thresholds && current.historical) {
+        var pct      = Math.round(current.percentile * 100);
+        var hist     = current.historical;
+        var thresh   = current.thresholds;
+        var histMin  = parseFloat(hist.min);
+        var histMax  = parseFloat(hist.max);
+        var histMed  = parseFloat(hist.median);
+        var histSpan = histMax - histMin;
+
+        // Perzentil-Badge
+        document.getElementById('percentileVal').textContent = pct + '. Pzt.';
+        document.getElementById('percentileDesc').textContent =
+          'Der aktuelle Score liegt über ' + pct + ' % der Werte der letzten 7 Tagen.';
+
+        // Historische Min/Median/Max-Werte
+        document.getElementById('histMin').textContent    = histMin.toFixed(3);
+        document.getElementById('histMedian').textContent = histMed.toFixed(3);
+        document.getElementById('histMax').textContent    = histMax.toFixed(3);
+        document.getElementById('histCount').textContent  =
+          (hist.count || '—') + ' Datenpunkte in den letzten 7 Tagen';
+
+        // Farbverlauf-Balken: linke Kante = histMin, rechte Kante = histMax
+        // Gesamtbreite des Tracks = [-1, +1] = 100 %
+        if (histSpan > 0.001) {
+          var leftPct  = ((histMin + 1) / 2 * 100).toFixed(1) + '%';
+          var widthPct = (histSpan / 2 * 100).toFixed(1) + '%';
+          var rangeEl  = document.getElementById('histBarRange');
+          rangeEl.style.left  = leftPct;
+          rangeEl.style.width = widthPct;
+
+          // Score-Nadel innerhalb des Tracks positionieren
+          document.getElementById('histNeedle').style.left = scoreToPercent(score);
+
+          // Schwellwert-Ticks P20/P40/P60/P80
+          var wrap = document.getElementById('histBarWrap');
+          ['p20','p40','p60','p80'].forEach(function(key) {
+            if (thresh[key] === undefined) return;
+            var tPos = ((thresh[key] + 1) / 2 * 100).toFixed(1) + '%';
+            var tick = document.createElement('div');
+            tick.className = 'threshold-tick';
+            tick.style.left = tPos;
+            var lbl = document.createElement('div');
+            lbl.className = 'threshold-label';
+            lbl.style.left = tPos;
+            lbl.textContent = key.toUpperCase() + ' ' + parseFloat(thresh[key]).toFixed(2);
+            wrap.appendChild(tick);
+            wrap.appendChild(lbl);
+          });
+        }
+
+        // Fallback-Hinweis
+        document.getElementById('fallbackHint').style.display =
+          thresh.fallback ? 'block' : 'none';
+      }
 
       // Formelzeile: Roh-Durchschnitt näherungsweise aus Gesamt-Score zurückrechnen
       // score = tanh(raw_avg * 2)  ⟹  raw_avg ≈ atanh(score) / 2
