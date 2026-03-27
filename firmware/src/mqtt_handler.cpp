@@ -440,8 +440,8 @@ void sendInitialStates()
 
     // DHT direkt lesen für aktuelle Werte
     debug(F("Lese aktuelle DHT Werte für initiale Zustände..."));
-    float currentTemp = dht.readTemperature();
-    float currentHum = dht.readHumidity();
+    float currentTemp = dhtSensor ? dhtSensor->readTemperature() : NAN;
+    float currentHum = dhtSensor ? dhtSensor->readHumidity() : NAN;
     bool tempValid = !isnan(currentTemp);
     bool humValid = !isnan(currentHum);
 

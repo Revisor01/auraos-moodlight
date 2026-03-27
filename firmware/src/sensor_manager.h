@@ -10,8 +10,11 @@
 // Beide Funktionen holen externe Daten und aktualisieren AppState.
 
 // Hardware-Instanzen
-extern DHT dht;
+extern DHT* dhtSensor;
 extern WiFiClient wifiClientHTTP;
+
+// DHT initialisieren (nach Settings-Load aufrufen)
+void initDHT();
 
 // Sentiment-Hilfsfunktionen
 int mapSentimentToLED(float sentimentScore);
