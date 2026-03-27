@@ -1344,6 +1344,26 @@
         </div>
     </section>
 
+    <!-- Feed-Vergleich (PAGE-01) -->
+    <section class="section" id="feed-trends" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+        <div class="container">
+            <h2 class="section-title">Feed-Vergleich <span class="ft-count-badge" id="ftCount" style="display:none"></span></h2>
+            <p class="feed-trends-intro">
+                Welche Nachrichtenquellen berichten tendenziell positiver, welche negativer?
+                Das Ranking zeigt den Durchschnitts-Score jedes aktiven Feeds im gewählten Zeitfenster.
+            </p>
+            <div class="feed-trends-controls">
+                <div class="ft-window-toggle">
+                    <button class="ft-window-btn active" data-days="7" onclick="ftSwitchWindow(7)">Letzte 7 Tage</button>
+                    <button class="ft-window-btn" data-days="30" onclick="ftSwitchWindow(30)">Letzte 30 Tage</button>
+                </div>
+            </div>
+            <div id="ftRankBody">
+                <p class="ft-loading">Lade Feed-Ranking&#8230;</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Tech Stack Section -->
     <section class="section">
         <div class="container">
@@ -2203,6 +2223,121 @@
             document.addEventListener('DOMContentLoaded', loadHeadlines);
         } else {
             loadHeadlines();
+        }
+    })();
+    </script>
+    <script>
+    // ===== FEED-VERGLEICH (PAGE-01) =====
+    (function() {
+        var API_BASE = 'https://analyse.godsapp.de/api/moodlight/feeds/trends';
+        var ftCurrentDays = 7;
+
+        function ftScoreColor(score) {
+            if (score === null || score === undefined) return '#ced4da';
+            if (score >= 0.30)  return '#28a745';
+            if (score >= 0.10)  return '#6c3dbf';
+            if (score >= -0.10) return '#17a2b8';
+            if (score >= -0.30) return '#e67e22';
+            return '#e74c3c';
+        }
+
+        function ftScoreClass(score) {
+            if (score === null || score === undefined) return 'neu';
+            if (score > 0.10)  return 'pos';
+            if (score < -0.10) return 'neg';
+            return 'neu';
+        }
+
+        function ftBarWidth(score) {
+            if (score === null || score === undefined) return '0%';
+            return ((score + 1) / 2 * 100).toFixed(1) + '%';
+        }
+
+        function ftRender(feeds) {
+            var body = document.getElementById('ftRankBody');
+            var countEl = document.getElementById('ftCount');
+            if (!body) return;
+
+            if (!feeds || feeds.length === 0) {
+                body.innerHTML = '<p class="ft-loading">Keine Daten im gew\u00e4hlten Zeitfenster verf\u00fcgbar.</p>';
+                if (countEl) countEl.style.display = 'none';
+                return;
+            }
+
+            if (countEl) {
+                countEl.textContent = feeds.length + ' Feeds';
+                countEl.style.display = 'inline-block';
+            }
+
+            var html = '<div class="feed-rank-grid">';
+            for (var i = 0; i < feeds.length; i++) {
+                var f = feeds[i];
+                var score = (f.avg_score !== null && f.avg_score !== undefined) ? parseFloat(f.avg_score) : null;
+                var scoreStr = score !== null ? (score >= 0 ? '+' : '') + score.toFixed(3) : '\u2014';
+                var barColor = ftScoreColor(score);
+                var barW = ftBarWidth(score);
+                var cls = ftScoreClass(score);
+                var name = (f.feed_name || '\u2014').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+                html += '<div class="feed-rank-row">';
+                html += '<span class="ft-rank-nr">' + (i + 1) + '</span>';
+                html += '<span class="ft-rank-name">' + name + '</span>';
+                html += '<div class="ft-bar-track"><div class="ft-bar-fill" style="width:' + barW + ';background:' + barColor + '"></div></div>';
+                html += '<span class="ft-score ' + cls + '">' + scoreStr + '</span>';
+                html += '</div>';
+            }
+            html += '</div>';
+            body.innerHTML = html;
+        }
+
+        function ftLoad(days) {
+            var body = document.getElementById('ftRankBody');
+            if (body) body.innerHTML = '<p class="ft-loading">Lade Feed-Ranking\u2026</p>';
+
+            fetch(API_BASE + '?days=' + days)
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    if (data.status === 'success' && Array.isArray(data.feeds)) {
+                        ftRender(data.feeds);
+                    } else {
+                        if (body) body.innerHTML = '<p class="ft-error">Daten konnten nicht verarbeitet werden.</p>';
+                    }
+                })
+                .catch(function() {
+                    if (body) body.innerHTML = '<p class="ft-error">Backend nicht erreichbar \u2014 Feed-Ranking nicht verf\u00fcgbar.</p>';
+                });
+        }
+
+        window.ftSwitchWindow = function(days) {
+            ftCurrentDays = days;
+            document.querySelectorAll('.ft-window-btn').forEach(function(btn) {
+                btn.classList.toggle('active', parseInt(btn.getAttribute('data-days')) === days);
+            });
+            ftLoad(days);
+        };
+
+        // Automatisch laden wenn Sektion sichtbar wird (IntersectionObserver)
+        var section = document.getElementById('feed-trends');
+        if (section && 'IntersectionObserver' in window) {
+            var loaded = false;
+            var observer = new IntersectionObserver(function(entries) {
+                if (entries[0].isIntersecting && !loaded) {
+                    loaded = true;
+                    ftLoad(ftCurrentDays);
+                    observer.disconnect();
+                }
+            }, { threshold: 0.1 });
+            observer.observe(section);
+        } else if (section) {
+            // Fallback: sofort laden
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() { ftLoad(ftCurrentDays); });
+            } else {
+                ftLoad(ftCurrentDays);
+            }
         }
     })();
     </script>
