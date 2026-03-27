@@ -1,5 +1,17 @@
 # Milestones
 
+## v9.0 Sentiment-Trend pro Feed (Shipped: 2026-03-27)
+
+**Phases completed:** 2 phases, 3 plans, 4 tasks
+
+**Key accomplishments:**
+
+- PostgreSQL-Aggregation per Feed mit get_feed_trends(days) in database.py und öffentlichem GET /api/moodlight/feeds/trends Endpoint als sortiertes Feed-Ranking
+- One-liner:
+- Farbkodiertes Feed-Ranking mit 7/30-Tage-Umschalter via IntersectionObserver in docs/index.html eingebaut
+
+---
+
 ## v8.0 ESP32 UI-Redesign (Shipped: 2026-03-27)
 
 **Phases completed:** 2 phases, 5 plans, 3 tasks

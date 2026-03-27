@@ -61,12 +61,12 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ style.css komplett überarbeitet (1035 Zeilen, CSS-Variablen) — v8.0 Phase 22
 - ✓ Alle 4 ESP32 Seiten an Dashboard-Design angeglichen — v8.0 Phase 23
 
+- ✓ Feed-Trend-Analyse mit 7/30-Tage-Fenster — v9.0 Phase 24
+- ✓ Feed-Ranking im Dashboard + GitHub Page — v9.0 Phase 25
+
 ### Active
 
-- [ ] Durchschnitts-Score pro Feed berechnen (7-Tage/30-Tage)
-- [ ] API-Endpoint für Feed-Trends
-- [ ] Dashboard Feed-Trend-Visualisierung
-- [ ] GitHub Page Feed-Vergleichs-Ansicht
+(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
 
 ### Out of Scope
 
@@ -133,9 +133,5 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-## Current Milestone: v9.0 Sentiment-Trend pro Feed
-
-**Goal:** Zeigen welcher Feed tendenziell positiver/negativer bewertet wird.
-
 ---
-*Last updated: 2026-03-27 after v9.0 milestone start (Sentiment-Trend pro Feed)*
+*Last updated: 2026-03-27 after v9.0 milestone complete (Sentiment-Trend pro Feed)*
