@@ -52,23 +52,23 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| API-01 | — | Pending |
-| API-02 | — | Pending |
-| API-03 | — | Pending |
-| SCALE-01 | — | Pending |
-| SCALE-02 | — | Pending |
-| SCALE-03 | — | Pending |
-| PROMPT-01 | — | Pending |
-| PROMPT-02 | — | Pending |
-| ESP-01 | — | Pending |
-| ESP-02 | — | Pending |
-| VIS-01 | — | Pending |
+| API-01 | Phase 16 | Pending |
+| API-02 | Phase 16 | Pending |
+| API-03 | Phase 16 | Pending |
+| PROMPT-01 | Phase 16 | Pending |
+| PROMPT-02 | Phase 16 | Pending |
+| SCALE-01 | Phase 17 | Pending |
+| SCALE-02 | Phase 17 | Pending |
+| SCALE-03 | Phase 17 | Pending |
+| ESP-01 | Phase 18 | Pending |
+| ESP-02 | Phase 18 | Pending |
+| VIS-01 | Phase 18 | Pending |
 
 **Coverage:**
 - v6.0 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 — Traceability nach Roadmap v6.0 ergänzt*

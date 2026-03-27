@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Dynamische Bewertungsskala
-status: Defining requirements
+status: Ready to plan
 stopped_at: null
-last_updated: "2026-03-27T01:00:00.000Z"
+last_updated: "2026-03-27T02:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,20 +19,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Defining requirements for v6.0
+**Current focus:** Phase 16 — Claude API Migration
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 16 of 18 (Claude API Migration)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-03-27 — Milestone v6.0 started
+Status: Ready to plan
+Last activity: 2026-03-27 — v6.0 Roadmap erstellt (Phasen 16–18)
+
+Progress: [░░░░░░░░░░] 0%  (v6.0: 0/3 Phasen)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 0 (v6.0)
 - Average duration: —
 - Total execution time: —
 
@@ -41,7 +43,8 @@ Last activity: 2026-03-27 — Milestone v6.0 started
 ### Decisions
 
 - OpenAI → Claude API (Anthropic SDK) für Sentiment-Analyse
-- Dynamische Skalierung statt fester Schwellwerte
+- Dynamische Skalierung statt fester Schwellwerte (7-Tage-Fenster)
+- Kein Multi-Provider — ein Provider, konfigurierbar per ANTHROPIC_API_KEY
 
 ### Pending Todos
 
@@ -49,11 +52,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- User braucht Anthropic API Account + API Key für Claude API
-- Score-Verteilung clustert bei -0.2 bis -0.6 — Skala wird kaum genutzt
+- Phase 16: User braucht Anthropic API Account + API Key
+- Phase 17: Ausreichend historische DB-Daten nötig für Perzentil-Berechnung
 
 ## Session Continuity
 
 Last session: 2026-03-27
-Stopped at: Milestone v6.0 initialized
+Stopped at: v6.0 Roadmap erstellt, bereit für /gsd:plan-phase 16
 Resume file: None
