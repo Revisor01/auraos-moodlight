@@ -363,6 +363,44 @@ def register_moodlight_endpoints(app):
             logger.error(f"Fehler beim Cache-Löschen: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
 
+    # ===== MANUELLER ANALYSE-TRIGGER (CTRL-01, API-02) =====
+    @app.route('/api/moodlight/analyze/trigger', methods=['POST'])
+    @api_login_required
+    def trigger_moodlight_analysis():
+        """
+        Startet sofortige Sentiment-Analyse (manueller Trigger vom Dashboard).
+        Synchroner Request — dauert ca. 10–30 Sekunden.
+        Gibt Analyse-Ergebnis zurück: sentiment_score, category, headlines_analyzed.
+        """
+        try:
+            worker = get_background_worker()
+            if worker is None:
+                return jsonify({
+                    "status": "error",
+                    "message": "Background Worker nicht verfügbar"
+                }), 503
+
+            with worker.app.app_context():
+                result = worker.trigger()
+
+            logger.info(f"Manueller Trigger abgeschlossen: score={result['sentiment_score']:.3f}")
+
+            return jsonify({
+                "status": "success",
+                "sentiment_score": result['sentiment_score'],
+                "category": result['category'],
+                "headlines_analyzed": result['headlines_analyzed'],
+                "source_count": result['source_count'],
+                "duration_seconds": result['duration_seconds']
+            })
+
+        except RuntimeError as e:
+            logger.error(f"Manueller Trigger fehlgeschlagen (erwartet): {e}")
+            return jsonify({"status": "error", "message": str(e)}), 422
+        except Exception as e:
+            logger.error(f"Fehler in POST /api/moodlight/analyze/trigger: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
+
     # ===== FEED-VERWALTUNG ENDPOINTS =====
 
     @app.route('/api/moodlight/feeds', methods=['GET'])
