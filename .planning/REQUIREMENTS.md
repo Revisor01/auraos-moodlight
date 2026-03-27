@@ -26,8 +26,8 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 
 ### ESP32 Integration
 
-- [ ] **ESP-01**: ESP32 bezieht Schwellwerte dynamisch vom Backend statt hardcoded
-- [ ] **ESP-02**: LED-Farbverteilung nutzt die volle Skala bei typischen Nachrichtenlagen
+- [x] **ESP-01**: ESP32 bezieht Schwellwerte dynamisch vom Backend statt hardcoded
+- [x] **ESP-02**: LED-Farbverteilung nutzt die volle Skala bei typischen Nachrichtenlagen
 
 ### Dashboard
 
@@ -60,8 +60,8 @@ Requirements für Milestone v6.0: Dynamische Bewertungsskala.
 | SCALE-01 | Phase 17 | Complete |
 | SCALE-02 | Phase 17 | Complete |
 | SCALE-03 | Phase 17 | Complete |
-| ESP-01 | Phase 18 | Pending |
-| ESP-02 | Phase 18 | Pending |
+| ESP-01 | Phase 18 | Complete |
+| ESP-02 | Phase 18 | Complete |
 | VIS-01 | Phase 18 | Pending |
 
 **Coverage:**

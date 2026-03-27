@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Dynamische Bewertungsskala
-status: verifying
-stopped_at: Completed 17-dynamische-skalierung/17-02-PLAN.md — Phase 17 abgeschlossen
-last_updated: "2026-03-27T09:49:22.936Z"
+status: executing
+stopped_at: Completed 18-esp32-dashboard-integration/18-01-PLAN.md
+last_updated: "2026-03-27T09:57:16.632Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
-**Current focus:** Phase 17 — dynamische-skalierung
+**Current focus:** Phase 18 — esp32-dashboard-integration
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 18 (esp32-dashboard-integration) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-27
 
 Progress: [░░░░░░░░░░] 0%  (v6.0: 0/3 Phasen)
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%  (v6.0: 0/3 Phasen)
 - [Phase 17-dynamische-skalierung]: Fallback-Schwelle count < 3 für Perzentil-Berechnung — drei Punkte minimum für statistisch sinnvolle Werte
 - [Phase 17-dynamische-skalierung]: CURRENT_CACHE_KEY = 'moodlight:current:v2' — Versionssprung statt Cache-Flush verhindert Stale-Format
 - [Phase 17-dynamische-skalierung]: sentiment-Feld bleibt in Response (Rückwärtskompatibilität), entspricht raw_score
+- [Phase 18-esp32-dashboard-integration]: handleSentiment() Signatur unveraendert (float) — LED-Index nach Aufruf mit API-Wert ueberschrieben
 
 ### Pending Todos
 
@@ -65,6 +66,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T09:45:48.973Z
-Stopped at: Completed 17-dynamische-skalierung/17-02-PLAN.md — Phase 17 abgeschlossen
+Last session: 2026-03-27T09:57:16.630Z
+Stopped at: Completed 18-esp32-dashboard-integration/18-01-PLAN.md
 Resume file: None
