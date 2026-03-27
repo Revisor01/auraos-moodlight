@@ -694,4 +694,35 @@ def register_moodlight_endpoints(app):
             logger.error(f"Fehler in PUT /api/moodlight/settings: {e}", exc_info=True)
             return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
+    # ===== FEED-TRENDS ENDPOINT (TREND-01, TREND-02) =====
+    @app.route('/api/moodlight/feeds/trends', methods=['GET'])
+    def get_moodlight_feed_trends():
+        """
+        Durchschnitts-Score pro Feed für ein Zeitfenster.
+
+        Query-Parameter:
+            days: Zeitfenster in Tagen (default: 7, erlaubt: 7, 30)
+
+        Returns:
+            JSON mit status, days, count, feeds (sortiert nach avg_score DESC).
+        """
+        try:
+            days_param = request.args.get('days', 7, type=int)
+            if days_param not in (7, 30):
+                days_param = 7
+
+            db = get_database()
+            feeds = db.get_feed_trends(days=days_param)
+
+            return jsonify({
+                "status": "success",
+                "days": days_param,
+                "count": len(feeds),
+                "feeds": feeds
+            })
+
+        except Exception as e:
+            logger.error(f"Fehler in GET /api/moodlight/feeds/trends: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
+
     logger.info("Moodlight API-Endpunkte registriert")
