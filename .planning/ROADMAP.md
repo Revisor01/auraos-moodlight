@@ -32,7 +32,7 @@
   4. GET `/api/moodlight/settings` liefert aktuelle Werte als JSON zurück
 **Plans**: 3 plans
 Plans:
-- [ ] 19-01-PLAN.md — settings-Tabelle in init.sql + migrate_settings.sql für Produktions-DB
+- [x] 19-01-PLAN.md — settings-Tabelle in init.sql + migrate_settings.sql für Produktions-DB
 - [ ] 19-02-PLAN.md — Database-Methoden (get/set/get_all) + App-Startup auf DB-First umstellen
 - [ ] 19-03-PLAN.md — Worker reconfigure() + GET/PUT /api/moodlight/settings Endpoints
 
@@ -63,6 +63,6 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 19. Einstellungs-Persistenz | v7.0 | 0/3 | Planned | - |
+| 19. Einstellungs-Persistenz | v7.0 | 1/3 | In Progress|  |
 | 20. Manueller Analyse-Trigger | v7.0 | 0/? | Not started | - |
 | 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |

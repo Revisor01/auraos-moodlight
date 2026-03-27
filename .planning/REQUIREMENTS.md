@@ -9,7 +9,7 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 
 ### Einstellungs-Persistenz
 
-- [ ] **CFG-01**: Einstellungen (Frequenz, Headlines-Anzahl, API Keys) werden in PostgreSQL gespeichert
+- [x] **CFG-01**: Einstellungen (Frequenz, Headlines-Anzahl, API Keys) werden in PostgreSQL gespeichert
 - [ ] **CFG-02**: Beim Start liest das Backend Einstellungen aus der DB, Umgebungsvariablen dienen als Fallback
 - [ ] **CFG-03**: Änderungen an Einstellungen werden sofort wirksam ohne Container-Neustart
 
@@ -45,7 +45,7 @@ Requirements für Milestone v7.0: Dashboard-Einstellungen.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CFG-01 | Phase 19 | Pending |
+| CFG-01 | Phase 19 | Complete |
 | CFG-02 | Phase 19 | Pending |
 | CFG-03 | Phase 19 | Pending |
 | API-01 | Phase 19 | Pending |
