@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 25-02-PLAN.md
-last_updated: "2026-03-27T16:18:20.292Z"
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-03-27T16:18:32.152Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 2
@@ -43,6 +43,8 @@ Progress: [░░░░░░░░░░] 0/2 Phasen abgeschlossen
 - [Phase 24-backend-trendberechnung]: Kein Redis-Cache fuer /feeds/trends — 30-Min-Update-Intervall macht Latenz tolerierbar
 - [Phase 24-backend-trendberechnung]: days-Parameter auf 7 und 30 beschraenkt — verhindert hohe DB-Last durch beliebige Zeitfenster
 - [Phase 25-visualisierung-github-page]: IntersectionObserver fuer Lazy-Loading von Feed-Daten — Daten werden erst beim Einblenden der Sektion geladen
+- [Phase 25-visualisierung-github-page]: scoreToBarColor() mit 5 diskreten Schwellwerten statt CSS-Gradient fuer einfachere Wartbarkeit
+- [Phase 25-visualisierung-github-page]: trendsLoaded-Flag verhindert doppeltes Laden beim Tab-Wechsel
 
 ### Pending Todos
 
@@ -54,6 +56,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T16:18:14.950Z
-Stopped at: Completed 25-02-PLAN.md
+Last session: 2026-03-27T16:18:32.139Z
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None

@@ -14,9 +14,9 @@ Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 
 ### Dashboard-Visualisierung
 
-- [ ] **VIS-01**: Dashboard zeigt Feed-Ranking-Tabelle (positivster bis negativster Feed)
-- [ ] **VIS-02**: Farbkodierte Score-Balken pro Feed zeigen relative Position
-- [ ] **VIS-03**: Zeitfenster-Umschalter (7 Tage / 30 Tage) im Dashboard
+- [x] **VIS-01**: Dashboard zeigt Feed-Ranking-Tabelle (positivster bis negativster Feed)
+- [x] **VIS-02**: Farbkodierte Score-Balken pro Feed zeigen relative Position
+- [x] **VIS-03**: Zeitfenster-Umschalter (7 Tage / 30 Tage) im Dashboard
 
 ### GitHub Page
 
@@ -36,9 +36,9 @@ Requirements für Milestone v9.0: Sentiment-Trend pro Feed.
 |-------------|-------|--------|
 | TREND-01 | Phase 24 | Complete |
 | TREND-02 | Phase 24 | Complete |
-| VIS-01 | Phase 25 | Pending |
-| VIS-02 | Phase 25 | Pending |
-| VIS-03 | Phase 25 | Pending |
+| VIS-01 | Phase 25 | Complete |
+| VIS-02 | Phase 25 | Complete |
+| VIS-03 | Phase 25 | Complete |
 | PAGE-01 | Phase 25 | Complete |
 
 **Coverage:**
