@@ -12,6 +12,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="/favicon.png">
+    <style>
+    .headline-item { display:flex; align-items:baseline; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); }
+    .headline-score { font-weight:700; min-width:42px; font-size:0.85em; }
+    .headline-text  { flex:1; font-size:0.9em; }
+    .headline-feed  { font-size:0.75em; color:var(--text-muted); white-space:nowrap; margin-left:6px; }
+    </style>
 </head>
 <body>
     <div class="header">
@@ -39,7 +45,7 @@
                     <li data-tab="day" role="tab" aria-selected="false" aria-controls="day-tab">Letzter Tag</li>
                 </ul>
             </div>
-            
+
             <div class="filter-control">
                 <div class="filter-label">Nicht aktualisierte Werte ausblenden:</div>
                 <label class="filter-toggle">
@@ -156,7 +162,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="info-card">
         <div class="info-card-icon">
             <i class="fas fa-info-circle" aria-hidden="true"></i>
@@ -169,7 +175,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- v9.0: CSV Export/Repair/Storage removed - data managed in backend -->
 
     <!-- v9.0: Backend-Statistiken info card removed -->
@@ -181,7 +187,7 @@
         </div>
         <div class="info-card-content">
             <div class="info-card-title">Analysierte Schlagzeilen</div>
-            <div id="headlines-list" style="margin-top: 12px;">
+            <div id="headlines-list">
                 <span style="opacity: 0.6;">Lade Schlagzeilen...</span>
             </div>
         </div>
@@ -195,12 +201,12 @@
 (function() {
     var HEADLINES_URL = 'https://analyse.godsapp.de/api/moodlight/headlines?limit=20';
 
-    function scoreColor(score) {
-        if (score <= -0.4) return '#e53e3e';
-        if (score < 0)    return '#dd6b20';
-        if (score === 0)  return '#3182ce';
-        if (score < 0.4)  return '#6b46c1';
-        return '#805ad5';
+    function scoreClass(score) {
+        if (score <= -0.4) return 'score-sehr-negativ';
+        if (score < 0)     return 'score-negativ';
+        if (score === 0)   return 'score-neutral';
+        if (score < 0.4)   return 'score-positiv';
+        return 'score-sehr-positiv';
     }
 
     function renderHeadlines(headlines) {
@@ -213,14 +219,12 @@
         for (var i = 0; i < headlines.length; i++) {
             var h = headlines[i];
             var score = typeof h.sentiment_score === 'number' ? h.sentiment_score.toFixed(2) : '--';
-            var color = typeof h.sentiment_score === 'number' ? scoreColor(h.sentiment_score) : '#888';
+            var cls = typeof h.sentiment_score === 'number' ? scoreClass(h.sentiment_score) : 'score-neutral';
             var feed = h.feed_name || h.source_name || '';
-            html += '<div style="display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px solid rgba(128,128,128,0.15);">';
-            html += '<span style="font-weight:700;min-width:42px;color:' + color + ';font-size:0.85em;">' + score + '</span>';
-            html += '<span style="flex:1;font-size:0.9em;">' + h.headline + '</span>';
-            if (feed) {
-                html += '<span style="font-size:0.75em;opacity:0.55;white-space:nowrap;margin-left:6px;">' + feed + '</span>';
-            }
+            html += '<div class="headline-item">';
+            html += '<span class="' + cls + ' headline-score">' + score + '</span>';
+            html += '<span class="headline-text">' + h.headline + '</span>';
+            if (feed) { html += '<span class="headline-feed">' + feed + '</span>'; }
             html += '</div>';
         }
         container.innerHTML = html;
