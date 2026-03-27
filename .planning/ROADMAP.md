@@ -58,8 +58,9 @@ Plans:
   2. Analyse-Frequenz und Headlines-Anzahl sind über Eingabefelder änderbar und werden nach Speichern sofort aktiv
   3. Der Anthropic API Key wird maskiert dargestellt und ist nur beim aktiven Editieren als Klartext sichtbar
   4. Das Admin-Passwort ist änderbar; dabei wird das alte Passwort zur Bestätigung abgefragt
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 1 plan
+Plans:
+- [ ] 21-01-PLAN.md — Einstellungs-Tab: CSS + HTML-Struktur + JS (loadSettings, saveAnalysis, saveAuth, savePassword)
 
 ## Progress
 
@@ -67,4 +68,4 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete    | 2026-03-27 |
 | 20. Manueller Analyse-Trigger | v7.0 | 2/2 | Complete    | 2026-03-27 |
-| 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |
+| 21. Dashboard Einstellungs-UI | v7.0 | 0/1 | Not started | - |
