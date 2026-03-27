@@ -658,6 +658,54 @@ class Database:
             logger.error(f"Fehler bei Perzentil-Berechnung: {e}")
             return FALLBACK
 
+    def get_feed_trends(self, days: int = 7) -> List[Dict[str, Any]]:
+        """
+        Berechnet Durchschnitts-Score pro Feed für das angegebene Zeitfenster.
+
+        Args:
+            days: Zeitfenster in Tagen (typisch 7 oder 30)
+
+        Returns:
+            Liste von Dicts, absteigend sortiert nach avg_score.
+            Jeder Eintrag: feed_id, feed_name, avg_score, headline_count, min_score, max_score.
+            Feeds ohne Headlines im Zeitfenster werden ausgeschlossen.
+            Leere Liste bei Fehler.
+        """
+        query = """
+            SELECT
+                f.id          AS feed_id,
+                f.name        AS feed_name,
+                ROUND(AVG(h.sentiment_score)::numeric, 4) AS avg_score,
+                COUNT(h.id)   AS headline_count,
+                ROUND(MIN(h.sentiment_score)::numeric, 4) AS min_score,
+                ROUND(MAX(h.sentiment_score)::numeric, 4) AS max_score
+            FROM headlines h
+            JOIN feeds f ON h.feed_id = f.id
+            WHERE h.analyzed_at >= NOW() - INTERVAL '%s days'
+              AND f.active = TRUE
+            GROUP BY f.id, f.name
+            HAVING COUNT(h.id) > 0
+            ORDER BY avg_score DESC;
+        """
+        try:
+            with self.get_cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, (days,))
+                results = cur.fetchall()
+                return [
+                    {
+                        "feed_id": row["feed_id"],
+                        "feed_name": row["feed_name"],
+                        "avg_score": float(row["avg_score"]),
+                        "headline_count": int(row["headline_count"]),
+                        "min_score": float(row["min_score"]),
+                        "max_score": float(row["max_score"]),
+                    }
+                    for row in results
+                ]
+        except Exception as e:
+            logger.error(f"Fehler bei get_feed_trends(days={days}): {e}")
+            return []
+
     def check_connection_health(self) -> Dict[str, Any]:
         """
         Prüfe Gesundheit der Datenbankverbindung
