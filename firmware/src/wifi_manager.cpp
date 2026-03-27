@@ -8,6 +8,7 @@
 #include "esp_wifi.h"
 #include <ESPmDNS.h>
 #include <time.h>
+#include "MoodlightUtils.h"
 
 // Captive Portal IP (192.168.4.1 — Standard-IP fuer den Access Point)
 #ifndef CAPTIVE_PORTAL_IP
@@ -18,6 +19,7 @@
 // Externe Globals aus moodlight.cpp
 extern AppState appState;
 extern Adafruit_NeoPixel pixels;
+extern WatchdogManager watchdog;
 
 #include "debug.h"
 #include "web_server.h"
@@ -120,10 +122,12 @@ bool safeWiFiConnect(const String &ssid, const String &password, unsigned long t
         }
 
         delay(50);
-        if (++dotCounter % 10 == 0)
+        dotCounter++;
+        if (dotCounter % 10 == 0)
         {
             debug(".");
-            yield(); // Explicit yield to feed watchdog
+            watchdog.feed(); // Watchdog füttern alle 500ms während Verbindungsaufbau
+            yield();
         }
     }
 
@@ -190,6 +194,7 @@ bool startWiFiStation()
     if (connected)
     {
         appState.wifiWasConnected = true;
+        appState.wifiConnectedSince = millis(); // Stabilitäts-Timer starten
 
         // Synchronize time via NTP after successful WiFi connection
         initTime();
@@ -291,15 +296,17 @@ void checkAndReconnectWifi()
                 delay(100);
                 WiFi.begin(appState.wifiSSID.c_str(), appState.wifiPassword.c_str());
 
-                // Short non-blocking wait time
+                // Short non-blocking wait time — feed watchdog to prevent WDT reset during reconnect
                 unsigned long reconnectStart = millis();
                 int attemptCount = 0;
                 while (WiFi.status() != WL_CONNECTED && millis() - reconnectStart < 3000)
                 {
                     delay(50);
-                    if (++attemptCount % 10 == 0)
+                    attemptCount++;
+                    if (attemptCount % 10 == 0)
                     {
-                        yield(); // Explicit yield every 10 iterations (500ms)
+                        watchdog.feed(); // Watchdog füttern alle 500ms während Reconnect
+                        yield();
                     }
                 }
 
@@ -311,6 +318,7 @@ void checkAndReconnectWifi()
                     appState.disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
                     appState.wifiReconnectAttempts = 0;
                     appState.wifiReconnectDelay = 5000;
+                    appState.wifiConnectedSince = millis(); // Stabilitäts-Timer starten
 
                     // Explicitly disable power save mode after connection
                     esp_wifi_set_ps(WIFI_PS_NONE);
@@ -340,6 +348,7 @@ void checkAndReconnectWifi()
         appState.disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
         appState.wifiReconnectAttempts = 0;
         appState.wifiReconnectDelay = 5000;
+        appState.wifiConnectedSince = millis(); // Stabilitäts-Timer starten
 
         // Explicitly disable power save mode after connection
         esp_wifi_set_ps(WIFI_PS_NONE);

@@ -30,6 +30,7 @@ struct AppState {
     int wifiReconnectAttempts = 0;
     bool wifiWasConnected = false;
     unsigned long apModeStartTime = 0;
+    unsigned long wifiConnectedSince = 0;   // Zeitstempel der letzten erfolgreichen Verbindung (für Stabilitäts-Hysterese)
 
     // =========================================================
     // LED-Gruppe
@@ -81,6 +82,8 @@ struct AppState {
     unsigned long lastMqttHeartbeat = 0;
     bool mqttWasConnected = false;
     bool sendingInitialStates = false;
+    bool mqttRefreshPending = false;        // Force-Refresh aus HA-Callback, wird in loop() ausgeführt
+    bool mqttInitialStatesPending = false;  // Initiale Zustände nach MQTT-Reconnect senden
 
     // =========================================================
     // DHT/Sensor-Gruppe
