@@ -4,7 +4,7 @@ milestone: v6.0
 milestone_name: Dynamische Bewertungsskala
 status: verifying
 stopped_at: Phase 16 Plan 02 abgeschlossen — Kalibrierter Sentiment-Prompt
-last_updated: "2026-03-27T09:28:52.890Z"
+last_updated: "2026-03-27T09:33:25.139Z"
 last_activity: 2026-03-27
 progress:
   total_phases: 3
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 16 (claude-api-migration) — EXECUTING
-Plan: 2 of 2
+Phase: 17
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-03-27
 
