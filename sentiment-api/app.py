@@ -9,7 +9,8 @@ from collections import Counter
 import os
 import re
 import math
-from openai import OpenAI, OpenAIError
+import anthropic
+from anthropic import Anthropic, APIConnectionError, RateLimitError, APIStatusError
 from shared_config import get_sentiment_category
 
 app = Flask(__name__)
@@ -57,77 +58,56 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# --- OpenAI Client initialisieren ---
-# (Code unverändert)
-openai_api_key = os.environ.get("OPENAI_API_KEY")
-openai_client = None
-if openai_api_key:
+# --- Anthropic Client initialisieren ---
+anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
+anthropic_client = None
+if anthropic_api_key:
     try:
-        openai_client = OpenAI(api_key=openai_api_key)
-        logging.info("OpenAI Client erfolgreich initialisiert.")
+        anthropic_client = Anthropic(api_key=anthropic_api_key, timeout=45.0)
+        logging.info("Anthropic Client erfolgreich initialisiert.")
     except Exception as e:
-        logging.error(f"Fehler bei der Initialisierung des OpenAI Clients: {e}")
+        logging.error(f"Fehler bei der Initialisierung des Anthropic Clients: {e}")
 else:
     logging.error("############################################################")
-    logging.error("FEHLER: OPENAI_API_KEY Umgebungsvariable nicht gesetzt!")
-    logging.error("Sentiment-Analyse über OpenAI API wird nicht funktionieren.")
+    logging.error("FEHLER: ANTHROPIC_API_KEY Umgebungsvariable nicht gesetzt!")
+    logging.error("Sentiment-Analyse über Anthropic API wird nicht funktionieren.")
     logging.error("############################################################")
 
 
-# --- Funktion zur Sentiment-Analyse mit OpenAI API ---
-# (Code unverändert, gibt Liste von Scores zurück)
-def analyze_sentiment_openai(headlines_batch: list) -> list:
-    if not openai_client:
-        logging.error("OpenAI Client nicht verfügbar in analyze_sentiment_openai.")
+# --- Funktion zur Sentiment-Analyse mit Anthropic API ---
+def analyze_sentiment_claude(headlines_batch: list) -> list:
+    if not anthropic_client:
+        logging.error("Anthropic Client nicht verfügbar in analyze_sentiment_claude.")
         return [0.0] * len(headlines_batch)
     if not headlines_batch:
         return []
 
+    # Prompt-Aufbau (Kalibrierungs-Ankerpunkte — in Plan 02 weiter optimiert)
     prompt_lines = [
-      "Analysiere das Sentiment jeder der folgenden deutschen Nachrichtenschlagzeilen.",
-      "Gib für jede Schlagzeile eine Fließkommazahl zwischen -1.0 und +1.0 zurück.",
-      "",
-      "WICHTIG - Ausgewogene Bewertung:",
-      "- Nachrichten sind oft neutral formuliert, auch wenn das Thema ernst ist. Bewerte die NACHRICHT, nicht das Thema.",
-      "- Eine sachliche Meldung über ein Problem ist NICHT automatisch stark negativ.",
-      "- Reserviere extreme Werte (-1.0 oder +1.0) nur für wirklich außergewöhnliche Ereignisse.",
-      "",
-      "Skala:",
-      "-1.0: Katastrophe mit vielen Toten, Weltuntergang",
-      "-0.7: Schwere Krise, großes Unglück",
-      "-0.4: Probleme, Konflikte, schlechte Entwicklungen",
-      "-0.2: Leicht negative oder besorgniserregende Nachrichten",
-      " 0.0: Neutral, sachliche Berichterstattung, gemischte Nachrichten",
-      "+0.2: Leicht positive Entwicklungen, kleine Fortschritte",
-      "+0.4: Gute Nachrichten, Erfolge, positive Entwicklungen",
-      "+0.7: Sehr gute Nachrichten, bedeutende Erfolge",
-      "+1.0: Herausragende Durchbrüche, historisch positive Ereignisse",
-      "",
-      "Die meisten alltäglichen Nachrichten sollten zwischen -0.4 und +0.4 liegen!",
-      "",
-      "Format: Nur \"Nummer: Score\" pro Zeile (z.B. \"1: -0.3\"). Keine Erklärungen.",
-      "",
-      "Schlagzeilen:"
+        "Analysiere das Sentiment jeder der folgenden deutschen Nachrichtenschlagzeilen.",
+        "Gib für jede Schlagzeile eine Fließkommazahl zwischen -1.0 und +1.0 zurück.",
+        "",
+        "Format: Nur \"Nummer: Score\" pro Zeile (z.B. \"1: -0.3\"). Keine Erklärungen.",
+        "",
+        "Schlagzeilen:"
     ]
     for i, headline in enumerate(headlines_batch):
         prompt_lines.append(f"{i+1}: {headline}")
-    prompt_lines.append("\nSentiment-Scores:")
     full_prompt = "\n".join(prompt_lines)
 
     scores = [0.0] * len(headlines_batch)
 
     try:
-        logging.info(f"Sende {len(headlines_batch)} Headlines zur Analyse an OpenAI API (gpt-4o-mini)...")
-        response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": full_prompt}],
-            temperature=0.1,
+        logging.info(f"Sende {len(headlines_batch)} Headlines zur Analyse an Anthropic API (claude-haiku-4-5-20251001)...")
+        response = anthropic_client.messages.create(
+            model="claude-haiku-4-5-20251001",
             max_tokens=len(headlines_batch) * 15,
-            timeout=45.0
+            temperature=1.0,
+            messages=[{"role": "user", "content": full_prompt}]
         )
-        raw_response_content = response.choices[0].message.content.strip()
-        logging.info("Antwort von OpenAI API erhalten.")
-        logging.debug(f"OpenAI Raw Response:\n{raw_response_content}")
+        raw_response_content = response.content[0].text.strip()
+        logging.info("Antwort von Anthropic API erhalten.")
+        logging.debug(f"Anthropic Raw Response:\n{raw_response_content}")
 
         lines = raw_response_content.split('\n')
         score_pattern = re.compile(r"^\s*(\d+):\s*([-+]?\d*\.?\d+)\s*$")
@@ -139,33 +119,39 @@ def analyze_sentiment_openai(headlines_batch: list) -> list:
                     index = int(match.group(1)) - 1
                     score = float(match.group(2))
                     if 0 <= index < len(scores):
-                         scores[index] = max(-1.0, min(1.0, score))
-                         parsed_count += 1
-                         logging.debug(f"  Geparster Score für Index {index}: {scores[index]}")
+                        scores[index] = max(-1.0, min(1.0, score))
+                        parsed_count += 1
+                        logging.debug(f"  Geparster Score für Index {index}: {scores[index]}")
                     else:
-                        logging.warning(f"Geparster Index {index+1} aus Antwort ist außerhalb des Bereichs ({len(scores)} Headlines). Zeile: '{line}'")
+                        logging.warning(f"Geparster Index {index+1} außerhalb des Bereichs ({len(scores)} Headlines). Zeile: '{line}'")
                 except (ValueError, IndexError) as parse_error:
                     logging.warning(f"Fehler beim Parsen der Score-Zeile '{line}': {parse_error}")
             elif line.strip():
-                 logging.warning(f"Unerwartetes Format in Antwortzeile von OpenAI: '{line}'")
+                logging.warning(f"Unerwartetes Format in Antwortzeile von Anthropic: '{line}'")
 
-        logging.info(f"Erfolgreich {parsed_count} Scores aus der OpenAI-Antwort geparst.")
+        logging.info(f"Erfolgreich {parsed_count} Scores aus der Anthropic-Antwort geparst.")
         if parsed_count != len(headlines_batch):
-             logging.warning(f"Nicht alle Scores konnten geparst werden! Erwartet: {len(headlines_batch)}, Geparsed: {parsed_count}. Fehlende Scores bleiben 0.0.")
+            logging.warning(f"Nicht alle Scores geparst! Erwartet: {len(headlines_batch)}, Geparsed: {parsed_count}. Fehlende Scores bleiben 0.0.")
 
         return scores
 
-    except OpenAIError as e:
-        logging.error(f"OpenAI API Fehler: {e}")
+    except APIConnectionError as e:
+        logging.error(f"Anthropic API nicht erreichbar: {e}")
+        return [0.0] * len(headlines_batch)
+    except RateLimitError as e:
+        logging.error(f"Anthropic Rate-Limit erreicht: {e}")
+        return [0.0] * len(headlines_batch)
+    except APIStatusError as e:
+        logging.error(f"Anthropic API Fehler {e.status_code}: {e.response}")
         return [0.0] * len(headlines_batch)
     except Exception as e:
-        logging.error(f"Unerwarteter Fehler bei der OpenAI Analyse: {e}")
+        logging.error(f"Unerwarteter Fehler bei der Anthropic Analyse: {e}")
         return [0.0] * len(headlines_batch)
 
 # --- Haupt-Analysefunktion (gibt jetzt gewichteten Score als 'total_sentiment' zurück) ---
-def analyze_headlines_openai_batch(headlines: list):
+def analyze_headlines_batch(headlines: list):
     """
-    Analysiert Headlines mit OpenAI, berechnet Statistiken und gibt den
+    Analysiert Headlines mit Anthropic (Claude Haiku), berechnet Statistiken und gibt den
     gewichteten Mood-Score als 'total_sentiment' zurück.
     """
     results = []
@@ -174,9 +160,8 @@ def analyze_headlines_openai_batch(headlines: list):
     analyzed_count = 0
 
     # --- Vorbereitung ---
-    # (Code unverändert)
     if not headlines:
-        logging.warning("analyze_headlines_openai_batch aufgerufen mit leerer Headline-Liste.")
+        logging.warning("analyze_headlines_batch aufgerufen mit leerer Headline-Liste.")
         return {
             "results": [], "total_sentiment": 0.0, # Default Wert für total_sentiment
             "statistics": {"analyzed_count": 0, "sentiment_distribution": {}}
@@ -197,7 +182,7 @@ def analyze_headlines_openai_batch(headlines: list):
         }
 
     # --- Sentiment Analyse ---
-    sentiment_scores = analyze_sentiment_openai(headline_texts)
+    sentiment_scores = analyze_sentiment_claude(headline_texts)
 
     # --- Verarbeitung der Scores und Kategorisierung ---
     # (Code unverändert)
@@ -328,12 +313,12 @@ def health_check():
     health["checks"]["database"] = {"status": "unhealthy", "error": str(e)}
     health["status"] = "unhealthy"
 
-  # OpenAI-Check
-  health["checks"]["openai"] = {
-    "status": "healthy" if openai_client else "unhealthy",
-    "available": openai_client is not None
+  # Anthropic-Check
+  health["checks"]["anthropic"] = {
+    "status": "healthy" if anthropic_client else "unhealthy",
+    "available": anthropic_client is not None
   }
-  if not openai_client:
+  if not anthropic_client:
     health["status"] = "degraded"
 
   status_code = 200 if health["status"] == "healthy" else 503 if health["status"] == "unhealthy" else 200
@@ -342,7 +327,7 @@ def health_check():
 # --- Flask Routen (angepasst für Konfiguration und neuen Score) ---
 @app.route('/api/news', methods=['GET'])
 def get_news():
-    if not openai_client: return jsonify({"status": "error", "message": "Sentiment-Analyse-Dienst nicht bereit (OpenAI Problem)."}), 503
+    if not anthropic_client: return jsonify({"status": "error", "message": "Sentiment-Analyse-Dienst nicht bereit (Anthropic Problem)."}), 503
 
     # RSS-Feeds dynamisch aus DB laden (FEED-01)
     from database import get_database
@@ -414,7 +399,7 @@ def get_news():
         }), 500
 
     logging.info(f"Feed-Abruf abgeschlossen. Gefunden: {total_headlines_found_before_filtering}. Eindeutige zur Analyse: {len(headlines)}. Übersprungen: {len(skipped_feeds)}")
-    analysis_result = analyze_headlines_openai_batch(headlines)
+    analysis_result = analyze_headlines_batch(headlines)
 
     # Gib den gewichteten Score unter 'total_sentiment' zurück
     return jsonify({
@@ -521,7 +506,7 @@ def feed_management():
 # Background Worker starten - muss ausserhalb __main__ sein damit Gunicorn ihn startet
 start_background_worker(
     app=app,
-    analyze_function=analyze_headlines_openai_batch,
+    analyze_function=analyze_headlines_batch,
     interval_seconds=1800
 )
 
@@ -530,8 +515,8 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG) # DEBUG für mehr Infos zur Konfiguration etc.
 
     is_debug_mode = os.environ.get('FLASK_ENV') == 'development'
-    logging.info(f"Starte Flask App im {'Debug' if is_debug_mode else 'Production'} Modus (GPT-4o-mini + PostgreSQL + Redis)...")
-    if not openai_client:
-         logging.warning("!!! OpenAI Client konnte nicht initialisiert werden (fehlender API Key?). API wird Fehler zurückgeben. !!!")
+    logging.info(f"Starte Flask App im {'Debug' if is_debug_mode else 'Production'} Modus (Claude Haiku + PostgreSQL + Redis)...")
+    if not anthropic_client:
+        logging.warning("!!! Anthropic Client konnte nicht initialisiert werden (fehlender API Key?). API wird Fehler zurückgeben. !!!")
 
     app.run(host='0.0.0.0', port=6237, debug=is_debug_mode)
