@@ -20,8 +20,8 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
 ### Einstellungen (setup.html)
 
-- [ ] **SET-01**: Formular-Design konsistent mit Dashboard-Einstellungs-Tab (Input-Felder, Labels, Buttons)
-- [ ] **SET-02**: Alle bestehenden Einstellungen (WiFi, MQTT, Hardware, Farben) bleiben funktional
+- [x] **SET-01**: Formular-Design konsistent mit Dashboard-Einstellungs-Tab (Input-Felder, Labels, Buttons)
+- [x] **SET-02**: Alle bestehenden Einstellungen (WiFi, MQTT, Hardware, Farben) bleiben funktional
 
 ### Stimmung (mood.html)
 
@@ -50,8 +50,8 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 | IDX-01 | Phase 23 | Complete |
 | IDX-02 | Phase 23 | Complete |
 | IDX-03 | Phase 23 | Complete |
-| SET-01 | Phase 23 | Pending |
-| SET-02 | Phase 23 | Pending |
+| SET-01 | Phase 23 | Complete |
+| SET-02 | Phase 23 | Complete |
 | MOOD-01 | Phase 23 | Complete |
 | MOOD-02 | Phase 23 | Complete |
 | DIAG-01 | Phase 23 | Complete |
