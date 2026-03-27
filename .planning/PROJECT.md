@@ -55,7 +55,12 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 
 ### Active
 
-(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
+- [ ] Analyse-Frequenz im Dashboard konfigurierbar
+- [ ] Headlines pro Quelle im Dashboard konfigurierbar
+- [ ] API Keys (Anthropic) im Dashboard änderbar
+- [ ] Manueller Analyse-Trigger im Dashboard
+- [ ] Einstellungen in DB persistieren statt Umgebungsvariablen
+- [ ] Admin-Passwort im Dashboard änderbar
 
 ### Out of Scope
 
@@ -124,5 +129,9 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
+## Current Milestone: v7.0 Dashboard-Einstellungen
+
+**Goal:** Alle Backend-Konfiguration über das Dashboard verwaltbar machen — Frequenz, Headlines, API Keys, manueller Trigger.
+
 ---
-*Last updated: 2026-03-27 after v6.0 milestone complete (Dynamische Bewertungsskala)*
+*Last updated: 2026-03-27 after v7.0 milestone start (Dashboard-Einstellungen)*
