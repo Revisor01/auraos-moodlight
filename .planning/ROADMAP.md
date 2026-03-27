@@ -15,7 +15,7 @@
 
 ## Phases
 
-- [ ] **Phase 19: Einstellungs-Persistenz** - DB-Tabelle, Settings-API und Runtime-Reload
+- [x] **Phase 19: Einstellungs-Persistenz** - DB-Tabelle, Settings-API und Runtime-Reload (completed 2026-03-27)
 - [ ] **Phase 20: Manueller Analyse-Trigger** - Trigger-Endpoint mit Worker-Integration und Feedback
 - [ ] **Phase 21: Dashboard Einstellungs-UI** - Einstellungs-Tab mit allen konfigurierbaren Feldern
 
@@ -34,7 +34,7 @@
 Plans:
 - [x] 19-01-PLAN.md — settings-Tabelle in init.sql + migrate_settings.sql für Produktions-DB
 - [x] 19-02-PLAN.md — Database-Methoden (get/set/get_all) + App-Startup auf DB-First umstellen
-- [ ] 19-03-PLAN.md — Worker reconfigure() + GET/PUT /api/moodlight/settings Endpoints
+- [x] 19-03-PLAN.md — Worker reconfigure() + GET/PUT /api/moodlight/settings Endpoints
 
 ### Phase 20: Manueller Analyse-Trigger
 **Goal**: Benutzer können über das Dashboard eine sofortige Sentiment-Analyse auslösen und erhalten visuelles Feedback über den Fortschritt
@@ -63,6 +63,6 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 19. Einstellungs-Persistenz | v7.0 | 2/3 | In Progress|  |
+| 19. Einstellungs-Persistenz | v7.0 | 3/3 | Complete   | 2026-03-27 |
 | 20. Manueller Analyse-Trigger | v7.0 | 0/? | Not started | - |
 | 21. Dashboard Einstellungs-UI | v7.0 | 0/? | Not started | - |
