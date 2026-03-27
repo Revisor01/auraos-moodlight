@@ -9,8 +9,8 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
 ### CSS-Fundament
 
-- [ ] **CSS-01**: style.css nutzt CSS-Variablen konsistent mit dem Backend-Dashboard (Farben, Abstände, border-radius, Schriften)
-- [ ] **CSS-02**: Dark/Light Mode funktioniert weiterhin über CSS-Variablen
+- [x] **CSS-01**: style.css nutzt CSS-Variablen konsistent mit dem Backend-Dashboard (Farben, Abstände, border-radius, Schriften)
+- [x] **CSS-02**: Dark/Light Mode funktioniert weiterhin über CSS-Variablen
 
 ### Hauptseite (index.html)
 
@@ -45,8 +45,8 @@ Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CSS-01 | Phase 22 | Pending |
-| CSS-02 | Phase 22 | Pending |
+| CSS-01 | Phase 22 | Complete |
+| CSS-02 | Phase 22 | Complete |
 | IDX-01 | Phase 23 | Pending |
 | IDX-02 | Phase 23 | Pending |
 | IDX-03 | Phase 23 | Pending |

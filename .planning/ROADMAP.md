@@ -16,7 +16,7 @@
 
 ## Phases
 
-- [ ] **Phase 22: CSS-Fundament** — style.css komplett überarbeiten mit CSS-Variablen und Dark/Light-Mode-Kompatibilität
+- [x] **Phase 22: CSS-Fundament** — style.css komplett überarbeiten mit CSS-Variablen und Dark/Light-Mode-Kompatibilität (completed 2026-03-27)
 - [ ] **Phase 23: Seiten-Redesign** — alle 4 HTML-Seiten (index, setup, mood, diagnostics) im Dashboard-Stil umbauen
 
 ## Phase Details
@@ -32,7 +32,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 22-01-PLAN.md — style.css komplett neu schreiben mit Dashboard-Design-Variablen und Dark-Mode
+- [x] 22-01-PLAN.md — style.css komplett neu schreiben mit Dashboard-Design-Variablen und Dark-Mode
 
 ### Phase 23: Seiten-Redesign
 **Goal**: Alle vier ESP32-Seiten sehen aus und verhalten sich konsistent wie das Backend-Dashboard, ohne Funktionsverlust
@@ -51,5 +51,5 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 22. CSS-Fundament | 0/1 | Not started | - |
+| 22. CSS-Fundament | 1/1 | Complete   | 2026-03-27 |
 | 23. Seiten-Redesign | 0/? | Not started | - |
