@@ -629,6 +629,7 @@
                         <div>
                             <div class="sentiment-value" id="hero-sentiment-value" style="font-size: 2rem; font-weight: bold; margin-bottom: 5px;">0.0</div>
                             <div class="sentiment-label" id="hero-sentiment-label" style="font-size: 0.9rem; opacity: 0.8;">Neutral</div>
+                            <div id="hero-sentiment-percentile" style="font-size: 0.82rem; opacity: 0.75; margin-top: 4px;"></div>
                         </div>
                     </div>
                 </div>
@@ -1071,14 +1072,16 @@
             });
         }
 
-        // API-basierte Sentiment-Aktualisierung
+        // LED-Farben nach Index (0=sehr negativ … 4=sehr positiv)
+        const LED_COLORS = ['#e74c3c', '#e67e22', '#3498db', '#6c3dbf', '#8e44ad'];
+
+        // API-basierte Sentiment-Aktualisierung (v2: /api/moodlight/current)
         async function fetchRealSentiment() {
             try {
-                const response = await fetch('https://analyse.godsapp.de/api/news/total_sentiment');
+                const response = await fetch('https://analyse.godsapp.de/api/moodlight/current');
                 const data = await response.json();
-                const sentiment = data.total_sentiment || 0.0;
-                // Auf 2 Nachkommastellen runden
-                return parseFloat(sentiment).toFixed(2);
+                if (data.status !== 'success') return null;
+                return data;
             } catch (error) {
                 console.error('API-Fehler:', error);
                 // Bei Fehler: letzten bekannten Wert beibehalten (kein Zufallswert!)
@@ -1087,60 +1090,69 @@
         }
 
         async function updateRealSentiment() {
-            const sentiment = await fetchRealSentiment();
+            const data = await fetchRealSentiment();
 
             // Wenn API-Fehler, nichts updaten
-            if (sentiment === null) {
+            if (data === null) {
                 console.log('API nicht erreichbar, behalte aktuellen Wert');
                 return;
             }
 
-            const sentimentValue = parseFloat(sentiment);
+            const sentimentValue = parseFloat(data.raw_score || data.sentiment || 0);
+            const ledIndex = typeof data.led_index === 'number' ? data.led_index : 2;
+            const ledColor = LED_COLORS[ledIndex] || '#3498db';
 
             // Update hero display
             const heroSentimentValue = document.getElementById('hero-sentiment-value');
             const heroSentimentLabel = document.getElementById('hero-sentiment-label');
             const heroSentimentIndicator = document.getElementById('hero-sentiment-indicator');
+            const heroSentimentPercentile = document.getElementById('hero-sentiment-percentile');
 
             if (heroSentimentValue) {
-                heroSentimentValue.textContent = sentiment;
-                
-                // Update label based on sentiment
-                if (sentimentValue <= -0.6) {
-                    heroSentimentLabel.textContent = 'Sehr negativ';
-                } else if (sentimentValue <= -0.2) {
-                    heroSentimentLabel.textContent = 'Negativ';
-                } else if (sentimentValue <= 0.2) {
-                    heroSentimentLabel.textContent = 'Neutral';
-                } else if (sentimentValue <= 0.6) {
-                    heroSentimentLabel.textContent = 'Positiv';
-                } else {
-                    heroSentimentLabel.textContent = 'Sehr positiv';
-                }
+                heroSentimentValue.textContent = sentimentValue.toFixed(2);
             }
-            
-            // Update theme based on sentiment
-            updateTheme(sentimentValue);
+
+            // Kategorie direkt aus API übernehmen
+            if (heroSentimentLabel && data.category) {
+                // Ersten Buchstaben großschreiben
+                const cat = data.category.charAt(0).toUpperCase() + data.category.slice(1);
+                heroSentimentLabel.textContent = cat;
+            }
+
+            // LED-Farb-Indikator auf led_index-Farbe setzen
+            if (heroSentimentIndicator) {
+                heroSentimentIndicator.style.background = ledColor;
+            }
+
+            // Perzentil-Badge anzeigen
+            if (heroSentimentPercentile && typeof data.percentile === 'number') {
+                const pct = Math.round(data.percentile * 100);
+                heroSentimentPercentile.textContent = `P${pct} im 7-Tage-Bereich`;
+            }
+
+            // Update theme via led_index
+            updateTheme(ledIndex);
+
+            // Skalierungs-Sektion mit vollständigem Objekt rendern
+            renderScaleSection(data);
         }
 
-        function updateTheme(sentiment) {
+        function updateTheme(ledIndex) {
             const body = document.body;
-            
-            // Remove existing sentiment classes
-            body.classList.remove('sentiment-very-negative', 'sentiment-negative', 'sentiment-neutral', 'sentiment-positive', 'sentiment-very-positive');
-            
-            // Add appropriate sentiment class
-            if (sentiment <= -0.6) {
-                body.classList.add('sentiment-very-negative');
-            } else if (sentiment <= -0.2) {
-                body.classList.add('sentiment-negative');
-            } else if (sentiment <= 0.2) {
-                body.classList.add('sentiment-neutral');
-            } else if (sentiment <= 0.6) {
-                body.classList.add('sentiment-positive');
-            } else {
-                body.classList.add('sentiment-very-positive');
-            }
+            const themeClasses = [
+                'sentiment-very-negative',
+                'sentiment-negative',
+                'sentiment-neutral',
+                'sentiment-positive',
+                'sentiment-very-positive'
+            ];
+
+            // Alle Sentiment-Klassen entfernen
+            body.classList.remove(...themeClasses);
+
+            // Klasse nach led_index setzen
+            const cls = themeClasses[ledIndex];
+            if (cls) body.classList.add(cls);
         }
 
         // Update sentiment every 30 seconds for real API data
