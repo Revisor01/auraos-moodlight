@@ -73,9 +73,9 @@ void setup() {
     initJsonPool();
     loadSettings();
 
-    // Hardware
+    // Hardware — DHT mit Pin aus Settings initialisieren
     delay(200);
-    dht.begin();
+    initDHT();
 
     // Webserver-Routen definieren
     setupWebServer();

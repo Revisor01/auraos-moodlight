@@ -17,8 +17,18 @@ extern HASensor haTemperature;
 extern HASensor haHumidity;
 
 // Hardware-Instanzen — definiert in diesem Modul
-DHT dht(DEFAULT_DHT_PIN, DHT22);
+DHT* dhtSensor = nullptr;
 WiFiClient wifiClientHTTP;
+
+// DHT mit dem tatsächlichen Pin aus den Settings initialisieren
+void initDHT() {
+    if (dhtSensor) {
+        delete dhtSensor;
+    }
+    dhtSensor = new DHT(appState.dhtPin, DHT22);
+    dhtSensor->begin();
+    debug(String(F("DHT22 initialisiert auf Pin ")) + String(appState.dhtPin));
+}
 
 // === Map Sentiment Score (-1 bis +1) zu LED Index (0-4) ===
 int mapSentimentToLED(float sentimentScore)
@@ -389,8 +399,8 @@ void getSentiment()
 // === Lese DHT Sensor und sende an HA ===
 void readAndPublishDHT()
 {
-    // First check if DHT is enabled
-    if (!appState.dhtEnabled)
+    // First check if DHT is enabled and initialized
+    if (!appState.dhtEnabled || !dhtSensor)
     {
         return; // Skip DHT processing entirely
     }
@@ -407,13 +417,13 @@ void readAndPublishDHT()
         // Try/catch block for DHT reads to prevent crashes
         try
         {
-            temp = dht.readTemperature();
+            temp = dhtSensor->readTemperature();
             tempValid = !isnan(temp);
 
             // Small delay between reads for stability
             delay(10);
 
-            hum = dht.readHumidity();
+            hum = dhtSensor->readHumidity();
             humValid = !isnan(hum);
         }
         catch (...)

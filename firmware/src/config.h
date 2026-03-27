@@ -8,7 +8,7 @@
 
 // Standardwerte für Einstellungen (nur hier definieren)
 #define DEFAULT_LED_PIN 26
-#define DEFAULT_DHT_PIN 17
+#define DEFAULT_DHT_PIN 18
 #define DEFAULT_NUM_LEDS 12
 #define MAX_LEDS 64
 #define DEFAULT_LED_BRIGHTNESS 255
