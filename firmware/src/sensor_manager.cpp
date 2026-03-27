@@ -296,8 +296,44 @@ void getSentiment()
         float receivedSentiment = doc["sentiment"].as<float>();
         debug(String(F("Sentiment empfangen: ")) + String(receivedSentiment, 2));
 
-        // Process valid sentiment value (vor appState.initialAnalysisDone=true, damit MQTT-Werte gesendet werden!)
+        // Phase 18: led_index aus API-Response lesen (dynamische Skalierung)
+        // Fallback auf mapSentimentToLED() wenn Feld fehlt (altes Backend)
+        int apiLedIndex = -1;
+        if (doc["led_index"].is<int>())
+        {
+            apiLedIndex = doc["led_index"].as<int>();
+            apiLedIndex = constrain(apiLedIndex, 0, 4);
+
+            // Fallback-Schwellwerte signalisiert vom Backend
+            if (doc["thresholds"]["fallback"].is<bool>() && doc["thresholds"]["fallback"].as<bool>())
+            {
+                debug(F("Hinweis: Backend nutzt Fallback-Schwellwerte (weniger als 3 historische Datenpunkte)"));
+            }
+            debug(String(F("LED-Index aus API: ")) + String(apiLedIndex) +
+                  String(F(" (Perzentil: ")) + String(doc["percentile"].as<float>(), 2) + String(F(")")));
+        }
+        else
+        {
+            // Altes Backend ohne led_index-Feld — lokale Berechnung als Fallback
+            apiLedIndex = mapSentimentToLED(receivedSentiment);
+            debug(F("led_index nicht in Response — lokaler Fallback über mapSentimentToLED()"));
+        }
+
+        // handleSentiment() mit exaktem Rohwert aufrufen (MQTT + HA-Werte)
+        // (setzt currentLedIndex intern via mapSentimentToLED)
         handleSentiment(receivedSentiment);
+
+        // LED-Index aus API direkt setzen (überschreibt mapSentimentToLED() aus handleSentiment)
+        if (apiLedIndex != appState.currentLedIndex || !appState.initialAnalysisDone)
+        {
+            appState.currentLedIndex = apiLedIndex;
+            appState.lastLedIndex = apiLedIndex;
+            if (appState.autoMode && appState.lightOn)
+            {
+                updateLEDs();
+            }
+        }
+
         appState.initialAnalysisDone = true;
         appState.lastSuccessfulSentimentUpdate = currentMillis;
 
