@@ -39,14 +39,16 @@ Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung,
 - ✓ Feed-URL-Validierung beim Hinzufügen — v4.0 Phase 10
 - ✓ Web-Interface Feed-Management unter /feeds — v4.0 Phase 11
 
+- ✓ Headlines + Einzel-Scores in DB gespeichert — v5.0 Phase 12
+- ✓ GET /api/moodlight/headlines API-Endpoint — v5.0 Phase 14
+- ✓ Backend-Dashboard mit Übersicht, Headlines, Feeds (934-Zeilen SPA) — v5.0 Phase 14
+- ✓ Passwort-Login für Backend-Interface — v5.0 Phase 13
+- ✓ ESP32 mood.html zeigt Headlines mit Einzel-Scores — v5.0 Phase 15
+- ✓ GitHub Page erweitert mit Headline-Darstellung — v5.0 Phase 15
+
 ### Active
 
-- [ ] Headlines + Einzel-Scores in DB speichern (nicht nur Durchschnitt)
-- [ ] API-Endpoint für aktuelle Headlines mit Einzel-Scores
-- [ ] Volles Backend-Dashboard mit Feeds, Headlines, Scores, Status
-- [ ] Einfacher Login/Passwort-Schutz für Backend-Interface
-- [ ] ESP32 mood.html zeigt letzte Headlines mit Einzel-Scores
-- [ ] GitHub Page erweitern mit Headline-Darstellung
+(Keine aktiven Requirements — nächster Milestone noch nicht definiert)
 
 ### Out of Scope
 
@@ -115,16 +117,5 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-## Current Milestone: v5.0 Schlagzeilen-Transparenz & Dashboard
-
-**Goal:** Sichtbar machen welche Schlagzeilen wie bewertet wurden, volles Backend-Dashboard mit Login-Schutz.
-
-**Target features:**
-- Headlines + Einzel-Scores in DB speichern und über API bereitstellen
-- Backend-Dashboard: Feeds, Headlines, Scores, System-Status
-- Einfacher Passwort-Login für Backend-Interface
-- ESP32 mood.html: letzte Headlines mit Scores
-- GitHub Page: Headline-Darstellung
-
 ---
-*Last updated: 2026-03-26 after v5.0 milestone start (Schlagzeilen-Transparenz & Dashboard)*
+*Last updated: 2026-03-27 after v5.0 milestone complete (Schlagzeilen-Transparenz & Dashboard)*

@@ -4,7 +4,7 @@ milestone: v5.0
 milestone_name: Schlagzeilen-Transparenz & Dashboard
 status: verifying
 stopped_at: Completed 15-client-erweiterungen-02-PLAN.md
-last_updated: "2026-03-26T23:58:52.238Z"
+last_updated: "2026-03-26T23:59:22.884Z"
 last_activity: 2026-03-26
 progress:
   total_phases: 4
