@@ -69,6 +69,75 @@ class SentimentUpdateWorker:
             self.headlines_per_source = headlines_per_source
             logger.info(f"Worker-Headlines geändert: {old_headlines} → {headlines_per_source}")
 
+    def trigger(self) -> dict:
+        """
+        Führe sofortige Sentiment-Analyse durch (für manuellen Trigger vom Dashboard).
+        Gibt Ergebnis-Dict zurück oder wirft Exception bei Fehler.
+
+        Returns:
+            dict mit: sentiment_score, category, headlines_analyzed, source_count, duration_seconds
+        """
+        start = time.time()
+        logger.info("=== Manueller Trigger: Starte Sentiment-Update ===")
+
+        # Headlines holen
+        headlines = self._fetch_headlines()
+        if not headlines:
+            raise RuntimeError("Keine Headlines von den Feeds erhalten")
+
+        feed_count = len(get_database().get_active_feeds())
+
+        # Sentiment analysieren
+        analysis_result = self.analyze_function(headlines)
+        if not analysis_result or 'total_sentiment' not in analysis_result:
+            raise RuntimeError("Analyse lieferte kein verwertbares Ergebnis")
+
+        sentiment_score = analysis_result['total_sentiment']
+        stats = analysis_result.get('statistics', {})
+        headlines_analyzed = stats.get('analyzed_count', len(headlines))
+
+        # In DB speichern
+        db = get_database()
+        category = get_sentiment_category(sentiment_score)
+        response_time_ms = int((time.time() - start) * 1000)
+
+        sentiment_history_id = db.save_sentiment(
+            sentiment_score=sentiment_score,
+            category=category,
+            headlines_analyzed=headlines_analyzed,
+            source_count=feed_count,
+            api_response_time_ms=response_time_ms,
+            metadata={
+                'sentiment_distribution': stats.get('sentiment_distribution', {}),
+                'worker': 'manual_trigger',
+                'timestamp': datetime.now().isoformat()
+            }
+        )
+
+        # Headlines persistieren (Fehler bricht nicht ab)
+        try:
+            headline_results = analysis_result.get('results', [])
+            if headline_results:
+                db.save_headlines(sentiment_history_id=sentiment_history_id, results=headline_results)
+        except Exception as e:
+            logger.error(f"Fehler beim Persistieren der Headlines (manueller Trigger): {e}")
+
+        # Redis-Cache invalidieren
+        cache = get_cache()
+        cache.delete('moodlight:current:v2')
+        cache.delete('moodlight:current')
+
+        elapsed = time.time() - start
+        logger.info(f"=== Manueller Trigger abgeschlossen in {elapsed:.2f}s ===")
+
+        return {
+            'sentiment_score': sentiment_score,
+            'category': category,
+            'headlines_analyzed': headlines_analyzed,
+            'source_count': feed_count,
+            'duration_seconds': round(elapsed, 2)
+        }
+
     def _worker_loop(self):
         """Haupt-Worker-Loop"""
         # Erste Ausführung nach 10 Sekunden (damit App Zeit hat hochzufahren)
