@@ -57,4 +57,4 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. CSS-Fundament | 1/1 | Complete    | 2026-03-27 |
-| 23. Seiten-Redesign | 4/4 | Complete   | 2026-03-27 |
+| 23. Seiten-Redesign | 4/4 | Complete    | 2026-03-27 |
