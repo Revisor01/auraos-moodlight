@@ -3,67 +3,65 @@
 **Defined:** 2026-03-27
 **Core Value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
 
-## v7.0 Requirements
+## v8.0 Requirements
 
-Requirements für Milestone v7.0: Dashboard-Einstellungen.
+Requirements für Milestone v8.0: ESP32 UI-Redesign.
 
-### Einstellungs-Persistenz
+### CSS-Fundament
 
-- [x] **CFG-01**: Einstellungen (Frequenz, Headlines-Anzahl, API Keys) werden in PostgreSQL gespeichert
-- [x] **CFG-02**: Beim Start liest das Backend Einstellungen aus der DB, Umgebungsvariablen dienen als Fallback
-- [x] **CFG-03**: Änderungen an Einstellungen werden sofort wirksam ohne Container-Neustart
+- [ ] **CSS-01**: style.css nutzt CSS-Variablen konsistent mit dem Backend-Dashboard (Farben, Abstände, border-radius, Schriften)
+- [ ] **CSS-02**: Dark/Light Mode funktioniert weiterhin über CSS-Variablen
 
-### Dashboard-UI
+### Hauptseite (index.html)
 
-- [x] **UI-01**: Einstellungs-Tab im Dashboard zeigt alle konfigurierbaren Parameter
-- [x] **UI-02**: Analyse-Frequenz ist über ein Eingabefeld änderbar (in Minuten)
-- [x] **UI-03**: Headlines pro Quelle ist über ein Eingabefeld änderbar
-- [x] **UI-04**: Anthropic API Key ist änderbar (maskiert angezeigt, Klartext nur beim Editieren)
-- [x] **UI-05**: Admin-Passwort ist änderbar (altes Passwort zur Bestätigung erforderlich)
+- [ ] **IDX-01**: Score-Anzeige nutzt Farbkodierung wie im Dashboard (5 Farbstufen)
+- [ ] **IDX-02**: Karten-Layout (border-radius 8px, kompaktes Padding) wie Dashboard
+- [ ] **IDX-03**: LED-Steuerung und Helligkeit behalten volle Funktionalität
 
-### Manuelle Steuerung
+### Einstellungen (setup.html)
 
-- [x] **CTRL-01**: Button im Dashboard löst sofortige Sentiment-Analyse aus
-- [x] **CTRL-02**: Während der manuellen Analyse zeigt das Dashboard einen Lade-Indikator
-- [x] **CTRL-03**: Nach Abschluss der manuellen Analyse aktualisiert sich das Dashboard automatisch
+- [ ] **SET-01**: Formular-Design konsistent mit Dashboard-Einstellungs-Tab (Input-Felder, Labels, Buttons)
+- [ ] **SET-02**: Alle bestehenden Einstellungen (WiFi, MQTT, Hardware, Farben) bleiben funktional
 
-### API-Endpoints
+### Stimmung (mood.html)
 
-- [x] **API-01**: GET/PUT /api/moodlight/settings für Einstellungs-CRUD
-- [x] **API-02**: POST /api/moodlight/analyze/trigger für manuellen Analyse-Start
+- [ ] **MOOD-01**: Headlines-Darstellung mit Farbkodierung wie im Dashboard
+- [ ] **MOOD-02**: Score-Verlauf und Statistiken im Dashboard-Karten-Stil
+
+### Diagnose (diagnostics.html)
+
+- [ ] **DIAG-01**: System-Info-Karten im Dashboard-Stil (Speicher, WiFi, Uptime)
+- [ ] **DIAG-02**: Update-Bereich behält volle Funktionalität (Firmware + UI Upload)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Mehrere Benutzer-Accounts | Ein Admin reicht |
-| Einstellungs-Historie/Audit-Log | Over-Engineering |
-| Scheduler (Cron-basiert statt Intervall) | Intervall reicht |
-| ESP32 Einstellungen im Backend | ESP32 hat eigenes Web-Interface |
+| Neue Funktionen hinzufügen | Nur visuelles Redesign, keine neuen Features |
+| JavaScript-Refactoring | Nur CSS/HTML, bestehende JS-Logik bleibt |
+| Font Awesome entfernen | Wird weiterhin für Icons genutzt |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CFG-01 | Phase 19 | Complete |
-| CFG-02 | Phase 19 | Complete |
-| CFG-03 | Phase 19 | Complete |
-| API-01 | Phase 19 | Complete |
-| CTRL-01 | Phase 20 | Complete |
-| CTRL-02 | Phase 20 | Complete |
-| CTRL-03 | Phase 20 | Complete |
-| API-02 | Phase 20 | Complete |
-| UI-01 | Phase 21 | Complete |
-| UI-02 | Phase 21 | Complete |
-| UI-03 | Phase 21 | Complete |
-| UI-04 | Phase 21 | Complete |
-| UI-05 | Phase 21 | Complete |
+| CSS-01 | — | Pending |
+| CSS-02 | — | Pending |
+| IDX-01 | — | Pending |
+| IDX-02 | — | Pending |
+| IDX-03 | — | Pending |
+| SET-01 | — | Pending |
+| SET-02 | — | Pending |
+| MOOD-01 | — | Pending |
+| MOOD-02 | — | Pending |
+| DIAG-01 | — | Pending |
+| DIAG-02 | — | Pending |
 
 **Coverage:**
-- v7.0 requirements: 13 total
-- Mapped to phases: 13
-- Unmapped: 0 ✓
+- v8.0 requirements: 11 total
+- Mapped to phases: 0
+- Unmapped: 11 ⚠️
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after roadmap creation (v7.0)*
+*Last updated: 2026-03-27 after initial definition*
