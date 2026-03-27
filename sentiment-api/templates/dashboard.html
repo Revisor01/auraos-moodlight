@@ -666,6 +666,131 @@
       to { transform: rotate(360deg); }
     }
 
+    /* ===== EINSTELLUNGS-TAB (UI-01/02/03/04/05) ===== */
+    .settings-section {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .settings-section h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1.25rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .form-group .hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .settings-input {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.15s;
+      max-width: 260px;
+    }
+
+    .settings-input:focus {
+      border-color: var(--primary);
+      background: var(--surface);
+    }
+
+    .settings-input[type="password"],
+    .settings-input[type="text"].api-key-field {
+      font-family: 'Courier New', Courier, monospace;
+      max-width: 380px;
+    }
+
+    .btn-save {
+      padding: 8px 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-family: inherit;
+      font-weight: 600;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .btn-save:hover:not(:disabled) {
+      background: #7425c9;
+    }
+
+    .btn-save:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .settings-msg {
+      font-size: 0.85rem;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-top: 0.75rem;
+      display: none;
+    }
+
+    .settings-msg.success {
+      background: #eafaf1;
+      color: var(--success);
+    }
+
+    .settings-msg.error {
+      background: #fdecea;
+      color: var(--danger);
+    }
+
+    .api-key-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-edit-key {
+      padding: 6px 14px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      color: var(--text-muted);
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-edit-key:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
     /* ===== LADE- UND LEERZUSTAND ===== */
     .muted {
       color: var(--text-muted);
@@ -717,6 +842,7 @@
   <button class="tab-btn active" data-tab="overview">Übersicht</button>
   <button class="tab-btn" data-tab="headlines">Schlagzeilen</button>
   <button class="tab-btn" data-tab="feeds">Feeds</button>
+  <button class="tab-btn" data-tab="settings">Einstellungen</button>
 </nav>
 
 <main>
@@ -880,6 +1006,77 @@
 
   </div>
 
+  <!-- ===== TAB: EINSTELLUNGEN (UI-01/02/03/04/05) ===== -->
+  <div id="tab-settings" class="tab-pane">
+
+    <!-- Sektion: Analyse -->
+    <div class="settings-section">
+      <h2>⚙️ Analyse</h2>
+
+      <div class="form-group">
+        <label for="settingInterval">Analyse-Frequenz (Minuten)</label>
+        <input type="number" id="settingInterval" class="settings-input"
+               min="1" max="1440" step="1" placeholder="30">
+        <span class="hint">Wie oft der Background Worker neue Schlagzeilen analysiert. Minimum: 1 Minute.</span>
+      </div>
+
+      <div class="form-group">
+        <label for="settingHeadlines">Headlines pro Quelle</label>
+        <input type="number" id="settingHeadlines" class="settings-input"
+               min="1" max="20" step="1" placeholder="1">
+        <span class="hint">Anzahl Schlagzeilen pro RSS-Feed pro Analyse-Durchlauf. Minimum: 1.</span>
+      </div>
+
+      <button class="btn-save" id="saveAnalysisBtn" onclick="saveAnalysis()">Speichern</button>
+      <div class="settings-msg" id="analysisMsg"></div>
+    </div>
+
+    <!-- Sektion: Authentifizierung -->
+    <div class="settings-section">
+      <h2>🔑 Authentifizierung</h2>
+
+      <div class="form-group">
+        <label>Anthropic API Key</label>
+        <div class="api-key-row">
+          <input type="password" id="settingApiKey" class="settings-input api-key-field"
+                 placeholder="Aktueller Key (maskiert)" readonly>
+          <button class="btn-edit-key" id="editKeyBtn" onclick="toggleApiKeyEdit()">Bearbeiten</button>
+        </div>
+        <span class="hint">Leer lassen um den Key unverändert zu behalten. Wird nur beim aktiven Bearbeiten als Klartext angezeigt.</span>
+      </div>
+
+      <button class="btn-save" id="saveAuthBtn" onclick="saveAuth()">Speichern</button>
+      <div class="settings-msg" id="authMsg"></div>
+    </div>
+
+    <!-- Sektion: Passwort ändern -->
+    <div class="settings-section">
+      <h2>🔒 Admin-Passwort ändern</h2>
+
+      <div class="form-group">
+        <label for="currentPassword">Aktuelles Passwort</label>
+        <input type="password" id="currentPassword" class="settings-input"
+               autocomplete="current-password" placeholder="Aktuelles Passwort">
+      </div>
+
+      <div class="form-group">
+        <label for="newPassword">Neues Passwort</label>
+        <input type="password" id="newPassword" class="settings-input"
+               autocomplete="new-password" placeholder="Neues Passwort">
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Neues Passwort bestätigen</label>
+        <input type="password" id="confirmPassword" class="settings-input"
+               autocomplete="new-password" placeholder="Neues Passwort wiederholen">
+      </div>
+
+      <button class="btn-save" id="savePasswordBtn" onclick="savePassword()">Passwort ändern</button>
+      <div class="settings-msg" id="passwordMsg"></div>
+    </div>
+
+  </div>
+
 </main>
 
 <script>
@@ -887,6 +1084,7 @@
 var overviewLoaded  = false;
 var headlinesLoaded = false;
 var feedsLoaded     = false;
+var settingsLoaded  = false;
 
 function showTab(tabId) {
   document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
@@ -897,6 +1095,7 @@ function showTab(tabId) {
   if (tabId === 'overview'  && !overviewLoaded)  loadOverview();
   if (tabId === 'headlines' && !headlinesLoaded) loadHeadlines();
   if (tabId === 'feeds'     && !feedsLoaded)     loadFeeds();
+  if (tabId === 'settings'  && !settingsLoaded)  loadSettings();
 }
 
 document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -1269,6 +1468,211 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     addBtn.textContent = 'Hinzufügen';
   }
 });
+
+// ===== EINSTELLUNGEN (UI-01/02/03/04/05) =====
+var apiKeyEditing = false;
+
+async function loadSettings() {
+  try {
+    var res  = await fetch('/api/moodlight/settings');
+    var data = await res.json();
+    if (data.status !== 'success') return;
+
+    var s = data.settings;
+
+    // Analyse-Felder befüllen
+    document.getElementById('settingInterval').value  = s.analysis_interval_minutes;
+    document.getElementById('settingHeadlines').value = s.headlines_per_source;
+
+    // API Key: maskierten Wert als Platzhalter setzen, Feld gesperrt
+    var keyEl = document.getElementById('settingApiKey');
+    keyEl.value    = s.anthropic_api_key || '';
+    keyEl.readOnly = true;
+    keyEl.type     = 'password';
+    apiKeyEditing  = false;
+    document.getElementById('editKeyBtn').textContent = 'Bearbeiten';
+
+    settingsLoaded = true;
+  } catch (e) {
+    console.error('Fehler beim Laden der Einstellungen:', e);
+  }
+}
+
+async function saveAnalysis() {
+  var btn = document.getElementById('saveAnalysisBtn');
+  var msg = document.getElementById('analysisMsg');
+  showSettingsMsg(msg, '', '');
+
+  var minutes   = parseFloat(document.getElementById('settingInterval').value);
+  var headlines = parseInt(document.getElementById('settingHeadlines').value, 10);
+
+  if (isNaN(minutes) || minutes < 1) {
+    showSettingsMsg(msg, 'error', 'Analyse-Frequenz muss mindestens 1 Minute betragen.');
+    return;
+  }
+  if (isNaN(headlines) || headlines < 1) {
+    showSettingsMsg(msg, 'error', 'Headlines pro Quelle muss mindestens 1 sein.');
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    var res  = await fetch('/api/moodlight/settings', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        analysis_interval_minutes: minutes,
+        headlines_per_source: headlines
+      })
+    });
+    var data = await res.json();
+    if (res.ok && data.status === 'success') {
+      showSettingsMsg(msg, 'success', 'Gespeichert: ' + (data.message || 'Einstellungen aktualisiert.'));
+    } else {
+      showSettingsMsg(msg, 'error', data.message || 'Fehler beim Speichern.');
+    }
+  } catch (e) {
+    showSettingsMsg(msg, 'error', 'Netzwerkfehler — API nicht erreichbar.');
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function toggleApiKeyEdit() {
+  var keyEl  = document.getElementById('settingApiKey');
+  var btnEl  = document.getElementById('editKeyBtn');
+  if (!apiKeyEditing) {
+    // Editier-Modus aktivieren: Feld leeren, Klartext-Eingabe
+    keyEl.value    = '';
+    keyEl.readOnly = false;
+    keyEl.type     = 'text';
+    keyEl.focus();
+    btnEl.textContent = 'Abbrechen';
+    apiKeyEditing  = true;
+  } else {
+    // Abbrechen: Feld wieder sperren, maskierten Wert zurücksetzen
+    settingsLoaded = false;
+    loadSettings();
+    btnEl.textContent = 'Bearbeiten';
+    apiKeyEditing  = false;
+  }
+}
+
+async function saveAuth() {
+  var btn   = document.getElementById('saveAuthBtn');
+  var msg   = document.getElementById('authMsg');
+  showSettingsMsg(msg, '', '');
+
+  var newKey = document.getElementById('settingApiKey').value.trim();
+
+  // Wenn nicht im Editier-Modus und kein neuer Key: nichts tun
+  if (!apiKeyEditing && !newKey) {
+    showSettingsMsg(msg, 'error', 'Aktiviere zuerst "Bearbeiten" um den API Key zu ändern.');
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    var body = {};
+    if (apiKeyEditing && newKey) {
+      body.anthropic_api_key = newKey;
+    }
+
+    if (Object.keys(body).length === 0) {
+      showSettingsMsg(msg, 'error', 'Kein neuer API Key eingegeben.');
+      btn.disabled = false;
+      return;
+    }
+
+    var res  = await fetch('/api/moodlight/settings', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    var data = await res.json();
+
+    if (res.ok && data.status === 'success') {
+      showSettingsMsg(msg, 'success', 'API Key gespeichert.');
+      // Editier-Modus beenden, neu laden
+      apiKeyEditing  = false;
+      settingsLoaded = false;
+      loadSettings();
+    } else {
+      showSettingsMsg(msg, 'error', data.message || 'Fehler beim Speichern.');
+    }
+  } catch (e) {
+    showSettingsMsg(msg, 'error', 'Netzwerkfehler — API nicht erreichbar.');
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function savePassword() {
+  var btn  = document.getElementById('savePasswordBtn');
+  var msg  = document.getElementById('passwordMsg');
+  showSettingsMsg(msg, '', '');
+
+  var current = document.getElementById('currentPassword').value;
+  var newPw   = document.getElementById('newPassword').value;
+  var confirm = document.getElementById('confirmPassword').value;
+
+  if (!current) {
+    showSettingsMsg(msg, 'error', 'Aktuelles Passwort eingeben.');
+    return;
+  }
+  if (!newPw) {
+    showSettingsMsg(msg, 'error', 'Neues Passwort eingeben.');
+    return;
+  }
+  if (newPw !== confirm) {
+    showSettingsMsg(msg, 'error', 'Passwörter stimmen nicht überein.');
+    return;
+  }
+  if (newPw.length < 6) {
+    showSettingsMsg(msg, 'error', 'Neues Passwort muss mindestens 6 Zeichen lang sein.');
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    var res  = await fetch('/api/moodlight/settings', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        admin_password:   newPw,
+        current_password: current
+      })
+    });
+    var data = await res.json();
+
+    if (res.ok && data.status === 'success') {
+      showSettingsMsg(msg, 'success', 'Passwort erfolgreich geändert.');
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPassword').value     = '';
+      document.getElementById('confirmPassword').value = '';
+    } else {
+      var errorText = data.message || 'Fehler beim Ändern.';
+      // 403 = falsches aktuelles Passwort
+      if (res.status === 403) {
+        errorText = 'Aktuelles Passwort ist falsch.';
+      }
+      showSettingsMsg(msg, 'error', errorText);
+    }
+  } catch (e) {
+    showSettingsMsg(msg, 'error', 'Netzwerkfehler — API nicht erreichbar.');
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showSettingsMsg(el, type, text) {
+  el.className = 'settings-msg' + (type ? ' ' + type : '');
+  el.textContent = text;
+  el.style.display = text ? 'block' : 'none';
+}
 
 // ===== INITIALISIERUNG =====
 // Übersicht sofort beim Laden der Seite befüllen (erster Tab aktiv)
