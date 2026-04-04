@@ -100,7 +100,7 @@ void setup() {
 
 // === Arduino Loop ===
 void loop() {
-    watchdog.autoFeed();
+    watchdog.feed();  // IMMER fuettern am Loop-Anfang (nicht autoFeed mit 15s Intervall)
 
     // Im AP/Config-Modus: DNS + WebServer + Settings-Save + Reboot
     if (appState.isInConfigMode) {
@@ -178,14 +178,18 @@ void loop() {
                       (appState.wifiConnectedSince > 0) &&
                       (millis() - appState.wifiConnectedSince >= 3000);
     if (wifiStable) {
-        // Force-Refresh aus HA-Button: lastMoodUpdate zurücksetzen damit getSentiment() sofort läuft
+        // Force-Refresh aus HA-Button oder Web-UI: lastMoodUpdate zuruecksetzen
         if (appState.mqttRefreshPending) {
             appState.mqttRefreshPending = false;
-            appState.lastMoodUpdate = 0; // Erzwingt sofortigen Abruf in getSentiment()
-            debug(F("Force-Refresh: lastMoodUpdate zurückgesetzt für sofortigen Abruf"));
+            appState.lastMoodUpdate = 0;
+            debug(F("Force-Refresh: lastMoodUpdate zurueckgesetzt"));
         }
-        if (appState.autoMode) getSentiment();
+        if (appState.autoMode) {
+            getSentiment();
+            watchdog.feed();  // WDT nach potentiell langem HTTP-Request fuettern
+        }
         readAndPublishDHT();
+        watchdog.feed();  // WDT nach DHT-Lesung fuettern
     } else if (appState.isPulsing) {
         appState.isPulsing = false;
         if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {

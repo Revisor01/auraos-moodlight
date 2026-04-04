@@ -39,81 +39,76 @@ extern void handleSentiment(float sentimentScore);
 
 void onStateCommand(bool state, HALight *sender)
 {
-    // Ignoriere Callbacks während wir Initial States senden
+    // Ignoriere Callbacks waehrend wir Initial States senden
     if (appState.sendingInitialStates) {
-        debug(F("Ignoriere State Command während Initial States"));
+        debug(F("Ignoriere State Command waehrend Initial States"));
         return;
     }
 
     if (state == appState.lightOn)
         return;
     appState.lightOn = state;
-    debug(String(F("HA Light State Command: ")) + (state ? "ON" : "OFF"));
-    if (!state)
-    {
-        pixels.clear();
-        pixels.show();
-    }
-    else
-    {
-        updateLEDs(); // Stellt korrekten Zustand wieder her
-    }
+    debug(state ? F("HA Light: ON") : F("HA Light: OFF"));
+    // LED-Update ueber Mutex-geschuetzten Pfad (NICHT pixels.show() direkt im Callback!)
+    updateLEDs();
     sender->setState(state);
 
-    // Direkt speichern statt verzögerter Speicherung
-    saveSettings();
+    // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 }
 
 void onBrightnessCommand(uint8_t brightness, HALight *sender)
 {
-    // Ignoriere Callbacks während wir Initial States senden
+    // Ignoriere Callbacks waehrend wir Initial States senden
     if (appState.sendingInitialStates) {
-        debug(F("Ignoriere Brightness Command während Initial States"));
+        debug(F("Ignoriere Brightness Command waehrend Initial States"));
         return;
     }
 
     if (brightness == appState.manualBrightness)
         return;
     appState.manualBrightness = brightness;
-    debug(String(F("HA Brightness Command: ")) + brightness);
+    debug(F("HA Brightness Command"));
     if (!appState.autoMode && appState.lightOn)
     {
-        updateLEDs(); // updateLEDs berücksichtigt jetzt appState.manualBrightness
+        updateLEDs();
     }
     sender->setBrightness(brightness);
 
-    // Direkt speichern statt verzögerter Speicherung
-    saveSettings();
+    // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 }
 
 void onRGBColorCommand(HALight::RGBColor color, HALight *sender)
 {
-    // Ignoriere Callbacks während wir Initial States senden
+    // Ignoriere Callbacks waehrend wir Initial States senden
     if (appState.sendingInitialStates) {
-        debug(F("Ignoriere RGB Command während Initial States"));
+        debug(F("Ignoriere RGB Command waehrend Initial States"));
         return;
     }
 
-    uint32_t newColor = pixels.Color(color.red, color.green, color.blue);
+    uint32_t newColor = ((uint32_t)color.red << 16) | ((uint32_t)color.green << 8) | color.blue;
     if (newColor == appState.manualColor)
         return;
     appState.manualColor = newColor;
-    debug(String(F("HA RGB Command: R=")) + color.red + " G=" + color.green + " B=" + color.blue);
+    debug(F("HA RGB Command"));
     if (!appState.autoMode && appState.lightOn)
     {
-        updateLEDs(); // updateLEDs berücksichtigt jetzt appState.manualColor
+        updateLEDs();
     }
     sender->setRGBColor(color);
 
-    // Direkt speichern statt verzögerter Speicherung
-    saveSettings();
+    // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 }
 
 void onModeCommand(int8_t index, HASelect *sender) {
     // Ignore mode commands during startup phase
     if (appState.initialStartupPhase) {
         debug(F("Ignoring mode command during startup grace period"));
-        // Force HA back to the current state instead of accepting the change
         sender->setState(appState.autoMode ? 0 : 1);
         return;
     }
@@ -121,21 +116,22 @@ void onModeCommand(int8_t index, HASelect *sender) {
     bool newMode = (index == 0);
     if (newMode == appState.autoMode) return;
     appState.autoMode = newMode;
-    debug(String(F("HA Mode Command: ")) + (appState.autoMode ? "Auto" : "Manual"));
+    debug(newMode ? F("HA Mode: Auto") : F("HA Mode: Manual"));
     if (appState.lightOn) {
         updateLEDs();
     }
     sender->setState(index);
 
-    // Direkt speichern statt verzögerter Speicherung
-    saveSettings();
+    // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 }
 
 void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
 {
-    // Ignoriere Callbacks während wir Initial States senden
+    // Ignoriere Callbacks waehrend wir Initial States senden
     if (appState.sendingInitialStates) {
-        debug(F("Ignoriere Update Interval Command während Initial States"));
+        debug(F("Ignoriere Update Interval Command waehrend Initial States"));
         return;
     }
 
@@ -146,22 +142,20 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
         return;
     appState.moodUpdateInterval = newInterval;
     sender->setState(float(intervalSeconds));
-    debug(String(F("Mood Update Interval gesetzt auf: ")) + String(intervalSeconds) + "s");
+    debug(F("Mood Update Interval geaendert"));
 
-    // Direkt speichern statt verzögerter Speicherung
-    saveSettings();
-
-    // Reset des Zeitgebers für das nächste Update (optional)
-    // appState.lastMoodUpdate = millis() - (appState.moodUpdateInterval / 2); // Hälfte des Intervalls
+    // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 }
 
 // v9.0: onHeadlinesCommand() removed - headlines_per_source not used anymore
 
 void onDHTIntervalCommand(HANumeric value, HANumber *sender)
 {
-    // Ignoriere Callbacks während wir Initial States senden
+    // Ignoriere Callbacks waehrend wir Initial States senden
     if (appState.sendingInitialStates) {
-        debug(F("Ignoriere DHT Interval Command während Initial States"));
+        debug(F("Ignoriere DHT Interval Command waehrend Initial States"));
         return;
     }
 
@@ -172,10 +166,11 @@ void onDHTIntervalCommand(HANumeric value, HANumber *sender)
         return;
     appState.dhtUpdateInterval = newInterval;
     sender->setState(float(intervalSeconds));
-    debug(String(F("DHT Interval gesetzt auf: ")) + String(intervalSeconds) + "s");
+    debug(F("DHT Interval geaendert"));
 
-    // Direkt speichern statt verzögerter Speicherung
-    saveSettings();
+    // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
+    appState.settingsNeedSaving = true;
+    appState.lastSettingsSaved = millis();
 }
 
 void onRefreshButtonPressed(HAButton *sender)
@@ -380,47 +375,16 @@ void sendInitialStates()
     haUpdateInterval.setState(float(appState.moodUpdateInterval / 1000.0));
     haDhtInterval.setState(float(appState.dhtUpdateInterval / 1000.0));
 
-    // DHT direkt lesen für aktuelle Werte
-    debug(F("Lese aktuelle DHT Werte für initiale Zustände..."));
-    float currentTemp = dhtSensor ? dhtSensor->readTemperature() : NAN;
-    float currentHum = dhtSensor ? dhtSensor->readHumidity() : NAN;
-    bool tempValid = !isnan(currentTemp);
-    bool humValid = !isnan(currentHum);
+    // DHT: Letzte bekannte Werte senden statt direkt zu lesen
+    // (DHT-I/O im Callback-/Reconnect-Kontext vermeiden — naechster regulaerer DHT-Zyklus liefert aktuelle Werte)
+    if (!isnan(appState.currentTemp))
+        haTemperature.setValue(floatToString(appState.currentTemp, 1).c_str());
+    if (!isnan(appState.currentHum))
+        haHumidity.setValue(floatToString(appState.currentHum, 1).c_str());
 
-    if (tempValid)
-    {
-        appState.currentTemp = currentTemp; // Update globale Variable
-        haTemperature.setValue(floatToString(currentTemp, 1).c_str());
-        debug(String(F("  Init Temp: ")) + String(currentTemp, 1) + "C");
-    }
-    else
-    {
-        debug(F("  Init Temp: Lesefehler!"));
-        // Sende letzten bekannten Wert, falls vorhanden
-        if (!isnan(appState.currentTemp))
-            haTemperature.setValue(floatToString(appState.currentTemp, 1).c_str());
-    }
-    if (humValid)
-    {
-        appState.currentHum = currentHum; // Update globale Variable
-        haHumidity.setValue(floatToString(currentHum, 1).c_str());
-        debug(String(F("  Init Hum: ")) + String(currentHum, 1) + "%");
-    }
-    else
-    {
-        debug(F("  Init Hum: Lesefehler!"));
-        // Sende letzten bekannten Wert, falls vorhanden
-        if (!isnan(appState.currentHum))
-            haHumidity.setValue(floatToString(appState.currentHum, 1).c_str());
-    }
-    // Setze appState.lastDHTUpdate, da wir gerade gelesen haben (verhindert sofortiges Lesen im Loop)
-    appState.lastDHTUpdate = millis();
-
-    // Sentiment (letzter bekannter Wert aus globalen Variablen)
+    // Sentiment (letzter bekannter Wert)
     haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
     haSentimentCategory.setValue(appState.sentimentCategory.c_str());
-    debug(String(F("  Init Sentiment Score: ")) + String(appState.sentimentScore, 2));
-    debug(String(F("  Init Sentiment Category: ")) + appState.sentimentCategory);
 
     // Initiale Heartbeat-Werte senden
     sendHeartbeat();

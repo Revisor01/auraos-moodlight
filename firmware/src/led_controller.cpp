@@ -1,6 +1,5 @@
 #include "led_controller.h"
 #include "debug.h"
-#include <esp_wifi.h>
 
 extern AppState appState;
 
@@ -214,18 +213,12 @@ void processLEDUpdates() {
             yield();
             delay(1);
 
-            // WiFi-Interrupts kurz pausieren waehrend pixels.show()
-            // Verhindert xEventGroupClearBits Crash auf aelteren ESP32-Revisionen
-            esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+            // pixels.show() ausfuehren — WiFi Power Save wird NICHT getoggelt.
+            // Staendiges Umschalten zwischen WIFI_PS_MIN_MODEM und WIFI_PS_NONE
+            // destabilisiert den WiFi-Stack bei schwachem Signal.
+            // Power Save ist global auf WIFI_PS_NONE gesetzt (nach WiFi-Connect).
             pixels.show();
-            esp_wifi_set_ps(WIFI_PS_NONE);
             lastLedUpdateTime = currentTime;
-
-            static unsigned long lastShowDebug = 0;
-            if (currentTime - lastShowDebug > 10000) {
-                debug(F("LED show() executed safely"));
-                lastShowDebug = currentTime;
-            }
         }
     }
 }
@@ -287,7 +280,7 @@ void pulseCurrentColor()
 // === Erste LED-Initialisierung nach Setup ===
 void initFirstLEDUpdate() {
     if (appState.firstLedShowDone) return;
-    if (xSemaphoreTake(appState.ledMutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTake(appState.ledMutex, 100 / portTICK_PERIOD_MS) == pdTRUE) {
         for (int i = 0; i < appState.numLeds; i++) {
             appState.ledColors[i] = 0;
         }

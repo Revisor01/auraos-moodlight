@@ -22,51 +22,38 @@ String floatToString(float value, int decimalPlaces)
 
 #ifdef DEBUG_MODE
 // === Debug-Funktion mit Logging ===
+// Verwendet fix-groesse char-Arrays im Ringpuffer statt String-Objekte.
+// Verhindert Heap-Fragmentierung durch staendiges Allokieren/Freigeben.
 void debug(const String &message) {
-    // Use static buffer for timestamps to avoid repeated allocations
-    static char timeBuffer[16];
-    static char messageBuffer[256];
-
-    // Calculate timestamp
     unsigned long ms = millis();
-    snprintf(timeBuffer, sizeof(timeBuffer), "[%lus] ", ms / 1000);
 
-    // Copy message safely into buffer
-    snprintf(messageBuffer, sizeof(messageBuffer), "%s%s", timeBuffer, message.c_str());
-
-    // Store in ring buffer (use a local copy)
-    String logEntry = messageBuffer; // Create the String locally
-    appState.logBuffer[appState.logIndex] = logEntry;  // Copy assignment is safer
-    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
+    // Direkt in den Ringpuffer-Slot schreiben (kein String-Objekt, kein Heap)
+    snprintf(appState.logBuffer[appState.logIndex], AppState::LOG_ENTRY_SIZE,
+             "[%lus] %s", ms / 1000, message.c_str());
 
     // Print to Serial
-    Serial.print(messageBuffer);
+    Serial.print(appState.logBuffer[appState.logIndex]);
     Serial.print(F(" (Mem: "));
     Serial.print(ESP.getFreeHeap());
     Serial.println(F(")"));
+
+    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
 }
 
 void debug(const __FlashStringHelper *message) {
-    static char timeBuffer[16];
-    static char messageBuffer[256];
-
-    // Calculate timestamp
     unsigned long ms = millis();
-    snprintf(timeBuffer, sizeof(timeBuffer), "[%lus] ", ms / 1000);
 
-    // Create combined message (avoid String operations)
-    snprintf(messageBuffer, sizeof(messageBuffer), "%s%s", timeBuffer, (const char*)message);
-
-    // Store in ring buffer (using direct copy)
-    String logEntry = messageBuffer;
-    appState.logBuffer[appState.logIndex] = logEntry;
-    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
+    // Direkt in den Ringpuffer-Slot schreiben (kein String-Objekt, kein Heap)
+    snprintf(appState.logBuffer[appState.logIndex], AppState::LOG_ENTRY_SIZE,
+             "[%lus] %s", ms / 1000, (const char*)message);
 
     // Print to Serial
-    Serial.print(messageBuffer);
+    Serial.print(appState.logBuffer[appState.logIndex]);
     Serial.print(F(" (Mem: "));
     Serial.print(ESP.getFreeHeap());
     Serial.println(F(")"));
+
+    appState.logIndex = (appState.logIndex + 1) % LOG_BUFFER_SIZE;
 }
 #else
 
