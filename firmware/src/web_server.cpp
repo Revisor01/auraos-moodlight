@@ -1522,10 +1522,12 @@ void setupWebServer() {
     // Log-Anzeige
     server.on("/logs", HTTP_GET, []() {
         String logs = "";
+        logs.reserve(LOG_BUFFER_SIZE * 200); // Pre-allokieren um Fragmentierung zu vermeiden
         for (int i = 0; i < LOG_BUFFER_SIZE; i++) {
             int idx = (appState.logIndex + i) % LOG_BUFFER_SIZE;
-            if (appState.logBuffer[idx].length() > 0) {
-                logs += appState.logBuffer[idx] + "<br>";
+            if (appState.logBuffer[idx][0] != '\0') {
+                logs += appState.logBuffer[idx];
+                logs += "<br>";
             }
         }
         server.send(200, "text/html", logs);
@@ -1596,94 +1598,28 @@ void setupWebServer() {
         jsonPool.release(jsonBuffer);
     });
 
-    // Force-Refresh für Sentiment
+    // Force-Refresh fuer Sentiment — nutzt den gleichen Flag-Mechanismus wie HA-Button
     server.on("/refresh", HTTP_GET, []() {
-        debug(F("Force-Update des Sentiments gestartet..."));
-
-        // Direkt den HTTP-Client starten
-        HTTPClient http;
-        bool success = false;
-        float receivedSentiment = 0.0;
-
-        http.setReuse(false);
-        http.setUserAgent("MoodlightClient/1.0");
-
-        // Erfolg melden, damit die UI nicht blockiert
+        debug(F("Force-Update via Web — setze Flag fuer naechsten Loop"));
+        // Antwort sofort senden
         server.send(200, "text/plain", "Refresh initiated");
-
+        // Flag setzen, loop() fuehrt den Abruf sicher aus (wie beim HA-Button)
+        appState.mqttRefreshPending = true;
         appState.isPulsing = true;
         appState.pulseStartTime = millis();
-
-        debug(F("Starte Sentiment HTTP-Abruf (Force-Update)..."));
-        // v9.0: headlines_per_source parameter removed
-        if (http.begin(wifiClientHTTP, appState.apiUrl)) {
-            http.setTimeout(10000);
-            int httpCode = http.GET();
-
-            if (httpCode == HTTP_CODE_OK) {
-                WiFiClient* stream = http.getStreamPtr();
-                JsonDocument doc;
-                DeserializationError error = deserializeJson(doc, *stream);
-                if (!error) {
-                    if (doc["sentiment"].is<float>()) {
-                        receivedSentiment = doc["sentiment"].as<float>();
-                        success = true;
-                        debug(String(F("Sentiment empfangen (Force-Update): ")) + String(receivedSentiment, 2));
-                        appState.lastMoodUpdate = millis();
-                    } else {
-                        debug(F("Fehler: 'sentiment' fehlt/falsch in JSON."));
-                    }
-                } else {
-                    debug(String(F("JSON Parsing Fehler: ")) + error.c_str());
-                }
-            } else {
-                debug(String(F("HTTP Fehler: ")) + String(httpCode));
-                appState.consecutiveSentimentFailures++;
-            }
-            http.end();
-        }
-
-        // Verarbeite das empfangene Sentiment
-        if (success) {
-            handleSentiment(receivedSentiment);
-            appState.initialAnalysisDone = true;
-            if (appState.statusLedMode == 2) {
-                setStatusLED(0);  // Normalmodus
-            }
-
-            // v9.0: CSV stats removed - data managed in backend
-        } else {
-            debug(String(F("Force-Update fehlgeschlagen")));
-        }
-
-        // Aktualisierung abschließen
-        appState.isPulsing = false;
-        updateLEDs();
-        debug(F("Force-Update abgeschlossen."));
     });
 
     // toggle-light Endpunkt
     server.on("/toggle-light", HTTP_GET, []() {
         appState.lightOn = !appState.lightOn;
 
-        // Erst die Antwort senden
+        // Antwort senden
         server.send(200, "text/plain", "OK");
 
-        // Kleine Pause einfügen
-        delay(50);
+        // LED-Update ueber Mutex-geschuetzten Pfad (NICHT pixels.show() direkt!)
+        updateLEDs();
 
-        // Dann LEDs aktualisieren
-        if (appState.lightOn) {
-            updateLEDs();
-        } else {
-            pixels.clear();
-            pixels.show();
-        }
-
-        // Kleine Pause vor dem Speichern
-        delay(50);
-
-        // Zum Schluss die Einstellungen speichern
+        // Verzoegerte Speicherung
         appState.settingsNeedSaving = true;
         appState.lastSettingsSaved = millis();
 
