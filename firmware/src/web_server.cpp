@@ -867,6 +867,14 @@ void setupWebServer() {
     server.on("/setup", HTTP_GET, []()
               { handleStaticFile("/setup.html"); });
 
+    server.on("/api/restart-counter", HTTP_GET, []() {
+        Preferences prefs;
+        prefs.begin("syshealth", true);
+        unsigned long restarts = prefs.getULong("restarts", 0);
+        prefs.end();
+        server.send(200, "application/json", "{\"restarts\":" + String(restarts) + "}");
+    });
+
     server.on("/api/reset-restart-counter", HTTP_GET, []() {
         Preferences prefs;
         prefs.begin("syshealth", false);
