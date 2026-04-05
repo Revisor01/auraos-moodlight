@@ -69,18 +69,6 @@
                 </ul>
             </div>
 
-            <div class="filter-control">
-                <div class="filter-label">Nicht aktualisierte Werte ausblenden:</div>
-                <label class="filter-toggle">
-                    <input type="checkbox" id="filter-stale-data" checked aria-label="Filtert identische Datenpunkte aus">
-                    <span class="filter-slider"></span>
-                </label>
-                <div class="tooltip">
-                    <i class="fas fa-question-circle" aria-hidden="true"></i>
-                    <span class="tooltip-text">Filtert Datenpunkte, bei denen der gleiche Wert mehrfach hintereinander auftritt, was auf fehlende Aktualisierungen hindeuten könnte.</span>
-                </div>
-            </div>
-
             <!-- v9.0: Data management removed - data managed in backend -->
 
             <div class="tab-content" id="all-tab" role="tabpanel" aria-labelledby="all-tab">
@@ -102,6 +90,49 @@
     </div>
 
     <!-- v9.0: Archiv-Container entfernt - Daten im Backend verwaltet -->
+
+    <!-- Perzentil-Kontext (prominent platziert) -->
+    <div class="scale-section" id="scaleSection" style="display:none;">
+        <h2><i class="fas fa-chart-line" aria-hidden="true"></i> Einordnung des Scores</h2>
+        <p class="scale-subtitle" id="scaleExplain">
+            Die LED-Farbe basiert nicht auf dem absoluten Score, sondern auf dem <strong>Vergleich mit den letzten 7 Tagen</strong>.
+            Ein negativer Score kann trotzdem eine "bessere" Farbe zeigen, wenn die Woche insgesamt noch negativer war.
+        </p>
+
+        <!-- Perzentil-Badge -->
+        <div class="percentile-row">
+            <div class="percentile-badge" id="percentileVal">—</div>
+            <div class="percentile-desc" id="percentileDesc">Wird geladen…</div>
+        </div>
+
+        <!-- Historischer Bereich-Balken -->
+        <div class="hist-bar-wrap" id="histBarWrap">
+            <div class="hist-bar-track"></div>
+            <div class="hist-bar-range" id="histBarRange"></div>
+            <div class="hist-bar-needle" id="histNeedle"></div>
+        </div>
+
+        <!-- Min / Median / Max -->
+        <div class="hist-values">
+            <span><strong id="histMin">—</strong>Min (7 Tage)</span>
+            <span style="text-align:center"><strong id="histMedian">—</strong>Median</span>
+            <span style="text-align:right"><strong id="histMax">—</strong>Max (7 Tage)</span>
+        </div>
+
+        <!-- Datenpunkt-Zähler -->
+        <p class="hist-count" id="histCount">— Datenpunkte in den letzten 7 Tagen</p>
+
+        <!-- LED-Farb-Erklärung -->
+        <div class="led-explain" id="ledExplain">
+            <div class="led-color-dot" id="ledDot"></div>
+            <div class="led-explain-text" id="ledText">Wird berechnet…</div>
+        </div>
+
+        <!-- Fallback-Hinweis -->
+        <div class="fallback-hint" id="fallbackHint">
+            Wenige Datenpunkte — Backend nutzt Fallback-Schwellwerte. Anzeige wird genauer nach 3+ Analysen.
+        </div>
+    </div>
 
     <div class="stats-grid">
         <div class="stat-card">
@@ -126,7 +157,6 @@
             <div class="stat-icon"><i class="fas fa-chart-pie" aria-hidden="true"></i></div>
             <div class="stat-label">Messungen</div>
             <div class="stat-value neutral" id="count-value" aria-live="polite">--</div>
-            <span class="badge badge-primary" id="filtered-badge">0 gefiltert</span>
         </div>
     </div>
 
@@ -202,49 +232,6 @@
     <!-- v9.0: CSV Export/Repair/Storage removed - data managed in backend -->
 
     <!-- v9.0: Backend-Statistiken info card removed -->
-
-    <!-- v10.0: Perzentil-Kontext (PZ-01..03) -->
-    <div class="scale-section" id="scaleSection" style="display:none;">
-        <h2><i class="fas fa-chart-line" aria-hidden="true"></i> Einordnung des Scores</h2>
-        <p class="scale-subtitle" id="scaleExplain">
-            Die LED-Farbe basiert nicht auf dem absoluten Score, sondern auf dem <strong>Vergleich mit den letzten 7 Tagen</strong>.
-            Ein negativer Score kann trotzdem eine "bessere" Farbe zeigen, wenn die Woche insgesamt noch negativer war.
-        </p>
-
-        <!-- Perzentil-Badge -->
-        <div class="percentile-row">
-            <div class="percentile-badge" id="percentileVal">—</div>
-            <div class="percentile-desc" id="percentileDesc">Wird geladen…</div>
-        </div>
-
-        <!-- Historischer Bereich-Balken -->
-        <div class="hist-bar-wrap" id="histBarWrap">
-            <div class="hist-bar-track"></div>
-            <div class="hist-bar-range" id="histBarRange"></div>
-            <div class="hist-bar-needle" id="histNeedle"></div>
-        </div>
-
-        <!-- Min / Median / Max -->
-        <div class="hist-values">
-            <span><strong id="histMin">—</strong>Min (7 Tage)</span>
-            <span style="text-align:center"><strong id="histMedian">—</strong>Median</span>
-            <span style="text-align:right"><strong id="histMax">—</strong>Max (7 Tage)</span>
-        </div>
-
-        <!-- Datenpunkt-Zähler -->
-        <p class="hist-count" id="histCount">— Datenpunkte in den letzten 7 Tagen</p>
-
-        <!-- LED-Farb-Erklärung -->
-        <div class="led-explain" id="ledExplain">
-            <div class="led-color-dot" id="ledDot"></div>
-            <div class="led-explain-text" id="ledText">Wird berechnet…</div>
-        </div>
-
-        <!-- Fallback-Hinweis -->
-        <div class="fallback-hint" id="fallbackHint">
-            Wenige Datenpunkte — Backend nutzt Fallback-Schwellwerte. Anzeige wird genauer nach 3+ Analysen.
-        </div>
-    </div>
 
     <!-- v9.8: Headlines-Transparenz (ESP-01) -->
     <div class="info-card" id="headlines-section">
