@@ -4,22 +4,13 @@ let filteredData = [];
 let hourlyAverages = [];
 let weekdayAverages = [];
 let dailyAverages = [];
-let isFilterEnabled = true;
 let charts = {};
-
-const STALE_THRESHOLD = 3; // Anzahl identischer Werte in Folge, die als "nicht aktualisiert" gelten
 
 // Dokumenten-Bereit-Handler
 document.addEventListener('DOMContentLoaded', function() {
     // Tabs einrichten
     setupTabs();
-    
-    // Filter-Wechsel-Handler
-    document.getElementById('filter-stale-data').addEventListener('change', function() {
-        isFilterEnabled = this.checked;
-        processData(null, true);
-    });
-    
+
     // Daten laden
     loadData();
     
@@ -162,50 +153,17 @@ function processData(results, reprocess = false) {
         console.error("processData: Keine Daten zum Verarbeiten");
         return;
     }
-    
-    // Markiere nicht aktualisierte Datenpunkte
-    markStaleData();
-    
-    // Filtere die Daten je nach Einstellung
-    filteredData = isFilterEnabled ?
-        allData.filter(item => !item.isStale) :
-        [...allData];
-    
+
+    filteredData = [...allData];
+
     // Berechne Statistiken und erstelle/aktualisiere Charts
     calculateStatistics();
-    
+
     if (!reprocess) {
         createAllCharts();
     } else {
         updateAllCharts();
     }
-}
-
-// Markiere nicht aktualisierte Datenpunkte
-function markStaleData() {
-    let consecutiveCount = 1;
-    let prevValue = null;
-    let staleMarkedCount = 0;
-    
-    allData.forEach((item, index) => {
-        if (index > 0) {
-            if (Math.abs(item.value - prevValue) < 0.0001) {
-                consecutiveCount++;
-            } else {
-                consecutiveCount = 1;
-            }
-        } else {
-            consecutiveCount = 1;
-        }
-        
-        let isCurrentlyStale = consecutiveCount >= STALE_THRESHOLD;
-        item.isStale = isCurrentlyStale;
-        if (isCurrentlyStale) staleMarkedCount++;
-        prevValue = item.value;
-    });
-    
-    // Anzeige der gefilterten Anzahl
-    document.getElementById('filtered-badge').textContent = `${staleMarkedCount} gefiltert`;
 }
 
 // Berechne statistische Kennzahlen
