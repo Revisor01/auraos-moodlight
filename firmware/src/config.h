@@ -16,10 +16,6 @@
 #define DEFAULT_AP_NAME "Moodlight-Setup"
 #define DEFAULT_AP_PASSWORD ""
 
-#define DEFAULT_WAVE_DURATION 10000
-#define DEFAULT_WAVE_MIN_BRIGHTNESS 20
-#define DEFAULT_WAVE_MAX_BRIGHTNESS 255
-
 #define DEFAULT_MOOD_UPDATE_INTERVAL 1800000 // 30 Minuten
 #define DEFAULT_DHT_READ_INTERVAL 300000     // 5 Minuten
 
@@ -60,7 +56,6 @@
 #define LOOP_CONNECTION_CHECK_MS 2000         // WiFi/MQTT Verbindungscheck
 #define LOOP_MQTT_INTERVAL_MS 100             // MQTT loop Intervall
 #define LOOP_DELAY_MS 20                      // Loop-Ende Pause
-#define LOOP_PULSE_UPDATE_MS 30               // Pulsier-Update Intervall
 #define SETTINGS_SAVE_DEBOUNCE_MS 2000        // Einstellungen Speicher-Debounce
 
 // System Health

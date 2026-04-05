@@ -180,8 +180,6 @@ void onRefreshButtonPressed(HAButton *sender)
     // Stattdessen: Flag setzen, loop() führt den Abruf sicher aus.
     debug(F("Sentiment Refresh über Home Assistant ausgelöst — wird in loop() ausgeführt"));
     appState.mqttRefreshPending = true;
-    appState.isPulsing = true;
-    appState.pulseStartTime = millis();
 }
 
 // ============================================================
@@ -506,7 +504,10 @@ void connectMQTTOnStartup() {
     if (!appState.mqttEnabled || appState.mqttServer.isEmpty()) return;
 
     debug(F("MQTT Konfiguration gefunden, starte verzögerte Initialisierung..."));
-    delay(500);
+    // Längere Verzögerung nach Boot — gibt dem lwIP TCP-Stack Zeit,
+    // verwaiste Verbindungen vom vorherigen Lauf abzubauen (verhindert LoadProhibited in tcp_output)
+    delay(2000);
+    watchdog.feed();
 
     setupHA();
 

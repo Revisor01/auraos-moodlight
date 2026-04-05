@@ -634,6 +634,24 @@ void handleApiStatus() {
     sprintf(hexColor, "#%02X%02X%02X", r, g, b);
     doc["ledColor"] = hexColor;
 
+    // Perzentil-Daten für Dashboard
+    if (appState.initialAnalysisDone) {
+        doc["percentile"] = appState.percentile;
+        doc["ledIndex"] = appState.currentLedIndex;
+        doc["headlinesAnalyzed"] = appState.headlinesAnalyzed;
+        JsonObject thresholds = doc["thresholds"].to<JsonObject>();
+        thresholds["p20"] = appState.thresholdP20;
+        thresholds["p40"] = appState.thresholdP40;
+        thresholds["p60"] = appState.thresholdP60;
+        thresholds["p80"] = appState.thresholdP80;
+        thresholds["fallback"] = appState.thresholdFallback;
+        JsonObject historical = doc["historical"].to<JsonObject>();
+        historical["min"] = appState.histMin;
+        historical["max"] = appState.histMax;
+        historical["median"] = appState.histMedian;
+        historical["count"] = appState.histCount;
+    }
+
     // Status-LED Info
     if (appState.statusLedMode != 0) {
         char statusLedColor[8] = "#000000";
@@ -1605,8 +1623,6 @@ void setupWebServer() {
         server.send(200, "text/plain", "Refresh initiated");
         // Flag setzen, loop() fuehrt den Abruf sicher aus (wie beim HA-Button)
         appState.mqttRefreshPending = true;
-        appState.isPulsing = true;
-        appState.pulseStartTime = millis();
     });
 
     // toggle-light Endpunkt
@@ -1791,11 +1807,14 @@ void setupWebServer() {
     server.on(
         "/update", HTTP_POST, []() {
             server.sendHeader("Connection", "close");
-            server.send(200, "text/html", Update.hasError() ?
-                "<html><body><h1>Update Failed!</h1><a href='/'>Return to Homepage</a></body></html>" :
-                "<html><body><h1>Update Successful!</h1><p>Device is restarting...</p><script>setTimeout(function(){window.location.href='/';}, 10000);</script></body></html>");
-            delay(1000);
-            ESP.restart();
+            if (Update.hasError()) {
+                server.send(200, "text/html", "<html><body><h1>Update Failed!</h1><a href='/'>Return to Homepage</a></body></html>");
+                // Kein Restart bei fehlgeschlagenem Update
+            } else {
+                server.send(200, "text/html", "<html><body><h1>Update Successful!</h1><p>Device is restarting...</p><script>setTimeout(function(){window.location.href='/';}, 10000);</script></body></html>");
+                delay(1000);
+                ESP.restart();
+            }
         },
         []() {
             HTTPUpload &upload = server.upload();
@@ -1951,6 +1970,15 @@ void runSystemHealthCheck() {
             prefs.putBool("restartPending", true);
             prefs.end();
         }
+    } else {
+        // Selbstheilung: restartPending löschen wenn kein Neustart mehr nötig
+        Preferences prefs;
+        prefs.begin("syshealth", false);
+        if (prefs.getBool("restartPending", false)) {
+            debug(F("Neustart-Empfehlung aufgehoben, lösche restartPending-Flag"));
+            prefs.putBool("restartPending", false);
+        }
+        prefs.end();
     }
 
     // Geplanten Neustart prüfen

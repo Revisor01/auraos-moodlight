@@ -26,6 +26,4 @@ void updateLEDs();
 void setStatusLED(int mode);
 void updateStatusLED();
 void processLEDUpdates();
-void pulseCurrentColor();
-void updatePulse();
 void initFirstLEDUpdate();
