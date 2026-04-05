@@ -867,6 +867,15 @@ void setupWebServer() {
     server.on("/setup", HTTP_GET, []()
               { handleStaticFile("/setup.html"); });
 
+    server.on("/api/reset-restart-counter", HTTP_GET, []() {
+        Preferences prefs;
+        prefs.begin("syshealth", false);
+        prefs.putULong("restarts", 0);
+        prefs.end();
+        server.send(200, "application/json", "{\"status\":\"ok\",\"restarts\":0}");
+        debug(F("Reboot-Counter zurückgesetzt"));
+    });
+
     server.on("/mood", HTTP_GET, []()
               { handleStaticFile("/mood.html"); });
 
