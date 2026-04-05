@@ -439,6 +439,13 @@ bool connectWiFiAndStartServices() {
     esp_wifi_set_ps(WIFI_PS_NONE);
     debug(F("ESP-IDF WiFi Power Save explicitly disabled (STA)."));
 
+    // TCP-Stack stabilisieren: Nach schnellem Reboot können verwaiste TCP-Sessions
+    // vom vorherigen Lauf im Router/Broker noch offen sein. Ohne Delay crasht der
+    // lwIP-Stack (LoadProhibited in tcp_free_acked_segments) beim ersten HTTP/MQTT-Request.
+    debug(F("Warte auf TCP-Stack-Stabilisierung..."));
+    delay(3000);
+    watchdog.feed();
+
     initTime();
 
     debug(F("Starte Webserver..."));
