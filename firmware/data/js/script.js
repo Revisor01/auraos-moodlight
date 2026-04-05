@@ -35,6 +35,7 @@ function refreshStatus() {
       updateStats(data);
       updateLEDs(data);
       updateMood(data);
+      updatePercentile(data);
       updateSwitches(data);
       
       // Version aktualisieren
@@ -204,6 +205,89 @@ function getMoodClassName(value) {
          value >= 0.10 ? 'mood-positive' :
          value >= -0.20 ? 'mood-neutral' :
          value >= -0.50 ? 'mood-negative' : 'mood-very-negative';
+}
+
+// Perzentil-Visualisierung
+function updatePercentile(data) {
+  var section = document.getElementById('percentile-section');
+  if (!section || data.percentile === undefined) return;
+
+  section.style.display = '';
+  var pct = Math.round(data.percentile * 100);
+  var score = parseFloat(data.sentiment.split(' ')[0]);
+  var t = data.thresholds;
+  var h = data.historical;
+  var ledIdx = data.ledIndex || 0;
+
+  document.getElementById('pct-badge').textContent = pct + '. Pzt.';
+  document.getElementById('pct-desc').textContent = 'Der aktuelle Score (' + score.toFixed(2) + ') liegt über ' + pct + ' % der Werte der letzten 7 Tage.';
+
+  // Bereich und Nadel positionieren
+  var range = h.max - h.min;
+  if (range > 0) {
+    var rangeLeft = 0;
+    var rangeRight = 0;
+    var needleLeft = ((score - h.min) / range * 100);
+    needleLeft = Math.max(0, Math.min(100, needleLeft));
+
+    document.getElementById('pct-range').style.left = rangeLeft + '%';
+    document.getElementById('pct-range').style.right = rangeRight + '%';
+    document.getElementById('pct-needle').style.left = needleLeft + '%';
+
+    // Schwellwert-Ticks (mood.html-Stil)
+    var ticksEl = document.getElementById('pct-ticks');
+    ticksEl.innerHTML = '';
+    var thresholds = [
+      {v: t.p20, l: 'P20'}, {v: t.p40, l: 'P40'},
+      {v: t.p60, l: 'P60'}, {v: t.p80, l: 'P80'}
+    ];
+    thresholds.forEach(function(th) {
+      var pos = ((th.v - h.min) / range * 100);
+      pos = Math.max(0, Math.min(100, pos));
+      var tick = document.createElement('div');
+      tick.style.cssText = 'position:absolute;top:0;width:2px;height:28px;background:rgba(128,128,128,0.35);transform:translateX(-50%);left:' + pos + '%;';
+      ticksEl.appendChild(tick);
+      var label = document.createElement('div');
+      label.style.cssText = 'position:absolute;top:30px;font-size:0.65rem;color:var(--text-muted);transform:translateX(-50%);white-space:nowrap;left:' + pos + '%;';
+      label.textContent = th.l;
+      ticksEl.appendChild(label);
+    });
+  }
+
+  document.getElementById('pct-min').textContent = h.min.toFixed(3);
+  document.getElementById('pct-median').textContent = h.median.toFixed(3);
+  document.getElementById('pct-max').textContent = h.max.toFixed(3);
+  document.getElementById('pct-count').textContent = h.count + ' Datenpunkte in den letzten 7 Tagen';
+
+  // LED-Erklärung
+  var ledNames = ['Sehr negativ', 'Negativ', 'Neutral', 'Positiv', 'Sehr positiv'];
+  var ledColors = ['#e74c3c', '#e67e22', '#3498db', '#6c3dbf', '#8e44ad'];
+  document.getElementById('pct-led-dot').style.background = ledColors[ledIdx];
+  document.getElementById('pct-led-text').innerHTML = 'Das Moodlight zeigt <strong style="color:var(--primary);">' + ledNames[ledIdx] + '</strong> (LED-Index ' + ledIdx + ' = \u201E' + ledNames[ledIdx].toLowerCase() + '\u201C). Der aktuelle Score ist relativ zur letzten Woche im <strong style="color:var(--primary);">' + pct + '. Perzentil</strong>.';
+
+  // Fallback-Hinweis
+  document.getElementById('pct-fallback').style.display = t.fallback ? '' : 'none';
+
+  // LED-Farbstufen
+  var stepsEl = document.getElementById('pct-steps');
+  if (stepsEl.children.length === 0) {
+    var steps = [
+      {name: 'Sehr negativ', range: '< ' + t.p20.toFixed(2) + ' (P20)', color: '#e74c3c', idx: 0},
+      {name: 'Negativ', range: t.p20.toFixed(2) + ' – ' + t.p40.toFixed(2) + ' (P40)', color: '#e67e22', idx: 1},
+      {name: 'Neutral', range: t.p40.toFixed(2) + ' – ' + t.p60.toFixed(2) + ' (P60)', color: '#3498db', idx: 2},
+      {name: 'Positiv', range: t.p60.toFixed(2) + ' – ' + t.p80.toFixed(2) + ' (P80)', color: '#6c3dbf', idx: 3},
+      {name: 'Sehr positiv', range: '≥ ' + t.p80.toFixed(2) + ' (P80)', color: '#8e44ad', idx: 4}
+    ];
+    steps.forEach(function(s) {
+      var active = s.idx === ledIdx;
+      var div = document.createElement('div');
+      div.style.cssText = 'background:' + (active ? s.color + '22' : 'var(--surface)') + ';border:2px solid ' + (active ? s.color : 'var(--border)') + ';border-radius:var(--radius);padding:10px;text-align:center;';
+      div.innerHTML = '<div style="width:22px;height:22px;border-radius:50%;background:' + s.color + ';margin:0 auto 6px;"></div>' +
+        '<div style="font-weight:600;font-size:0.82rem;">' + s.name + '</div>' +
+        '<div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;font-family:monospace;">' + s.range + '</div>';
+      stepsEl.appendChild(div);
+    });
+  }
 }
 
 // Schalter-Updates
