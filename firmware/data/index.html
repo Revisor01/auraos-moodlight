@@ -27,8 +27,10 @@
     </div>
 
     <div class="grid">
-        <div class="card">
-            <h2><i class="fas fa-globe-europe" aria-hidden="true"></i> Weltlage</h2>
+        <div class="card" id="weltlage-card" style="padding:28px;">
+            <h2><i class="fas fa-globe-europe" aria-hidden="true"></i> Aktuelle Weltlage</h2>
+
+            <!-- Score + Gauge -->
             <div class="gauge">
                 <div class="gauge-fill" id="mood-gauge"></div>
             </div>
@@ -36,6 +38,53 @@
                 <div class="stat-value score-neutral" id="mood-value">--</div>
                 <div class="mood mood-neutral" id="mood-class">Neutral</div>
             </div>
+
+            <!-- Perzentil-Sektion im mood.html-Stil -->
+            <div id="percentile-section" style="display:none; margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
+                <h3 style="font-size:0.95rem; margin-bottom:6px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-chart-line" aria-hidden="true"></i> Einordnung der Weltlage
+                </h3>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:16px; line-height:1.5;">
+                    Die LED-Farbe basiert auf dem <strong>Vergleich mit den letzten 7 Tagen</strong>.
+                    Ein negativer Score kann trotzdem eine „bessere" Farbe zeigen, wenn die Woche insgesamt noch negativer war.
+                </p>
+
+                <!-- Perzentil-Badge + Beschreibung -->
+                <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem; flex-wrap:wrap;">
+                    <div id="pct-badge" style="background:var(--primary); color:white; border-radius:6px; padding:0.4rem 1rem; font-size:1.1rem; font-weight:700;">--</div>
+                    <div id="pct-desc" style="font-size:0.85rem; color:var(--text-muted); flex:1;"></div>
+                </div>
+
+                <!-- Regenbogen-Balken wie auf Statistik-Seite -->
+                <div id="pct-bar-wrap" style="position:relative; height:28px; margin:0.75rem 0 0.5rem;">
+                    <div style="position:absolute; top:7px; left:0; right:0; height:14px; background:var(--border); border-radius:7px;"></div>
+                    <div id="pct-range" style="position:absolute; top:7px; height:14px; background:linear-gradient(to right, var(--score-sehr-negativ), var(--score-negativ), var(--score-neutral), var(--score-positiv), var(--score-sehr-positiv)); border-radius:7px;"></div>
+                    <div id="pct-needle" style="position:absolute; top:2px; width:4px; height:24px; background:var(--text); border-radius:2px; transform:translateX(-50%); box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>
+                    <div id="pct-ticks"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-top:2rem; margin-bottom:0.5rem;">
+                    <span><strong id="pct-min" style="display:block; font-size:0.95rem; color:var(--text); font-family:'Courier New',Courier,monospace;">--</strong>Min (7 Tage)</span>
+                    <span style="text-align:center;"><strong id="pct-median" style="display:block; font-size:0.95rem; color:var(--text); font-family:'Courier New',Courier,monospace;">--</strong>Median</span>
+                    <span style="text-align:right;"><strong id="pct-max" style="display:block; font-size:0.95rem; color:var(--text); font-family:'Courier New',Courier,monospace;">--</strong>Max (7 Tage)</span>
+                </div>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.25rem;" id="pct-count"></p>
+
+                <!-- LED-Erklärung -->
+                <div id="pct-led-explain" style="display:flex; align-items:center; gap:0.75rem; margin-top:1rem; padding:0.75rem 1rem; background:var(--border); border-radius:8px;">
+                    <div id="pct-led-dot" style="width:18px; height:18px; border-radius:50%; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+                    <div id="pct-led-text" style="font-size:0.82rem; color:var(--text); line-height:1.45;"></div>
+                </div>
+
+                <div id="pct-fallback" style="display:none; font-size:0.82rem; margin-top:0.75rem; padding:0.75rem 1rem; background:rgba(255,193,7,0.1); border:1px solid rgba(255,204,2,0.3); border-radius:6px; color:var(--text-muted);">
+                    Wenige Datenpunkte — Backend nutzt Fallback-Schwellwerte. Anzeige wird genauer nach 3+ Analysen.
+                </div>
+
+                <div style="margin-top:1.5rem;">
+                    <h4 style="font-size:0.9rem; margin-bottom:12px; font-weight:600; color:var(--text);">LED-Farbzuordnung via Perzentil-Schwellwerte</h4>
+                    <div id="pct-steps" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px;"></div>
+                </div>
+            </div>
+
             <div class="buttons">
                 <button class="btn" onclick="refreshSentiment()" aria-label="Weltlage-Analyse aktualisieren">
                     <i class="fas fa-sync-alt" aria-hidden="true"></i> Aktualisieren

@@ -276,8 +276,6 @@ void getSentiment()
 
     debug(F("Starte Sentiment-Abruf..."));
     isUpdating = true;
-    appState.isPulsing = true;
-    appState.pulseStartTime = currentMillis;
 
     // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
 
@@ -327,6 +325,23 @@ void getSentiment()
 
         // handleSentiment() für MQTT/HA-Werte (Score + Kategorie)
         handleSentiment(receivedSentiment);
+
+        // Perzentil-Daten für Dashboard-Visualisierung speichern
+        if (doc["percentile"].is<float>()) appState.percentile = doc["percentile"].as<float>();
+        if (doc["headlines_analyzed"].is<int>()) appState.headlinesAnalyzed = doc["headlines_analyzed"].as<int>();
+        if (doc["thresholds"].is<JsonObject>()) {
+            if (doc["thresholds"]["p20"].is<float>()) appState.thresholdP20 = doc["thresholds"]["p20"].as<float>();
+            if (doc["thresholds"]["p40"].is<float>()) appState.thresholdP40 = doc["thresholds"]["p40"].as<float>();
+            if (doc["thresholds"]["p60"].is<float>()) appState.thresholdP60 = doc["thresholds"]["p60"].as<float>();
+            if (doc["thresholds"]["p80"].is<float>()) appState.thresholdP80 = doc["thresholds"]["p80"].as<float>();
+            appState.thresholdFallback = doc["thresholds"]["fallback"] | false;
+        }
+        if (doc["historical"].is<JsonObject>()) {
+            if (doc["historical"]["min"].is<float>()) appState.histMin = doc["historical"]["min"].as<float>();
+            if (doc["historical"]["max"].is<float>()) appState.histMax = doc["historical"]["max"].as<float>();
+            if (doc["historical"]["median"].is<float>()) appState.histMedian = doc["historical"]["median"].as<float>();
+            if (doc["historical"]["count"].is<int>()) appState.histCount = doc["historical"]["count"].as<int>();
+        }
 
         // LED-Index aus API setzen — einzige Stelle die LEDs steuert
         debug(String(F("LED-Index setzen: ")) + String(apiLedIndex));
@@ -382,7 +397,6 @@ void getSentiment()
     }
 
     // Always clean up
-    appState.isPulsing = false;
     isUpdating = false;
     updateLEDs();
 
