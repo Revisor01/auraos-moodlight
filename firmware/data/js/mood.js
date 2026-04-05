@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Tabs initialisieren
+let allDataLoaded = false; // Gesamtzeitraum noch nicht geladen
+
 function setupTabs() {
     document.querySelectorAll('.nav-tabs li').forEach(tab => {
         tab.addEventListener('click', function() {
@@ -40,14 +42,22 @@ function setupTabs() {
                 t.classList.remove('active');
             });
             this.classList.add('active');
-            
+
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
-            
+
             const tabId = this.getAttribute('data-tab');
             document.getElementById(`${tabId}-tab`).classList.add('active');
-            
+
+            // On-demand: Gesamtzeitraum erst bei Klick nachladen
+            const hours = this.getAttribute('data-hours');
+            if (hours && !allDataLoaded) {
+                allDataLoaded = true;
+                document.getElementById('loading-message').textContent = 'Lade gesamten Zeitraum...';
+                loadData(parseInt(hours));
+            }
+
             // Charts neu zeichnen
             Object.values(charts).forEach(chart => {
                 if (chart && chart.canvas && chart.canvas.offsetParent !== null) {
@@ -59,10 +69,11 @@ function setupTabs() {
 }
 
 // Daten vom Server laden
-function loadData() {
+function loadData(hours) {
+    hours = hours || 168; // Default: 7 Tage
     document.getElementById('loading-message').textContent = 'Lade Daten...';
-    
-    return fetch('/api/stats')
+
+    return fetch('/api/stats?hours=' + hours)
     .then(response => {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

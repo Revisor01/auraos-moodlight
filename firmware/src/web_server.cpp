@@ -645,6 +645,13 @@ void handleApiStatus() {
         thresholds["p60"] = appState.thresholdP60;
         thresholds["p80"] = appState.thresholdP80;
         thresholds["fallback"] = appState.thresholdFallback;
+        // LED-Farben für dynamische Perzentil-Grafik
+        JsonArray colors = doc["ledColors"].to<JsonArray>();
+        for (int i = 0; i < 5; i++) {
+            char hex[8];
+            sprintf(hex, "#%06X", appState.customColors[i]);
+            colors.add(hex);
+        }
         JsonObject historical = doc["historical"].to<JsonObject>();
         historical["min"] = appState.histMin;
         historical["max"] = appState.histMax;
@@ -863,10 +870,7 @@ void setupWebServer() {
     server.on("/mood", HTTP_GET, []()
               { handleStaticFile("/mood.html"); });
 
-    server.on("/diagnostics", HTTP_GET, []()
-              { handleStaticFile("/diagnostics.html"); });
-
-    // System diagnostics endpoints
+    // System diagnostics API endpoints (diagnostics page removed, APIs kept for debugging)
     server.on("/api/system/metrics", HTTP_GET, []() {
         JsonDocument doc;
 

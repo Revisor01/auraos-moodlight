@@ -259,35 +259,40 @@ function updatePercentile(data) {
   document.getElementById('pct-max').textContent = h.max.toFixed(3);
   document.getElementById('pct-count').textContent = h.count + ' Datenpunkte in den letzten 7 Tagen';
 
-  // LED-Erklärung
+  // LED-Erklärung — Farben dynamisch aus Einstellungen
   var ledNames = ['Sehr negativ', 'Negativ', 'Neutral', 'Positiv', 'Sehr positiv'];
-  var ledColors = ['#e74c3c', '#e67e22', '#3498db', '#6c3dbf', '#8e44ad'];
+  var ledColors = data.ledColors || ['#FF0000', '#FFA500', '#1E90FF', '#545DF0', '#8A2BE2'];
   document.getElementById('pct-led-dot').style.background = ledColors[ledIdx];
   document.getElementById('pct-led-text').innerHTML = 'Das Moodlight zeigt <strong style="color:var(--primary);">' + ledNames[ledIdx] + '</strong> (LED-Index ' + ledIdx + ' = \u201E' + ledNames[ledIdx].toLowerCase() + '\u201C). Der aktuelle Score ist relativ zur letzten Woche im <strong style="color:var(--primary);">' + pct + '. Perzentil</strong>.';
+
+  // Regenbogen-Balken dynamisch einfärben
+  var rangeEl = document.getElementById('pct-range');
+  if (rangeEl) {
+    rangeEl.style.background = 'linear-gradient(to right, ' + ledColors.join(', ') + ')';
+  }
 
   // Fallback-Hinweis
   document.getElementById('pct-fallback').style.display = t.fallback ? '' : 'none';
 
-  // LED-Farbstufen
+  // LED-Farbstufen (jedes Mal neu rendern, da Farben sich ändern können)
   var stepsEl = document.getElementById('pct-steps');
-  if (stepsEl.children.length === 0) {
-    var steps = [
-      {name: 'Sehr negativ', range: '< ' + t.p20.toFixed(2) + ' (P20)', color: '#e74c3c', idx: 0},
-      {name: 'Negativ', range: t.p20.toFixed(2) + ' – ' + t.p40.toFixed(2) + ' (P40)', color: '#e67e22', idx: 1},
-      {name: 'Neutral', range: t.p40.toFixed(2) + ' – ' + t.p60.toFixed(2) + ' (P60)', color: '#3498db', idx: 2},
-      {name: 'Positiv', range: t.p60.toFixed(2) + ' – ' + t.p80.toFixed(2) + ' (P80)', color: '#6c3dbf', idx: 3},
-      {name: 'Sehr positiv', range: '≥ ' + t.p80.toFixed(2) + ' (P80)', color: '#8e44ad', idx: 4}
-    ];
-    steps.forEach(function(s) {
-      var active = s.idx === ledIdx;
-      var div = document.createElement('div');
-      div.style.cssText = 'background:' + (active ? s.color + '22' : 'var(--surface)') + ';border:2px solid ' + (active ? s.color : 'var(--border)') + ';border-radius:var(--radius);padding:10px;text-align:center;';
-      div.innerHTML = '<div style="width:22px;height:22px;border-radius:50%;background:' + s.color + ';margin:0 auto 6px;"></div>' +
-        '<div style="font-weight:600;font-size:0.82rem;">' + s.name + '</div>' +
-        '<div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;font-family:monospace;">' + s.range + '</div>';
-      stepsEl.appendChild(div);
-    });
-  }
+  stepsEl.innerHTML = '';
+  var steps = [
+    {name: 'Sehr negativ', range: '< ' + t.p20.toFixed(2) + ' (P20)', color: ledColors[0], idx: 0},
+    {name: 'Negativ', range: t.p20.toFixed(2) + ' – ' + t.p40.toFixed(2) + ' (P40)', color: ledColors[1], idx: 1},
+    {name: 'Neutral', range: t.p40.toFixed(2) + ' – ' + t.p60.toFixed(2) + ' (P60)', color: ledColors[2], idx: 2},
+    {name: 'Positiv', range: t.p60.toFixed(2) + ' – ' + t.p80.toFixed(2) + ' (P80)', color: ledColors[3], idx: 3},
+    {name: 'Sehr positiv', range: '\u2265 ' + t.p80.toFixed(2) + ' (P80)', color: ledColors[4], idx: 4}
+  ];
+  steps.forEach(function(s) {
+    var active = s.idx === ledIdx;
+    var div = document.createElement('div');
+    div.style.cssText = 'background:' + (active ? s.color + '22' : 'var(--surface)') + ';border:2px solid ' + (active ? s.color : 'var(--border)') + ';border-radius:var(--radius);padding:10px;text-align:center;';
+    div.innerHTML = '<div style="width:22px;height:22px;border-radius:50%;background:' + s.color + ';margin:0 auto 6px;"></div>' +
+      '<div style="font-weight:600;font-size:0.82rem;">' + s.name + '</div>' +
+      '<div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;font-family:monospace;">' + s.range + '</div>';
+    stepsEl.appendChild(div);
+  });
 }
 
 // Schalter-Updates
