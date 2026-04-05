@@ -190,17 +190,9 @@ void loop() {
         }
         readAndPublishDHT();
         watchdog.feed();  // WDT nach DHT-Lesung fuettern
-    } else if (appState.isPulsing) {
-        appState.isPulsing = false;
-        if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-            appState.ledBrightness = appState.autoMode ? DEFAULT_LED_BRIGHTNESS : appState.manualBrightness;
-            appState.ledUpdatePending = true;
-            xSemaphoreGive(appState.ledMutex);
-        }
     }
 
     updateStatusLED();
-    updatePulse();
 
     // System-Gesundheitsüberprüfung
     if (millis() - appState.lastSystemHealthCheckTime >= HEALTH_CHECK_INTERVAL) {

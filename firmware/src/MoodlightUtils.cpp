@@ -1031,9 +1031,10 @@ bool SystemHealthCheck::begin(MemoryMonitor* memMonitor, NetworkDiagnostics* net
     _memMonitor = memMonitor;
     _netDiagnostics = netDiagnostics;
     
-    // Lese gespeicherten Neustart-Zähler
+    // Lese gespeicherten Neustart-Zähler und Uptime
     _prefs.begin("syshealth", false);
     _restartCount = _prefs.getULong("restarts", 0);
+    _uptimeHours = _prefs.getULong("uptime", 0);
     _prefs.putULong("restarts", _restartCount + 1);
     _prefs.end();
     
@@ -1200,7 +1201,7 @@ bool SystemHealthCheck::isRestartRecommended() {
     uint64_t used = LittleFS.usedBytes();
     float percentUsed = ((float)used / total) * 100;
     
-    if (percentUsed > 95) {
+    if (percentUsed > 95 && _uptimeHours > 1) {
         debug(F("Neustart empfohlen: Dateisystem fast voll"));
         return true;
     }

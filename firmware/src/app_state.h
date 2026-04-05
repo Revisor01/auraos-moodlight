@@ -51,8 +51,6 @@ struct AppState {
     uint32_t customColors[5] = {0xFF0000, 0xFFA500, 0x1E90FF, 0x545DF0, 0x8A2BE2};
     bool firstLedShowDone = false;
     bool ledSafeToShow = false;  // Wird erst true nach WiFi-Init + NeoPixel-Init
-    bool isPulsing = false;
-    unsigned long pulseStartTime = 0;
     int statusLedIndex = DEFAULT_NUM_LEDS - 1;
     unsigned long statusLedBlinkStart = 0;
     bool statusLedState = false;
@@ -70,6 +68,19 @@ struct AppState {
     bool sentimentAPIAvailable = true;
     int consecutiveSentimentFailures = 0;
     String apiUrl = DEFAULT_NEWS_API_URL;
+
+    // Perzentil-Daten vom Backend (für Dashboard-Visualisierung)
+    float percentile = 0.0;
+    float thresholdP20 = 0.0;
+    float thresholdP40 = 0.0;
+    float thresholdP60 = 0.0;
+    float thresholdP80 = 0.0;
+    bool thresholdFallback = false;
+    float histMin = 0.0;
+    float histMax = 0.0;
+    float histMedian = 0.0;
+    int histCount = 0;
+    int headlinesAnalyzed = 0;
 
     // =========================================================
     // MQTT-Gruppe
