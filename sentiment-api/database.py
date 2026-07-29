@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List, Any
 from contextlib import contextmanager
 
@@ -24,7 +24,16 @@ RECONNECT_DELAY_SECONDS = 1
 
 
 class Database:
-    """PostgreSQL Datenbank-Wrapper mit robustem Connection-Handling"""
+    """PostgreSQL Datenbank-Wrapper mit robustem Connection-Handling
+
+    Wichtig (B4): Es gibt KEINE geteilte self.conn mehr. Jeder get_cursor()-Aufruf
+    holt sich eine eigene Verbindung aus dem ThreadedConnectionPool, committet oder
+    rollt bei Fehler zurück, und gibt die Verbindung danach IMMER an den Pool zurück.
+    Vorher teilten sich alle gunicorn-Threads UND der Background-Worker-Thread eine
+    einzige Connection — Commits/Rollbacks trafen dadurch fremde, gleichzeitig
+    laufende Writes, und ein einzelner Fehler ohne Rollback ließ die Verbindung
+    dauerhaft in "current transaction is aborted" hängen.
+    """
 
     def __init__(self, database_url: str):
         """
@@ -35,7 +44,6 @@ class Database:
                 Format: postgresql://user:password@host:port/database
         """
         self.database_url = database_url
-        self.conn = None
         self._connection_pool = None
 
     def connect(self):
@@ -47,8 +55,14 @@ class Database:
                 maxconn=5,
                 dsn=self.database_url
             )
-            # Erstelle initiale Verbindung für Kompatibilität
-            self.conn = self._connection_pool.getconn()
+            # Pool-Verbindung testen und sofort zurückgeben (keine geteilte Instanzverbindung mehr)
+            test_conn = self._connection_pool.getconn()
+            try:
+                with test_conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                test_conn.commit()
+            finally:
+                self._connection_pool.putconn(test_conn)
             logger.info("PostgreSQL Connection-Pool erfolgreich initialisiert")
         except Exception as e:
             logger.error(f"Fehler bei PostgreSQL Verbindung: {e}")
@@ -59,47 +73,23 @@ class Database:
         if self._connection_pool:
             self._connection_pool.closeall()
             logger.info("PostgreSQL Connection-Pool geschlossen")
-        elif self.conn:
-            self.conn.close()
-            logger.info("PostgreSQL Verbindung geschlossen")
 
     def _ensure_connection(self) -> bool:
         """
-        Stelle sicher, dass eine gültige Verbindung besteht.
-        Versucht automatisch Wiederverbindung bei Fehlern.
+        Stelle sicher, dass der Connection-Pool verfügbar ist.
+        Versucht bei fehlendem Pool automatisch eine Neuinitialisierung.
 
         Returns:
-            True wenn Verbindung OK, False bei Fehler
+            True wenn Pool verfügbar, False bei Fehler
         """
+        if self._connection_pool:
+            return True
+
         for attempt in range(MAX_RECONNECT_ATTEMPTS):
             try:
-                # Prüfe ob Verbindung noch lebt
-                if self.conn and not self.conn.closed:
-                    # Teste die Verbindung mit einfacher Query
-                    with self.conn.cursor() as cur:
-                        cur.execute("SELECT 1")
-                    return True
-
-                # Verbindung tot - versuche neue aus Pool
-                logger.warning(f"Verbindung verloren, Wiederverbindung Versuch {attempt + 1}/{MAX_RECONNECT_ATTEMPTS}")
-
-                if self._connection_pool:
-                    # Alte Verbindung zurückgeben (falls vorhanden)
-                    if self.conn:
-                        try:
-                            self._connection_pool.putconn(self.conn, close=True)
-                        except Exception:
-                            pass
-                    # Neue Verbindung aus Pool holen
-                    self.conn = self._connection_pool.getconn()
-                    logger.info("Neue Verbindung aus Pool erhalten")
-                    return True
-                else:
-                    # Kein Pool - direkte Verbindung
-                    self.conn = psycopg2.connect(self.database_url)
-                    logger.info("Neue direkte Verbindung hergestellt")
-                    return True
-
+                logger.warning(f"Kein Connection-Pool vorhanden, Wiederverbindung Versuch {attempt + 1}/{MAX_RECONNECT_ATTEMPTS}")
+                self.connect()
+                return True
             except Exception as e:
                 logger.error(f"Verbindungsversuch {attempt + 1} fehlgeschlagen: {e}")
                 if attempt < MAX_RECONNECT_ATTEMPTS - 1:
@@ -111,7 +101,12 @@ class Database:
     @contextmanager
     def get_cursor(self, cursor_factory=None):
         """
-        Context Manager für sichere Cursor-Verwendung mit Auto-Reconnect.
+        Context Manager für sichere Cursor-Verwendung mit eigener Pool-Connection.
+
+        Holt pro Aufruf eine eigene Verbindung aus dem Pool (pool.getconn()),
+        committet bei Erfolg, rollt bei Exception zurück, und gibt die Verbindung
+        in jedem Fall an den Pool zurück (pool.putconn()) — auch bei Fehlern.
+        Dadurch teilen sich parallele Requests/Threads nie eine Transaktion (B4).
 
         Args:
             cursor_factory: Optional Cursor-Factory (z.B. RealDictCursor)
@@ -122,11 +117,20 @@ class Database:
         if not self._ensure_connection():
             raise Exception("Datenbankverbindung nicht verfügbar")
 
-        cursor = self.conn.cursor(cursor_factory=cursor_factory) if cursor_factory else self.conn.cursor()
+        conn = self._connection_pool.getconn()
+        cursor = conn.cursor(cursor_factory=cursor_factory) if cursor_factory else conn.cursor()
         try:
             yield cursor
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
         finally:
             cursor.close()
+            self._connection_pool.putconn(conn)
 
     def save_sentiment(
         self,
@@ -169,15 +173,10 @@ class Database:
                     json.dumps(metadata) if metadata else None
                 ))
                 result_id = cur.fetchone()[0]
-                self.conn.commit()
                 logger.info(f"Sentiment-Daten gespeichert: ID={result_id}, Score={sentiment_score}")
                 return result_id
         except Exception as e:
-            if self.conn:
-                try:
-                    self.conn.rollback()
-                except Exception:
-                    pass
+            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
             logger.error(f"Fehler beim Speichern der Sentiment-Daten: {e}")
             raise
 
@@ -220,15 +219,10 @@ class Database:
         try:
             with self.get_cursor() as cur:
                 cur.executemany(query, rows)
-                self.conn.commit()
                 logger.info(f"Headlines gespeichert: {len(rows)} Einträge für sentiment_history_id={sentiment_history_id}")
                 return len(rows)
         except Exception as e:
-            if self.conn:
-                try:
-                    self.conn.rollback()
-                except Exception:
-                    pass
+            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
             logger.error(f"Fehler beim Speichern der Headlines: {e}")
             raise
 
@@ -280,7 +274,7 @@ class Database:
             Liste von Sentiment-Daten
         """
         if to_time is None:
-            to_time = datetime.now()
+            to_time = datetime.now(timezone.utc)
 
         # Query dynamisch bauen je nachdem ob from_time gesetzt ist
         if from_time is None:
@@ -361,15 +355,10 @@ class Database:
         try:
             with self.get_cursor() as cur:
                 cur.execute(query, (device_id, device_name, mac_address, firmware_version, ip_address, location))
-                self.conn.commit()
                 logger.debug(f"Gerät registriert/aktualisiert: {device_id}")
                 return True
         except Exception as e:
-            if self.conn:
-                try:
-                    self.conn.rollback()
-                except Exception:
-                    pass
+            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
             logger.error(f"Fehler beim Registrieren des Geräts {device_id}: {e}")
             return False
 
@@ -518,18 +507,12 @@ class Database:
             with self.get_cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query, (name, url))
                 result = cur.fetchone()
-                self.conn.commit()
                 logger.info(f"Neuer Feed angelegt: {name} ({url})")
                 return dict(result)
         except psycopg2.errors.UniqueViolation:
-            self.conn.rollback()
+            # Rollback übernimmt get_cursor() automatisch, bevor die Exception hier ankommt (B4)
             raise ValueError(f"Feed-URL bereits vorhanden: {url}")
         except Exception as e:
-            if self.conn:
-                try:
-                    self.conn.rollback()
-                except Exception:
-                    pass
             logger.error(f"Fehler beim Anlegen des Feeds: {e}")
             raise
 
@@ -552,7 +535,6 @@ class Database:
             with self.get_cursor() as cur:
                 cur.execute(query, (feed_id,))
                 deleted = cur.fetchone()
-                self.conn.commit()
                 if deleted:
                     logger.info(f"Feed gelöscht: ID={feed_id}")
                     return True
@@ -560,11 +542,7 @@ class Database:
                     logger.warning(f"Feed nicht gefunden: ID={feed_id}")
                     return False
         except Exception as e:
-            if self.conn:
-                try:
-                    self.conn.rollback()
-                except Exception:
-                    pass
+            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
             logger.error(f"Fehler beim Löschen des Feeds {feed_id}: {e}")
             raise
 
@@ -716,7 +694,7 @@ class Database:
         health = {
             'connected': False,
             'pool_available': self._connection_pool is not None,
-            'last_check': datetime.now().isoformat()
+            'last_check': datetime.now(timezone.utc).isoformat()
         }
 
         try:
@@ -774,15 +752,10 @@ class Database:
         try:
             with self.get_cursor() as cur:
                 cur.execute(query, (key, value))
-                self.conn.commit()
                 logger.info(f"Einstellung gespeichert: {key}='{value}'")
                 return True
         except Exception as e:
-            if self.conn:
-                try:
-                    self.conn.rollback()
-                except Exception:
-                    pass
+            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
             logger.error(f"Fehler beim Speichern von setting '{key}': {e}")
             return False
 
@@ -884,12 +857,18 @@ _cache = None
 
 
 def get_database() -> Database:
-    """Hole Database-Instanz (Singleton)"""
+    """Hole Database-Instanz (Singleton)
+
+    _db wird erst NACH erfolgreichem connect() zugewiesen (B8) — schlägt connect()
+    fehl, bleibt _db None und der nächste Aufruf versucht einen neuen Verbindungsaufbau,
+    statt eine halbinitialisierte Instanz als Singleton zu behalten.
+    """
     global _db
     if _db is None:
         database_url = os.environ.get('DATABASE_URL', 'postgresql://moodlight:password@localhost:5432/moodlight')
-        _db = Database(database_url)
-        _db.connect()
+        new_db = Database(database_url)
+        new_db.connect()
+        _db = new_db
     return _db
 
 

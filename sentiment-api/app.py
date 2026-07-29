@@ -3,7 +3,9 @@ from flask import Flask, jsonify, request, render_template, session, redirect, u
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import timedelta
+from typing import Optional
 import feedparser
+import requests
 import logging
 from collections import Counter
 import os
@@ -121,10 +123,20 @@ def login_required(f):
 
 
 # --- Funktion zur Sentiment-Analyse mit Anthropic API ---
-def analyze_sentiment_claude(headlines_batch: list) -> list:
+def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
+    """
+    Analysiert Headlines per Anthropic API.
+
+    Returns:
+        Liste von Scores bei Erfolg (auch bei teilweise ungeparsten Zeilen —
+        fehlende Scores bleiben 0.0 innerhalb der Liste), oder None wenn die
+        API nicht erreichbar war / ein Fehler auftrat. None MUSS vom Aufrufer
+        von einem echten Analyse-Ergebnis unterschieden werden (B2) — sonst
+        werden API-Fehler als Sentiment 0.0 in der Datenbank gespeichert.
+    """
     if not anthropic_client:
         logging.error("Anthropic Client nicht verfügbar in analyze_sentiment_claude.")
-        return [0.0] * len(headlines_batch)
+        return None
     if not headlines_batch:
         return []
 
@@ -165,8 +177,12 @@ def analyze_sentiment_claude(headlines_batch: list) -> list:
         logging.info(f"Sende {len(headlines_batch)} Headlines zur Analyse an Anthropic API (claude-haiku-4-5-20251001)...")
         response = anthropic_client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=len(headlines_batch) * 15,
-            temperature=1.0,
+            # max_tokens: großzügiger bemessen (B6) — 15 Tokens/Headline reichten bei
+            # kurzen Batches nicht aus und führten zu stiller Truncation (Neutral-Bias
+            # durch fehlende Scores am Ende der Antwort)
+            max_tokens=max(1024, len(headlines_batch) * 25),
+            # temperature=0: deterministisches Scoring statt zufälliger Variation (B6)
+            temperature=0,
             messages=[{"role": "user", "content": full_prompt}]
         )
         raw_response_content = response.content[0].text.strip()
@@ -195,28 +211,47 @@ def analyze_sentiment_claude(headlines_batch: list) -> list:
 
         logging.info(f"Erfolgreich {parsed_count} Scores aus der Anthropic-Antwort geparst.")
         if parsed_count != len(headlines_batch):
-            logging.warning(f"Nicht alle Scores geparst! Erwartet: {len(headlines_batch)}, Geparsed: {parsed_count}. Fehlende Scores bleiben 0.0.")
+            # Teilparse-Fall: Ergebnis ist nicht vertrauenswürdig genug, um als
+            # echte Messung gespeichert zu werden — Zyklus verwerfen statt
+            # fehlende Scores still auf 0.0 zu lassen (B2)
+            logging.warning(
+                f"Nicht alle Scores geparst! Erwartet: {len(headlines_batch)}, "
+                f"Geparsed: {parsed_count}. Analyse-Zyklus wird verworfen."
+            )
+            return None
 
         return scores
 
     except APIConnectionError as e:
         logging.error(f"Anthropic API nicht erreichbar: {e}")
-        return [0.0] * len(headlines_batch)
+        return None
     except RateLimitError as e:
         logging.error(f"Anthropic Rate-Limit erreicht: {e}")
-        return [0.0] * len(headlines_batch)
+        return None
     except APIStatusError as e:
-        logging.error(f"Anthropic API Fehler {e.status_code}: {e.response}")
-        return [0.0] * len(headlines_batch)
+        # Response-Body mitloggen — sonst ist die eigentliche Fehlerursache
+        # (z.B. "credit balance too low") unsichtbar und nur der Statuscode sichtbar
+        try:
+            response_body = e.response.text
+        except Exception:
+            response_body = str(e.response)
+        logging.error(f"Anthropic API Fehler {e.status_code}: {response_body}")
+        return None
     except Exception as e:
         logging.error(f"Unerwarteter Fehler bei der Anthropic Analyse: {e}")
-        return [0.0] * len(headlines_batch)
+        return None
 
 # --- Haupt-Analysefunktion (gibt jetzt gewichteten Score als 'total_sentiment' zurück) ---
-def analyze_headlines_batch(headlines: list):
+def analyze_headlines_batch(headlines: list) -> Optional[dict]:
     """
     Analysiert Headlines mit Anthropic (Claude Haiku), berechnet Statistiken und gibt den
     gewichteten Mood-Score als 'total_sentiment' zurück.
+
+    Returns:
+        Ergebnis-Dict bei Erfolg, oder None wenn die Anthropic-Analyse fehlgeschlagen ist
+        (API-Fehler oder Teilparse) — der Aufrufer (Background Worker) MUSS in diesem Fall
+        den Zyklus ohne DB-Write überspringen (B2), sonst werden API-Fehler als
+        Sentiment 0.0 dauerhaft gespeichert.
     """
     results = []
     sentiment_distribution = Counter()
@@ -247,6 +282,12 @@ def analyze_headlines_batch(headlines: list):
 
     # --- Sentiment Analyse ---
     sentiment_scores = analyze_sentiment_claude(headline_texts)
+
+    if sentiment_scores is None:
+        # API-Fehler oder Teilparse — Zyklus verwerfen, KEIN Ergebnis mit Score 0.0
+        # zurückgeben (B2, Ursache der 30-Tage-Nullserie)
+        logging.error("Sentiment-Analyse fehlgeschlagen — kein verwertbares Ergebnis (siehe vorherige Fehlermeldung).")
+        return None
 
     # --- Verarbeitung der Scores und Kategorisierung ---
     # (Code unverändert)
@@ -464,6 +505,18 @@ def get_news():
 
     logging.info(f"Feed-Abruf abgeschlossen. Gefunden: {total_headlines_found_before_filtering}. Eindeutige zur Analyse: {len(headlines)}. Übersprungen: {len(skipped_feeds)}")
     analysis_result = analyze_headlines_batch(headlines)
+
+    if analysis_result is None:
+        # Anthropic-Analyse fehlgeschlagen (API-Fehler oder Teilparse, B2) —
+        # kein Fake-Ergebnis mit Score 0.0 zurückgeben
+        return jsonify({
+            "status": "error",
+            "message": "Sentiment-Analyse fehlgeschlagen (Anthropic API nicht verfügbar oder Antwort nicht auswertbar)",
+            "errors": errors if errors else None,
+            "skipped_feeds": skipped_feeds if skipped_feeds else None,
+            "total_sentiment": 0.0,
+            "statistics": {"analyzed_count": 0, "sentiment_distribution": {}}
+        }), 502
 
     # Gib den gewichteten Score unter 'total_sentiment' zurück
     return jsonify({

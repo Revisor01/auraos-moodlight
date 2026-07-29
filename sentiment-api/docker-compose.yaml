@@ -16,10 +16,10 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
-      - postgres
-      - redis
-    volumes:
-      - ./:/app
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - moodlight-net
     deploy:
@@ -29,6 +29,12 @@ services:
     restart: unless-stopped
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6237/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ===== PostgreSQL Database =====
   postgres:
