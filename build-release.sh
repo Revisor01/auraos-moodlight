@@ -86,9 +86,12 @@ RELEASE_DIR="releases/v${NEW_VERSION}"
 mkdir -p "$RELEASE_DIR"
 
 # UI-TGZ (nur Web-Dateien, kein Firmware-Binary)
+# Die Diagnostics-Seite existiert nicht mehr (entfernt) — sie wurde aus der
+# Dateiliste genommen, tar wuerde sonst wegen set -e den gesamten
+# Release-Build abbrechen (Datei nicht gefunden)
 (cd firmware/data && tar -czf "../../${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz" \
     --exclude="*.tmp.*" --exclude="*.tgz" --exclude="*.tar" --exclude=".DS_Store" \
-    index.html setup.html mood.html diagnostics.html js/ css/)
+    index.html setup.html mood.html js/ css/)
 echo "   -> UI-${NEW_VERSION}-AuraOS.tgz: $(ls -lh "${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz" | awk '{print $5}')"
 
 # Firmware-BIN
