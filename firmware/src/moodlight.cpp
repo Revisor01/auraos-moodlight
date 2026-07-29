@@ -87,7 +87,13 @@ void setup() {
 
     // NeoPixel-LEDs ZULETZT initialisieren
     delay(500);  // Laengere Pause damit WiFi-Subsystem stabil ist
-    pixels = Adafruit_NeoPixel(appState.numLeds, appState.ledPin, NEO_GRB + NEO_KHZ800);
+    // KEIN Copy-Assignment auf pixels (Adafruit_NeoPixel hat keinen
+    // Copy-Assignment-Operator; das Temporary wuerde shallow kopiert und sein
+    // Destruktor gibt danach den Puffer des globalen Objekts frei -> Heap-UAF).
+    // Stattdessen das bereits existierende globale Objekt konfigurieren.
+    pixels.updateType(NEO_GRB + NEO_KHZ800);
+    pixels.updateLength(appState.numLeds);  // allokiert Puffer im globalen Objekt (free(NULL) ist safe)
+    pixels.setPin(appState.ledPin);
     pixels.begin();
     pixels.setBrightness(DEFAULT_LED_BRIGHTNESS);
     debug(F("Setup abgeschlossen."));
@@ -106,6 +112,11 @@ void loop() {
     if (appState.isInConfigMode) {
         dnsServer.processNextRequest();
         server.handleClient();
+        // AP-Timeout nicht auffrischen waehrend aktiv konfiguriert wird —
+        // ein verbundener Client (Handy/Laptop im Setup-WLAN) zaehlt als aktive Nutzung
+        if (WiFi.softAPgetStationNum() > 0) {
+            appState.apModeStartTime = millis();
+        }
         if (millis() - appState.apModeStartTime > AP_TIMEOUT) {
             ESP.restart();
         }
@@ -114,26 +125,26 @@ void loop() {
             saveSettings();
             appState.settingsNeedSaving = false;
         }
-        // Reboot im Config-Modus
-        if (appState.rebootNeeded && millis() > appState.rebootTime) {
+        // Reboot im Config-Modus — Overflow-sicherer Vergleich (millis() wrapt nach ~49 Tagen)
+        if (appState.rebootNeeded && (long)(millis() - appState.rebootTime) >= 0) {
             delay(200);
             ESP.restart();
         }
-        return; // Im Config-Modus keine LEDs/Sentiment/MQTT
+        // AP-Status-LED sichtbar machen und Busy-Loop beenden (A-MITTEL Blockaden in loop())
+        processLEDUpdates();
+        updateStatusLED();
+        delay(LOOP_DELAY_MS);
+        return; // Im Config-Modus keine Sentiment/MQTT
     }
 
     // Erste LED-Initialisierung (nur im Normal-Modus)
     initFirstLEDUpdate();
 
-    // Webserver-Anfragen verarbeiten
-    static unsigned long lastServerHandle = 0;
-    if (millis() - lastServerHandle >= LOOP_SERVER_HANDLE_MS) {
-        server.handleClient();
-        lastServerHandle = millis();
-    }
+    // Webserver-Anfragen verarbeiten — Gate entfernt, delay(LOOP_DELAY_MS) am Loop-Ende drosselt bereits
+    server.handleClient();
 
-    // Neustart-Anforderung prüfen
-    if (appState.rebootNeeded && millis() > appState.rebootTime) {
+    // Neustart-Anforderung prüfen — Overflow-sicherer Vergleich (millis() wrapt nach ~49 Tagen)
+    if (appState.rebootNeeded && (long)(millis() - appState.rebootTime) >= 0) {
         delay(200);
         ESP.restart();
     }
@@ -143,6 +154,9 @@ void loop() {
         appState.initialStartupPhase = false;
         debug(F("Startup grace period ended"));
     }
+
+    // Nicht-blockierende Pruefung der asynchronen NTP-Synchronisation
+    checkNtpTimeSync();
 
     // MQTT-Loop periodisch ausführen
     static unsigned long lastMqttLoop = 0;

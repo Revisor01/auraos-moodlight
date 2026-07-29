@@ -54,7 +54,9 @@ extern SystemHealthCheck sysHealth;
 extern SafeFileOps fileOps;
 
 // ===== JSON-Puffer-Pool =====
-#define JSON_BUFFER_SIZE 16384
+// 4096 reicht fuer alle Pool-Antworten (Status ~2 KB, serializeJson-Aufrufe
+// werden gegen dieses Limit geprueft) — 16384 war unnoetig grosszuegig (A-MITTEL Flash/RAM)
+#define JSON_BUFFER_SIZE 4096
 #define JSON_BUFFER_COUNT 2
 
 struct JsonBufferPool {
@@ -113,41 +115,26 @@ void initJsonPool() {
     jsonPool.init();
 }
 
-// RAII-Guard fuer sichere JSON-Buffer-Verwaltung (automatisches release() im Destruktor)
-class JsonBufferGuard {
-public:
-    char* buf;
-    JsonBufferGuard() : buf(jsonPool.acquire()) {}
-    ~JsonBufferGuard() { if (buf) jsonPool.release(buf); }
-    // Nicht kopierbar
-    JsonBufferGuard(const JsonBufferGuard&) = delete;
-    JsonBufferGuard& operator=(const JsonBufferGuard&) = delete;
-};
+// A-NIEDRIG: JsonBufferGuard entfernt — ungenutzt, kein Aufrufer im Code
 
 // ===== Datei-Hilfsfunktionen =====
 
 // Helper function to copy a file
+// A-NIEDRIG: char[64]-Zwischenpuffer entfernt — String::c_str() direkt verwendet
+// (Puffer haette laengere Pfade stillschweigend abgeschnitten)
 bool copyFile(const String& source, const String& destination) {
-    // Create local char buffers for paths
-    char sourceBuffer[64];
-    char destBuffer[64];
-
-    // Copy strings to local buffers
-    source.toCharArray(sourceBuffer, sizeof(sourceBuffer));
-    destination.toCharArray(destBuffer, sizeof(destBuffer));
-
-    if (!LittleFS.exists(sourceBuffer)) {
+    if (!LittleFS.exists(source)) {
         debug("Quelldatei existiert nicht: " + source);
         return false;
     }
 
-    File sourceFile = LittleFS.open(sourceBuffer, "r");
+    File sourceFile = LittleFS.open(source, "r");
     if (!sourceFile) {
         debug("Quelldatei konnte nicht geöffnet werden: " + source);
         return false;
     }
 
-    File destFile = LittleFS.open(destBuffer, "w");
+    File destFile = LittleFS.open(destination, "w");
     if (!destFile) {
         debug("Zieldatei konnte nicht erstellt werden: " + destination);
         sourceFile.close();
@@ -329,15 +316,10 @@ String getCurrentFirmwareVersion() {
 // ===== Speicherinformationen =====
 
 void getStorageInfo(uint64_t &totalBytes, uint64_t &usedBytes, uint64_t &freeBytes) {
-    if (LittleFS.begin()) {
-        totalBytes = LittleFS.totalBytes();
-        usedBytes = LittleFS.usedBytes();
-        freeBytes = totalBytes - usedBytes;
-    } else {
-        totalBytes = 0;
-        usedBytes = 0;
-        freeBytes = 0;
-    }
+    // A-NIEDRIG: LittleFS.begin()-Aufruf entfernt — FS ist bereits ueber initFS() gemountet
+    totalBytes = LittleFS.totalBytes();
+    usedBytes = LittleFS.usedBytes();
+    freeBytes = totalBytes - usedBytes;
 }
 
 // ===== Statische Dateien =====
@@ -346,19 +328,26 @@ void handleStaticFile(String path) {
     if (path.endsWith("/")) path += "index.html";
 
     String contentType = "text/html";
-    if (path.endsWith(".css")) contentType = "text/css";
-    else if (path.endsWith(".js")) contentType = "application/javascript";
+    bool isCacheable = false; // CSS/JS duerfen lange gecacht werden, HTML nicht
+    if (path.endsWith(".css")) { contentType = "text/css"; isCacheable = true; }
+    else if (path.endsWith(".js")) { contentType = "application/javascript"; isCacheable = true; }
     else if (path.endsWith(".json")) contentType = "application/json";
-    else if (path.endsWith(".png")) contentType = "image/png";
-    else if (path.endsWith(".jpg")) contentType = "image/jpeg";
-    else if (path.endsWith(".ico")) contentType = "image/x-icon";
+    else if (path.endsWith(".png")) { contentType = "image/png"; isCacheable = true; }
+    else if (path.endsWith(".jpg")) { contentType = "image/jpeg"; isCacheable = true; }
+    else if (path.endsWith(".ico")) { contentType = "image/x-icon"; isCacheable = true; }
 
     if (!path.startsWith("/")) {
         path = "/" + path;
     }
 
-    if (LittleFS.exists(path)) {
-        File file = LittleFS.open(path, "r");
+    // Direkt oeffnen statt exists()+open() — vermeidet doppelten Dateisystem-Zugriff (A-NIEDRIG)
+    File file = LittleFS.open(path, "r");
+    if (file) {
+        if (isCacheable) {
+            server.sendHeader("Cache-Control", "public, max-age=86400");
+        } else {
+            server.sendHeader("Cache-Control", "no-cache");
+        }
         server.streamFile(file, contentType);
         file.close();
     } else {
@@ -368,13 +357,23 @@ void handleStaticFile(String path) {
 
 // ===== UI-Upload Handler =====
 
+// Statisches Erfolgs-/Fehlerflag ueber Extraktion, Kopieren und Platzpruefung hinweg (A-HOCH-4)
+static bool uiUploadSuccess = false;
+static String uiUploadError = "";
+static File uiUploadFile;
+
 void handleUiUpload() {
     HTTPUpload& upload = server.upload();
     static String uploadPath;
     static bool isTgzFile = false;
-    static String extractedVersion = "";
+    static String extractedVersion;
 
     if (upload.status == UPLOAD_FILE_START) {
+        uiUploadSuccess = false;
+        uiUploadError = "";
+        extractedVersion = "";
+        uploadPath = "";
+
         String filename = upload.filename;
         Serial.printf("UI Upload: %s\n", filename.c_str());
         debug(String(F("UI Upload gestartet: ")) + filename);
@@ -383,11 +382,27 @@ void handleUiUpload() {
         isTgzFile = filename.endsWith(".tgz") || filename.endsWith(".tar.gz");
         if (!isTgzFile) {
             debug(F("Fehler: Keine TGZ-Datei"));
+            uiUploadError = "Keine TGZ-Datei";
             return;
         }
 
-        // Extract version
-        if (filename.length() > 3) {
+        // Platzpruefung vor Upload-Start — freie Bytes muessen mind. 3x Content-Length sein
+        // (Original-TGZ + entpackte Dateien + Backup)
+        int contentLength = server.clientContentLength();
+        if (contentLength > 0) {
+            uint64_t total, used, free;
+            getStorageInfo(total, used, free);
+            if (free < (uint64_t)contentLength * 3) {
+                debug(String(F("Fehler: Nicht genuegend freier Speicherplatz fuer Upload (")) +
+                      String((unsigned long)free) + F(" frei, ") + String((unsigned long)contentLength * 3) + F(" benoetigt)"));
+                uiUploadError = "Nicht genuegend freier Speicherplatz";
+                isTgzFile = false;
+                return;
+            }
+        }
+
+        // Extract version — nur bei UI-Praefix (Firmware-Dateien haben anderes Namensschema)
+        if (filename.startsWith("UI-") && filename.length() > 3) {
             String versionStr = filename.substring(3);
             int dashPos = versionStr.indexOf("-");
             if (dashPos > 0) {
@@ -401,6 +416,7 @@ void handleUiUpload() {
             debug(F("Erstelle Verzeichnis /temp"));
             if (!LittleFS.mkdir("/temp")) {
                 debug(F("Fehler beim Erstellen des /temp Verzeichnisses"));
+                uiUploadError = "Konnte /temp nicht erstellen";
                 return;
             }
         }
@@ -409,6 +425,7 @@ void handleUiUpload() {
             debug(F("Erstelle Verzeichnis /extract"));
             if (!LittleFS.mkdir("/extract")) {
                 debug(F("Fehler beim Erstellen des /extract Verzeichnisses"));
+                uiUploadError = "Konnte /extract nicht erstellen";
                 return;
             }
         }
@@ -449,29 +466,43 @@ void handleUiUpload() {
         uploadPath = "/temp/" + filename;
         debug(String(F("Upload-Pfad: ")) + uploadPath);
 
-        File tgzFile = LittleFS.open(uploadPath, "w");
-        if (!tgzFile) {
+        // Datei-Handle EINMAL pro Upload oeffnen (nicht bei jedem WRITE neu) — A-MITTEL Upload-Robustheit
+        uiUploadFile = LittleFS.open(uploadPath, "w");
+        if (!uiUploadFile) {
             debug(F("Fehler beim Erstellen der TGZ-Datei"));
+            uiUploadError = "Konnte TGZ-Datei nicht erstellen";
             return;
         }
-        tgzFile.close();
     }
     else if (upload.status == UPLOAD_FILE_WRITE && isTgzFile) {
-        if (uploadPath.length() > 0) {
-            File tgzFile = LittleFS.open(uploadPath, "a");
-            if (tgzFile) {
-                size_t bytesWritten = tgzFile.write(upload.buf, upload.currentSize);
-                tgzFile.close();
-
-                if (bytesWritten != upload.currentSize) {
-                    debug(String(F("Fehler beim Schreiben: Nur ")) + bytesWritten + F(" von ") + upload.currentSize + F(" Bytes geschrieben"));
-                }
-            } else {
-                debug(F("Fehler beim Öffnen der TGZ-Datei zum Schreiben"));
+        if (uiUploadFile) {
+            size_t bytesWritten = uiUploadFile.write(upload.buf, upload.currentSize);
+            if (bytesWritten != upload.currentSize) {
+                debug(String(F("Fehler beim Schreiben: Nur ")) + bytesWritten + F(" von ") + upload.currentSize + F(" Bytes geschrieben"));
+                uiUploadError = "Fehler beim Schreiben der Upload-Datei";
             }
+        } else {
+            debug(F("Fehler: TGZ-Datei-Handle nicht offen zum Schreiben"));
+            uiUploadError = "Upload-Datei nicht offen";
         }
     }
+    else if (upload.status == UPLOAD_FILE_ABORTED) {
+        debug(F("UI Upload abgebrochen"));
+        if (uiUploadFile) {
+            uiUploadFile.close();
+        }
+        if (uploadPath.length() > 0 && LittleFS.exists(uploadPath)) {
+            LittleFS.remove(uploadPath);
+        }
+        isTgzFile = false;
+        uploadPath = "";
+        uiUploadError = "Upload abgebrochen";
+    }
     else if (upload.status == UPLOAD_FILE_END && isTgzFile) {
+        if (uiUploadFile) {
+            uiUploadFile.close();
+        }
+
         debug(String(F("UI Upload abgeschlossen: ")) + upload.totalSize + F(" Bytes"));
         debug(F("Starte TAR-Extraktion..."));
 
@@ -562,24 +593,34 @@ void handleUiUpload() {
                 }
             }
 
+            // /extract nach erfolgreicher Installation rekursiv leeren
+            debug(F("Leere /extract nach erfolgreicher Installation"));
+            deleteDir("/extract");
+            LittleFS.mkdir("/extract");
+            LittleFS.mkdir("/extract/css");
+            LittleFS.mkdir("/extract/js");
+
             debug(F("UI-Update erfolgreich!"));
+            uiUploadSuccess = true;
         } else {
             int errorCode = TARGZUnpacker->tarGzGetError();
             debug(String(F("Extraktion fehlgeschlagen mit Fehler: ")) + errorCode);
 
             switch (errorCode) {
-                case -1: debug(F("Fehler: Allgemeiner TAR-Lesefehler")); break;
-                case -2: debug(F("Fehler: Nicht genügend Speicher für TAR-Extraktion")); break;
-                case -3: debug(F("Fehler: TAR-Header fehlerhaft")); break;
-                case -4: debug(F("Fehler: TAR-Datei fehlerhaft")); break;
-                case -5: debug(F("Fehler: Fehler beim Schreiben der extrahierten Dateien")); break;
-                default: debug(String(F("Fehler: Unbekannter Fehlercode ")) + errorCode); break;
+                case -1: uiUploadError = "Allgemeiner TAR-Lesefehler"; break;
+                case -2: uiUploadError = "Nicht genuegend Speicher fuer TAR-Extraktion"; break;
+                case -3: uiUploadError = "TAR-Header fehlerhaft"; break;
+                case -4: uiUploadError = "TAR-Datei fehlerhaft"; break;
+                case -5: uiUploadError = "Fehler beim Schreiben der extrahierten Dateien"; break;
+                default: uiUploadError = "Unbekannter Fehlercode " + String(errorCode); break;
             }
+            debug(String(F("Fehler: ")) + uiUploadError);
         }
 
         // Clean up
         debug(F("Aufräumen nach UI-Update"));
         LittleFS.remove(uploadPath);
+        uploadPath = "";
 
         delete TARGZUnpacker;
     }
@@ -600,7 +641,7 @@ void handleApiStatus() {
     int minutes = (uptime % 3600) / 60;
     int seconds = uptime % 60;
     char uptimeStr[50];
-    sprintf(uptimeStr, "%dd %dh %dm %ds", days, hours, minutes, seconds);
+    snprintf(uptimeStr, sizeof(uptimeStr), "%dd %dh %dm %ds", days, hours, minutes, seconds);
     doc["uptime"] = uptimeStr;
 
     doc["rssi"] = WiFi.status() == WL_CONNECTED ? String(WiFi.RSSI()) + " dBm" : "N/A";
@@ -714,6 +755,7 @@ void handleApiStats() {
     if (server.hasArg("hours")) {
         hours = server.arg("hours").toInt();
     }
+    hours = constrain(hours, 1, 720);  // A-HOCH-3: Clamp gegen OOM bei grossen Backend-Antworten
 
     JsonDocument doc;
     if (fetchBackendStatistics(doc, hours)) {
@@ -724,26 +766,6 @@ void handleApiStats() {
         debug(String(F("Stats from backend sent: ")) + response.length() + F(" bytes"));
     } else {
         debug(F("Backend statistics fetch failed, sending 503"));
-        server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
-    }
-}
-
-// ===== NEW IN v9.0: Backend Statistics Handler =====
-void handleApiBackendStats() {
-    int hours = 168; // Default: 7 days
-
-    if (server.hasArg("hours")) {
-        hours = server.arg("hours").toInt();
-        if (hours < 1) hours = 168;
-        if (hours > 720) hours = 720; // Max 30 days
-    }
-
-    JsonDocument doc;
-    if (fetchBackendStatistics(doc, hours)) {
-        String response;
-        serializeJson(doc, response);
-        server.send(200, "application/json", response);
-    } else {
         server.send(503, "application/json", "{\"error\":\"Backend statistics unavailable\"}");
     }
 }
@@ -874,18 +896,21 @@ void setupWebServer() {
         debug(F("Dateisystem-Bereinigung angefordert"));
         int cleanedFiles = 0;
 
+        // A-MITTEL: advance-then-delete-Muster (wie handleUiUpload Z. 429-434) —
+        // openNextFile() MUSS vor dem Loeschen/Schliessen der aktuellen Datei erfolgen,
+        // sonst wird der Verzeichnis-Iterator auf einem bereits geschlossenen Handle
+        // fortgesetzt (undefiniertes Verhalten, ueberspringt oder wiederholt Eintraege).
         if (LittleFS.exists("/temp")) {
             File root = LittleFS.open("/temp");
             if (root && root.isDirectory()) {
                 File file = root.openNextFile();
                 while (file) {
-                    String filePath = file.path();
-                    file.close();
+                    String filePath = String(file.path());
+                    file = root.openNextFile(); // Naechste Datei VOR dem Loeschen holen
                     if (LittleFS.remove(filePath)) {
                         cleanedFiles++;
                         debug(String(F("Gelöscht: ")) + filePath);
                     }
-                    file = root.openNextFile();
                 }
             }
         }
@@ -895,15 +920,18 @@ void setupWebServer() {
             if (dataDir && dataDir.isDirectory()) {
                 File file = dataDir.openNextFile();
                 while (file) {
-                    String filePath = file.path();
-                    file.close();
-                    if (filePath.endsWith(".tmp") || filePath.endsWith(".bak")) {
+                    String filePath = String(file.path());
+                    file = dataDir.openNextFile(); // Naechste Datei VOR dem Loeschen holen
+                    // /data/settings.json.bak NICHT loeschen — Recovery-Backup
+                    if (filePath.endsWith(".bak")) {
+                        continue;
+                    }
+                    if (filePath.endsWith(".tmp")) {
                         if (LittleFS.remove(filePath)) {
                             cleanedFiles++;
                             debug(String(F("Gelöscht: ")) + filePath);
                         }
                     }
-                    file = dataDir.openNextFile();
                 }
             }
         }
@@ -927,7 +955,6 @@ void setupWebServer() {
     // API-Endpunkte für dynamische Daten
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/stats", HTTP_GET, handleApiStats);
-    server.on("/api/backend/stats", HTTP_GET, handleApiBackendStats); // NEW v9.0: Backend stats
     // REMOVED v9.0: RSS feeds now managed in backend
     // server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
     // server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
@@ -940,9 +967,11 @@ void setupWebServer() {
     server.on("/favicon.ico", HTTP_GET, []() {
         if (LittleFS.exists("/favicon.ico")) {
             File file = LittleFS.open("/favicon.ico", "r");
+            server.sendHeader("Cache-Control", "public, max-age=86400");
             server.streamFile(file, "image/x-icon");
             file.close();
         } else {
+            server.sendHeader("Cache-Control", "public, max-age=86400");
             server.send(204); // No content
         }
     });
@@ -956,19 +985,17 @@ void setupWebServer() {
 
     server.on("/ui-upload", HTTP_POST,
         []() {
-            server.send(200, "text/html", "<html><body><h1>UI Update Complete</h1><a href='/setup'>Return to Setup</a></body></html>");
+            // A-HOCH-4: Completion-Handler wertet das statische Erfolgs-/Fehlerflag aus
+            // statt bedingungslos 200 zu senden
+            if (uiUploadSuccess) {
+                server.send(200, "text/html", "<html><body><h1>UI Update Complete</h1><a href='/setup'>Return to Setup</a></body></html>");
+            } else {
+                String errMsg = uiUploadError.length() > 0 ? uiUploadError : "Unbekannter Fehler";
+                server.send(500, "text/plain; charset=utf-8", "UI-Update fehlgeschlagen: " + errMsg);
+            }
         },
         handleUiUpload
     );
-
-    server.on("/api/ui-version", HTTP_GET, []() {
-        JsonDocument doc;
-        doc["version"] = getCurrentUiVersion();
-        char* jsonBuffer = jsonPool.acquire();
-        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-        server.send(200, "application/json", jsonBuffer);
-        jsonPool.release(jsonBuffer);
-    });
 
     server.on("/api/settings/hardware", HTTP_GET, []() {
         JsonDocument doc;
@@ -984,48 +1011,7 @@ void setupWebServer() {
     });
 
     // v9.0: CSV export removed - stats managed in backend
-
-    // Einstellungen herunterladen
-    server.on("/api/export/settings", HTTP_GET, []() {
-        JsonDocument doc;
-
-        // Allgemeine Einstellungen
-        doc["moodInterval"] = appState.moodUpdateInterval / 1000;
-        doc["dhtInterval"] = appState.dhtUpdateInterval / 1000;
-        doc["autoMode"] = appState.autoMode;
-        doc["lightOn"] = appState.lightOn;
-        doc["manBright"] = appState.manualBrightness;
-        doc["manColor"] = appState.manualColor;
-        // v9.0: headlinesPS removed
-
-        // WiFi-Einstellungen
-        doc["wifiSSID"] = appState.wifiSSID;
-        doc["wifiPass"] = "****";
-        doc["wifiConfigured"] = appState.wifiConfigured;
-
-        // Erweiterte Einstellungen
-        doc["apiUrl"] = appState.apiUrl;
-        doc["mqttServer"] = appState.mqttServer;
-        doc["mqttUser"] = appState.mqttUser;
-        doc["mqttPass"] = "****";
-        doc["dhtPin"] = appState.dhtPin;
-        doc["dhtEnabled"] = appState.dhtEnabled;
-        doc["ledPin"] = appState.ledPin;
-        doc["numLeds"] = appState.numLeds;
-        doc["mqttEnabled"] = appState.mqttEnabled;
-
-        // Benutzerdefinierte Farben
-        for (int i = 0; i < 5; i++) {
-            doc["color" + String(i)] = appState.customColors[i];
-        }
-
-        String jsonContent;
-        serializeJson(doc, jsonContent);
-
-        server.sendHeader("Content-Disposition", "attachment; filename=moodlight_settings.json");
-        server.send(200, "application/json", jsonContent);
-        debug(F("Einstellungen wurden exportiert"));
-    });
+    // A-NIEDRIG: /api/export/settings entfernt — verwaist, keine UI-Referenz
 
     // Neue API-Endpunkte für Einstellungen
     server.on("/api/settings/api", HTTP_GET, []() {
@@ -1094,7 +1080,7 @@ void setupWebServer() {
         uint8_t mac[6];
         WiFi.macAddress(mac);
         char macStr[18];
-        sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
         doc["mac"] = macStr;
 
         char* jsonBuffer = jsonPool.acquire();
@@ -1121,9 +1107,23 @@ void setupWebServer() {
             return;
         }
 
-        // Werte aus JSON extrahieren
-        appState.wifiSSID = doc["ssid"].as<String>();
-        appState.wifiPassword = doc["pass"].as<String>();
+        // Werte aus JSON extrahieren und validieren
+        String newSsid = doc["ssid"].as<String>();
+        String newPass = doc["pass"].as<String>();
+
+        if (newSsid.length() < 1 || newSsid.length() > 32) {
+            debug(F("Ungueltige SSID-Laenge"));
+            server.send(400, "text/plain", "SSID muss 1-32 Zeichen lang sein");
+            return;
+        }
+        if (newPass.length() > 63) {
+            debug(F("Ungueltige WiFi-Passwort-Laenge"));
+            server.send(400, "text/plain", "Passwort darf maximal 63 Zeichen lang sein");
+            return;
+        }
+
+        appState.wifiSSID = newSsid;
+        appState.wifiPassword = newPass;
         appState.wifiConfigured = true;
 
         // Einstellungen speichern
@@ -1168,22 +1168,55 @@ void setupWebServer() {
             return;
         }
 
-        // Werte aus JSON extrahieren
-        appState.mqttEnabled = doc["enabled"].as<bool>();
-        appState.mqttServer = doc["server"].as<String>();
-        appState.mqttUser = doc["user"].as<String>();
-        appState.mqttPassword = doc["pass"].as<String>();
+        bool changed = false;
 
-        // Einstellungen speichern
-        appState.settingsNeedSaving = true;
-        appState.lastSettingsSaved = millis();
+        // Werte aus JSON extrahieren — nur vorhandene Keys uebernehmen
+        if (doc["enabled"].is<bool>()) {
+            bool newEnabled = doc["enabled"].as<bool>();
+            if (newEnabled != appState.mqttEnabled) {
+                appState.mqttEnabled = newEnabled;
+                changed = true;
+            }
+        }
+        if (doc["server"].is<const char*>()) {
+            String newServer = doc["server"].as<String>();
+            if (newServer != appState.mqttServer) {
+                appState.mqttServer = newServer;
+                changed = true;
+            }
+        }
+        if (doc["user"].is<const char*>()) {
+            String newUser = doc["user"].as<String>();
+            if (newUser != appState.mqttUser) {
+                appState.mqttUser = newUser;
+                changed = true;
+            }
+        }
+        // Passwort nur uebernehmen wenn nicht leer/maskiert — sonst wuerde die
+        // Maske "****" das echte Passwort ueberschreiben (A-HOCH-2)
+        if (doc["pass"].is<const char*>()) {
+            String newPass = doc["pass"].as<String>();
+            if (newPass != "****" && newPass.length() > 0 && newPass != appState.mqttPassword) {
+                appState.mqttPassword = newPass;
+                changed = true;
+            }
+        }
 
-        // Reboot planen
-        appState.rebootNeeded = true;
-        appState.rebootTime = millis() + REBOOT_DELAY;
+        if (changed) {
+            // Einstellungen speichern
+            appState.settingsNeedSaving = true;
+            appState.lastSettingsSaved = millis();
 
-        server.send(200, "text/plain", "OK");
-        debug(F("MQTT-Einstellungen gespeichert, Reboot geplant"));
+            // Reboot planen — nur bei echter Aenderung
+            appState.rebootNeeded = true;
+            appState.rebootTime = millis() + REBOOT_DELAY;
+
+            server.send(200, "text/plain", "OK");
+            debug(F("MQTT-Einstellungen gespeichert, Reboot geplant"));
+        } else {
+            debug(F("MQTT-Einstellungen: Keine Aenderungen erkannt."));
+            server.send(200, "text/plain; charset=utf-8", "Keine Änderungen");
+        }
     });
 
     // API und Intervall Einstellungen speichern (ohne Neustart)
@@ -1203,6 +1236,11 @@ void setupWebServer() {
         // Werte aus JSON extrahieren und globale Variablen aktualisieren
         if (doc["apiUrl"].is<const char*>()) {
             String newApiUrl = doc["apiUrl"].as<String>();
+            if (newApiUrl.length() == 0 || !newApiUrl.startsWith("http")) {
+                debug(F("Ungueltige API-URL abgelehnt"));
+                server.send(400, "text/plain", "API-URL muss mit http/https beginnen");
+                return;
+            }
             if (newApiUrl != appState.apiUrl) {
                 appState.apiUrl = newApiUrl;
                 appState.lastMoodUpdate = 0;  // Erzwinge Sentiment-Update bei nächster Gelegenheit
@@ -1267,7 +1305,7 @@ void setupWebServer() {
             debug(F("API/Intervall-Einstellungen erfolgreich gespeichert und HA aktualisiert (falls verbunden)."));
         } else {
             debug(F("API/Intervall-Einstellungen: Keine Änderungen erkannt."));
-            server.send(200, "text/plain", "Keine Änderungen");
+            server.send(200, "text/plain; charset=utf-8", "Keine Änderungen");
         }
     });
 
@@ -1283,9 +1321,11 @@ void setupWebServer() {
             return;
         }
 
-        // Farben aus JSON extrahieren
+        // Farben aus JSON extrahieren — in temporaeres Array parsen, nur bei
+        // vollstaendigem Erfolg komplett uebernehmen (kein Teilzustand bei Parse-Fehler)
         if (doc["colors"].is<JsonArray>()) {
             JsonArray colorArray = doc["colors"].as<JsonArray>();
+            uint32_t tempColors[5];
             int index = 0;
 
             bool parseError = false;
@@ -1301,14 +1341,19 @@ void setupWebServer() {
                         index++;
                         continue;
                     }
-                    appState.customColors[index] = rgb & 0xFFFFFF;
+                    tempColors[index] = rgb & 0xFFFFFF;
                     index++;
                 }
             }
 
-            if (parseError) {
-                server.send(400, "text/plain", "Ungültiger Farbwert");
+            if (parseError || index != 5) {
+                server.send(400, "text/plain; charset=utf-8", "Ungültiger Farbwert");
                 return;
+            }
+
+            // Nur komplett uebernehmen
+            for (int i = 0; i < 5; i++) {
+                appState.customColors[i] = tempColors[i];
             }
 
             // Einstellungen speichern
@@ -1318,7 +1363,7 @@ void setupWebServer() {
             server.send(200, "text/plain", "OK");
             debug(F("Farbeinstellungen gespeichert."));
         } else {
-            server.send(400, "text/plain", "Ungültiges Farbformat");
+            server.send(400, "text/plain; charset=utf-8", "Ungültiges Farbformat");
         }
     });
 
@@ -1407,6 +1452,7 @@ void setupWebServer() {
         }
 
         bool needsReboot = false;
+        String rejectedPins = "";
 
         // Werte aus JSON extrahieren und prüfen, ob Änderung vorliegt
         // Pins 6-11 sind intern mit dem Flash verbunden — deren Nutzung würde das Gerät bricken
@@ -1419,6 +1465,7 @@ void setupWebServer() {
                 }
             } else {
                 debug(String(F("Ungültiger LED-Pin ignoriert: ")) + newLedPin);
+                rejectedPins += "ledPin=" + String(newLedPin) + " ";
             }
         }
         if (doc["dhtPin"].is<int>()) {
@@ -1430,6 +1477,7 @@ void setupWebServer() {
                 }
             } else {
                 debug(String(F("Ungültiger DHT-Pin ignoriert: ")) + newDhtPin);
+                rejectedPins += "dhtPin=" + String(newDhtPin) + " ";
             }
         }
 
@@ -1444,6 +1492,12 @@ void setupWebServer() {
 
         // DHT Intervall wird hier NICHT mehr verarbeitet
 
+        if (rejectedPins.length() > 0 && !needsReboot) {
+            // Nur abgelehnte Pins, keine sonstige Aenderung — Fehler statt stillem Ignorieren melden
+            server.send(400, "text/plain; charset=utf-8", "Ungueltige Pin-Werte abgelehnt: " + rejectedPins);
+            return;
+        }
+
         if (needsReboot) {
             // Einstellungen speichern (nur wenn relevant)
             appState.settingsNeedSaving = true;
@@ -1453,11 +1507,15 @@ void setupWebServer() {
             appState.rebootNeeded = true;
             appState.rebootTime = millis() + REBOOT_DELAY;
 
-            server.send(200, "text/plain", "OK");
+            String response = "OK";
+            if (rejectedPins.length() > 0) {
+                response += " (Ungueltige Pins ignoriert: " + rejectedPins + ")";
+            }
+            server.send(200, "text/plain; charset=utf-8", response);
             debug(F("Hardware Pin/LED-Einstellungen gespeichert, Reboot geplant"));
         } else {
             debug(F("Hardware Pin/LED-Einstellungen: Keine Änderungen erkannt."));
-            server.send(200, "text/plain", "Keine Änderungen");
+            server.send(200, "text/plain; charset=utf-8", "Keine Änderungen");
         }
     });
 
@@ -1514,73 +1572,10 @@ void setupWebServer() {
                 logs += "\n";
             }
         }
-        server.send(200, "text/plain", logs);
+        server.send(200, "text/plain; charset=utf-8", logs);
     });
 
-    // Status-Endpunkt für AJAX-Aktualisierungen
-    server.on("/status", HTTP_GET, []() {
-        JsonDocument doc;
-
-        doc["wifi"] = WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected";
-        doc["mqtt"] = appState.mqttEnabled && mqtt.isConnected() ? "Connected" : (appState.mqttEnabled ? "Disconnected" : "Disabled");
-
-        unsigned long uptime = millis() / 1000;
-        int days = uptime / 86400;
-        int hours = (uptime % 86400) / 3600;
-        int minutes = (uptime % 3600) / 60;
-        int seconds = uptime % 60;
-        char uptimeStr[50];
-        sprintf(uptimeStr, "%dd %dh %dm %ds", days, hours, minutes, seconds);
-        doc["uptime"] = uptimeStr;
-
-        doc["rssi"] = WiFi.status() == WL_CONNECTED ? String(WiFi.RSSI()) + " dBm" : "N/A";
-        doc["heap"] = String(ESP.getFreeHeap() / 1024) + " KB";
-        doc["sentiment"] = String(appState.sentimentScore, 2) + " (" + appState.sentimentCategory + ")";
-        doc["dhtEnabled"] = appState.dhtEnabled;
-        doc["dht"] = isnan(appState.currentTemp) ? "N/A" : String(appState.currentTemp, 1) + "°C / " + String(appState.currentHum, 1) + "%";
-        doc["mode"] = appState.autoMode ? "Auto" : "Manual";
-        doc["lightOn"] = appState.lightOn;
-        doc["brightness"] = appState.manualBrightness;
-        // v9.0: headlines removed
-
-        // LED-Farbe als Hex holen
-        uint32_t currentColor;
-        if (appState.autoMode) {
-            appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
-            ColorDefinition color = getColorDefinition(appState.currentLedIndex);
-            currentColor = pixels.Color(color.r, color.g, color.b);
-        } else {
-            currentColor = appState.manualColor;
-        }
-
-        uint8_t r = (currentColor >> 16) & 0xFF;
-        uint8_t g = (currentColor >> 8) & 0xFF;
-        uint8_t b = currentColor & 0xFF;
-        char hexColor[8];
-        snprintf(hexColor, sizeof(hexColor), "#%02X%02X%02X", r, g, b);
-        doc["ledColor"] = hexColor;
-
-        // Status-LED Info
-        if (appState.statusLedMode != 0) {
-            char statusLedColor[8] = "#000000";
-            switch (appState.statusLedMode) {
-                case 1: strcpy(statusLedColor, "#0000FF"); break;  // WiFi - Blau
-                case 2: strcpy(statusLedColor, "#FF0000"); break;  // API - Rot
-                case 3: strcpy(statusLedColor, "#00FF00"); break;  // Update - Grün
-                case 4: strcpy(statusLedColor, "#00FFFF"); break;  // MQTT - Cyan
-                case 5: strcpy(statusLedColor, "#FFFF00"); break;  // AP - Gelb
-            }
-            doc["statusLedMode"] = appState.statusLedMode;
-            doc["statusLedColor"] = statusLedColor;
-        } else {
-            doc["statusLedMode"] = 0;
-        }
-
-        char* jsonBuffer = jsonPool.acquire();
-        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-        server.send(200, "application/json", jsonBuffer);
-        jsonPool.release(jsonBuffer);
-    });
+    // /status entfernt — Duplikat von /api/status, kein Aufrufer (A-NIEDRIG)
 
     // Force-Refresh fuer Sentiment — nutzt den gleichen Flag-Mechanismus wie HA-Button
     server.on("/refresh", HTTP_GET, []() {
@@ -1644,7 +1639,7 @@ void setupWebServer() {
             if (hexStr[0] == '#') hexStr++; // führendes '#' überspringen
             uint32_t rgb = 0;
             if (sscanf(hexStr, "%x", &rgb) != 1) {
-                server.send(400, "text/plain", "Ungültiger Hex-Farbwert");
+                server.send(400, "text/plain; charset=utf-8", "Ungültiger Hex-Farbwert");
                 return;
             }
             rgb &= 0xFFFFFF;
@@ -1751,8 +1746,8 @@ void setupWebServer() {
             colors.add(hexColorArr);
         }
 
-        // Dateisystem-Informationen
-        if (LittleFS.begin()) {
+        // Dateisystem-Informationen — LittleFS.begin() entfernt, FS ist bereits gemountet (A-NIEDRIG)
+        {
             size_t totalBytes = LittleFS.totalBytes();
             size_t usedBytes = LittleFS.usedBytes();
             doc["fsTotal"] = totalBytes;
@@ -1853,6 +1848,11 @@ void setupWebServer() {
                     Update.printError(Serial);
                 }
             }
+            else if (upload.status == UPLOAD_FILE_ABORTED) {
+                debug(F("Firmware-Update abgebrochen"));
+                Update.abort();
+                setStatusLED(0);
+            }
         });
 
     server.on("/api/firmware-version", HTTP_GET, []() {
@@ -1876,21 +1876,8 @@ void setupWebServer() {
     debug(F("Webserver-Routen registriert"));
 }
 
-// === Watchdog-Timer initialisieren ===
-void initWatchdog() {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-    {
-        esp_task_wdt_config_t wdt_config = {
-            .timeout_ms    = 30000,
-            .idle_core_mask = 0,
-            .trigger_panic  = false
-        };
-        esp_task_wdt_init(&wdt_config);
-    }
-#else
-    esp_task_wdt_init(30, false);
-#endif
-}
+// A-NIEDRIG: initWatchdog() entfernt — toter Code, kein Aufrufer
+// (WatchdogManager::begin() in moodlight.cpp::setup() ist der tatsaechlich genutzte Pfad)
 
 // === Regelmäßiger System-Gesundheitscheck ===
 void runSystemHealthCheck() {
@@ -1900,37 +1887,8 @@ void runSystemHealthCheck() {
     // Memory-Analyse durchführen
     memMonitor.update();
 
-    // Systemstatistiken in JSON-Datei speichern
-    if (LittleFS.exists("/data")) {
-        JsonDocument statsDoc;
-        statsDoc["timestamp"] = currentMillis / 1000;
-        statsDoc["uptime"] = currentMillis / 1000;
-        statsDoc["heap"] = ESP.getFreeHeap();
-        statsDoc["maxBlock"] = ESP.getMaxAllocHeap();
-        statsDoc["fragmentation"] = 100.0f - ((float)ESP.getMaxAllocHeap() / ESP.getFreeHeap() * 100.0f);
-        statsDoc["fsTotal"] = LittleFS.totalBytes();
-        statsDoc["fsUsed"] = LittleFS.usedBytes();
-
-        if (WiFi.status() == WL_CONNECTED) {
-            statsDoc["wifiConnected"] = true;
-            statsDoc["rssi"] = WiFi.RSSI();
-        } else {
-            statsDoc["wifiConnected"] = false;
-        }
-        statsDoc["temperature"] = temperatureRead();
-
-        static int fileCounter = 0;
-        String fileName = "/data/sysstat_" + String(fileCounter++ % SYSSTAT_FILE_ROTATION) + ".json";
-
-        String jsonStr;
-        serializeJson(statsDoc, jsonStr);
-
-        File statFile = LittleFS.open(fileName, "w");
-        if (statFile) {
-            statFile.print(jsonStr);
-            statFile.close();
-        }
-    }
+    // A-MITTEL Flash/RAM: sysstat-Schreibblock entfernt — niemand liest die Dateien
+    // (statsDoc/sysstat_*.json), unnoetiger Flash-Verschleiss.
 
     // Systemgesundheit aktualisieren
     sysHealth.update();

@@ -199,7 +199,7 @@ void sendHeartbeat()
     int minutes = (uptime % 3600) / 60;
     int seconds = uptime % 60;
     char uptimeStr[50];
-    sprintf(uptimeStr, "%dd %dh %dm %ds", days, hours, minutes, seconds);
+    snprintf(uptimeStr, sizeof(uptimeStr), "%dd %dh %dm %ds", days, hours, minutes, seconds);
     haUptime.setValue(uptimeStr);
 
     // 2. WiFi Signal
@@ -215,8 +215,8 @@ void sendHeartbeat()
         status = "Sentiment API nicht erreichbar";
     }
 
-    // Temperatur/Luftfeuchtigkeit Status
-    if (isnan(appState.currentTemp) || isnan(appState.currentHum))
+    // Temperatur/Luftfeuchtigkeit Status — nur pruefen wenn DHT aktiviert ist
+    if (appState.dhtEnabled && (isnan(appState.currentTemp) || isnan(appState.currentHum)))
     {
         status = "DHT Sensor Probleme";
     }
@@ -435,45 +435,17 @@ void checkAndReconnectMQTT() {
 
                 // Ensure we're not in an interrupt context
                 yield();
-                delay(10);
 
                 mqtt.disconnect();
-                delay(100);
 
-                // MQTT neu starten
+                // MQTT neu starten — kein Busy-Wait mehr: HAMqtt::loop() (wird periodisch
+                // in loop() aufgerufen) verbindet selbst nach. Erfolg wird beim naechsten
+                // Check ausgewertet (else-Zweig unten, appState.mqttWasConnected).
                 mqtt.begin(appState.mqttServer.c_str(), appState.mqttUser.c_str(), appState.mqttPassword.c_str());
 
-                // Kurz auf Verbindung warten (mit mqtt.loop()!)
-                unsigned long mqttStart = millis();
-                while (!mqtt.isConnected() && millis() - mqttStart < 3000) {
-                    mqtt.loop(); // WICHTIG: mqtt.loop() hier aufrufen!
-                    delay(100);
-                    watchdog.feed(); // Watchdog füttern während MQTT-Reconnect-Wartezeit
-                }
-
                 appState.lastMqttReconnectAttempt = currentMillis;
-
-                if (mqtt.isConnected()) {
-                    debug(F("MQTT erfolgreich verbunden."));
-                    appState.mqttWasConnected = true;
-                    mqttReconnectBackoff = 10000; // Reset backoff on success
-
-                    // Flag setzen — wird unten in derselben Invocation ausgewertet
-                    // und sendInitialStates() sofort aufgerufen
-                    appState.mqttInitialStatesPending = true;
-
-                    // Update status LED without direct update
-                    appState.statusLedMode = 0; // Normal mode
-
-                    if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                        appState.ledUpdatePending = true; // Request full LED update
-                        xSemaphoreGive(appState.ledMutex);
-                    }
-                } else {
-                    debug(F("MQTT Reconnect fehlgeschlagen. Erhöhe Backoff."));
-                    // Increase backoff time exponentially up to 5 minutes
-                    mqttReconnectBackoff = min(mqttReconnectBackoff * 2, 300000UL);
-                }
+                // Backoff fuer den naechsten Versuch — wird bei Erfolg im else-Zweig zurueckgesetzt
+                mqttReconnectBackoff = min(mqttReconnectBackoff * 2, 300000UL);
             }
         } else if (!appState.mqttWasConnected) {
             debug(F("MQTT wieder verbunden. Sende Zustände..."));
@@ -482,9 +454,13 @@ void checkAndReconnectMQTT() {
             appState.mqttInitialStatesPending = true;
 
             appState.mqttWasConnected = true;
+            mqttReconnectBackoff = 10000; // Reset backoff bei erfolgreicher Verbindung
 
-            // Update status LED without direct update
-            appState.statusLedMode = 0; // Normal mode
+            // Status-LED nur zuruecksetzen wenn sie zuvor MQTT-Reconnect (4) anzeigte —
+            // API-Fehler-Anzeige (2) darf durch MQTT-Erfolg nicht geloescht werden
+            if (appState.statusLedMode == 4) {
+                appState.statusLedMode = 0; // Normal mode
+            }
 
             if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
                 appState.ledUpdatePending = true; // Request full LED update

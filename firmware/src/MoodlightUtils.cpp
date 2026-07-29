@@ -566,67 +566,27 @@ void NetworkDiagnostics::fullAnalysis() {
         debug(F("WiFi nicht verbunden, keine Netzwerkanalyse möglich"));
         return;
     }
-    
+
     debug(F("Starte vollständige Netzwerkanalyse..."));
-    
+
     // Grundlegende Netzwerkinfos
     analyzeWiFiSignal();
-    
-    // WLAN-Kanal und umgebende Netzwerke
+
+    // A-MITTEL: Stuendlicher aktiver WiFi-Scan entfernt (blockiert loop() bis zu mehrere
+    // Sekunden). Nur RSSI/Kanal des aktuellen Netzwerks loggen — Scan bleibt on-demand
+    // ueber den /wifiscan-Endpunkt verfuegbar.
     int channel = WiFi.channel();
-    int networksFound = WiFi.scanNetworks(false, true, false, 300);
-    
-    if (networksFound > 0) {
-        debug(String(F("Gefundene WiFi-Netzwerke: ")) + networksFound);
-        
-        int networksOnSameChannel = 0;
-        int networksOnAdjacentChannels = 0;
-        int strongNetworksOnSameChannel = 0;
-        
-        for (int i = 0; i < networksFound; i++) {
-            int networkChannel = WiFi.channel(i);
-            int networkRSSI = WiFi.RSSI(i);
-            
-            if (networkChannel == channel) {
-                networksOnSameChannel++;
-                if (networkRSSI > -70) {
-                    strongNetworksOnSameChannel++;
-                }
-            } else if (abs(networkChannel - channel) <= 1) {
-                networksOnAdjacentChannels++;
-            }
-            
-            // Zeige nur die 5 stärksten Netzwerke
-            if (i < 5) {
-                debug(String(F("  Netzwerk: ")) + WiFi.SSID(i) + 
-                      F(", Kanal: ") + networkChannel + 
-                      F(", RSSI: ") + networkRSSI + F(" dBm"));
-            }
-        }
-        
-        // FEHLERKORREKTUR: Gesamte Verkettung innerhalb eines debug()-Aufrufs
-        debug(String(F("Kanal ")) + channel + 
-              F(": ") + networksOnSameChannel + F(" Netzwerke auf gleichem Kanal, ") +
-              strongNetworksOnSameChannel + F(" stark, ") +
-              networksOnAdjacentChannels + F(" auf benachbarten Kanälen"));
-        
-        // Interferenz-Bewertung
-        if (strongNetworksOnSameChannel > 2) {
-            debug(F("WARNUNG: Starke WiFi-Interferenz auf dem aktuellen Kanal"));
-        }
-    } else {
-        debug(F("Keine anderen WiFi-Netzwerke gefunden"));
-    }
-    
+    debug(String(F("Aktueller Kanal: ")) + channel);
+
     // Router-Verbindungsinformationen
     IPAddress gatewayIP = WiFi.gatewayIP();
     debug(String(F("Gateway-IP: ")) + gatewayIP.toString());
-    
+
     // DNS-Informationen
     IPAddress dns1 = WiFi.dnsIP(0);
     IPAddress dns2 = WiFi.dnsIP(1);
     debug(String(F("DNS-Server: ")) + dns1.toString() + F(", ") + dns2.toString());
-    
+
     _lastFullAnalysis = millis();
 }
 
