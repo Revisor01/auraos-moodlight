@@ -8,7 +8,10 @@ Integration in app.py:
     register_moodlight_endpoints(app)
 """
 
+import ipaddress
 import logging
+import socket
+from urllib.parse import urlparse
 from flask import jsonify, request, session
 from functools import wraps
 from datetime import datetime, timedelta, timezone
@@ -21,6 +24,49 @@ import requests as http_requests
 import anthropic as anthropic_sdk
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_feed_url_ssrf(url: str) -> str | None:
+    """
+    SSRF-Guard fuer neu angelegte Feed-URLs (B-MITTEL).
+
+    Prueft:
+    - Nur http/https Schema erlaubt
+    - Hostname muss auflösbar sein
+    - Alle aufgeloesten IPs duerfen nicht privat/loopback/link-local/reserviert sein
+      (verhindert Zugriff auf interne Dienste, Cloud-Metadata-Endpoints etc.)
+
+    Returns:
+        Fehlermeldung als String wenn die URL abgelehnt werden muss, sonst None.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return "Feed-URL konnte nicht geparst werden"
+
+    if parsed.scheme not in ('http', 'https'):
+        return "Nur http/https-URLs sind erlaubt"
+
+    hostname = parsed.hostname
+    if not hostname:
+        return "Feed-URL enthaelt keinen gueltigen Hostnamen"
+
+    try:
+        addr_infos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        return f"Hostname konnte nicht aufgeloest werden: {hostname}"
+
+    for info in addr_infos:
+        ip_str = info[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            continue
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            return f"Feed-URL zeigt auf nicht erlaubte interne Adresse: {ip_str}"
+
+    return None
 
 
 def api_login_required(f):
@@ -38,6 +84,18 @@ def api_login_required(f):
 
 
 CURRENT_CACHE_KEY = CACHE_KEY_CURRENT  # Alias fuer Rueckwaertskompatibilitaet innerhalb dieses Moduls
+
+
+def _get_next_update_minutes() -> int:
+    """
+    Ermittelt das tatsaechliche Worker-Intervall in Minuten statt des
+    hartcodierten Werts 30 (B-MITTEL) — reconfigure() aendert
+    worker.interval_seconds zur Laufzeit, das muss sich hier widerspiegeln.
+    """
+    worker = get_background_worker()
+    if worker is not None:
+        return max(1, worker.interval_seconds // 60)
+    return 30
 
 
 def register_moodlight_endpoints(app):
@@ -139,7 +197,7 @@ def register_moodlight_endpoints(app):
                     "window_days": 7
                 },
                 "headlines_analyzed": latest.get('headlines_analyzed', 0),
-                "next_update_minutes": 30,
+                "next_update_minutes": _get_next_update_minutes(),
                 "cached": False
             }
 
@@ -222,6 +280,14 @@ def register_moodlight_endpoints(app):
                 from_time = datetime.now(timezone.utc) - timedelta(days=7)
                 to_time = datetime.now(timezone.utc)
 
+            # B-PERF: Redis-Cache mit 120s TTL — Key inkl. aller Parameter, damit
+            # unterschiedliche Anfragen (hours/all/from/to/limit) nicht kollidieren
+            cache_key = f"moodlight:history:{all_param}:{hours_param}:{from_param}:{to_param}:{limit}"
+            cache = get_cache()
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return jsonify(cached)
+
             # Daten aus DB holen
             db = get_database()
             history = db.get_sentiment_history(from_time, to_time, limit)
@@ -231,10 +297,12 @@ def register_moodlight_endpoints(app):
                 if isinstance(entry.get('timestamp'), datetime):
                     entry['timestamp'] = entry['timestamp'].isoformat()
 
-            return jsonify({
+            response = {
                 "count": len(history),
                 "data": history
-            })
+            }
+            cache.set(cache_key, response, ttl=120)
+            return jsonify(response)
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/history: {e}", exc_info=True)
@@ -247,6 +315,13 @@ def register_moodlight_endpoints(app):
         Trend-Analyse: Aktuell vs. 24h vs. 7d Durchschnitt
         """
         try:
+            # B-PERF: Redis-Cache mit 120s TTL
+            cache_key = "moodlight:trend"
+            cache = get_cache()
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return jsonify(cached)
+
             db = get_database()
 
             # Aktuelle Daten
@@ -272,7 +347,7 @@ def register_moodlight_endpoints(app):
             else:
                 trend = "verschlechternd"
 
-            return jsonify({
+            response = {
                 "status": "success",
                 "current": round(current_score, 2),
                 "avg_24h": round(avg_24h, 2),
@@ -281,7 +356,9 @@ def register_moodlight_endpoints(app):
                 "trend": trend,
                 "category": latest['category'],
                 "timestamp": latest['timestamp'].isoformat()
-            })
+            }
+            cache.set(cache_key, response, ttl=120)
+            return jsonify(response)
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/trend: {e}", exc_info=True)
@@ -294,10 +371,17 @@ def register_moodlight_endpoints(app):
         System-Statistiken: Geräte, Analysen, Uptime
         """
         try:
+            # B-PERF: Redis-Cache mit 120s TTL
+            cache_key = "moodlight:stats"
+            cache = get_cache()
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return jsonify(cached)
+
             db = get_database()
             stats = db.get_statistics()
 
-            return jsonify({
+            response = {
                 "status": "success",
                 "total_devices": stats.get('total_devices', 0),
                 "active_devices_24h": stats.get('active_devices_24h', 0),
@@ -305,7 +389,9 @@ def register_moodlight_endpoints(app):
                 "last_update": stats.get('last_update'),
                 "avg_sentiment_24h": float(stats.get('avg_sentiment_24h', 0)),
                 "avg_sentiment_7d": float(stats.get('avg_sentiment_7d', 0))
-            })
+            }
+            cache.set(cache_key, response, ttl=120)
+            return jsonify(response)
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/stats: {e}", exc_info=True)
@@ -353,6 +439,11 @@ def register_moodlight_endpoints(app):
             cache = get_cache()
             cache.delete(CURRENT_CACHE_KEY)
             cache.delete(CACHE_KEY_CURRENT_LEGACY)  # Alten Key beim nächsten Clear-Aufruf bereinigen
+            # B-PERF: neue history/trend/stats/feeds-trends-Caches ebenfalls loeschen
+            cache.delete_pattern("moodlight:history:*")
+            cache.delete_pattern("moodlight:trend")
+            cache.delete_pattern("moodlight:stats")
+            cache.delete_pattern("moodlight:feeds:trends:*")
 
             logger.info("Moodlight Cache manuell gelöscht")
 
@@ -455,6 +546,14 @@ def register_moodlight_endpoints(app):
                 return jsonify({"status": "error", "message": "Feld 'url' fehlt oder leer"}), 400
             if not name:
                 return jsonify({"status": "error", "message": "Feld 'name' fehlt oder leer"}), 400
+
+            # SSRF-Guard (B-MITTEL): Backend ist oeffentlich im Internet — ohne diese
+            # Pruefung koennte ein Feed mit URL auf ein internes Ziel (localhost,
+            # 169.254.169.254 Metadata-Endpoint, RFC1918-Netz) angelegt werden und
+            # der Worker wuerde regelmaessig interne Dienste abfragen (SSRF).
+            ssrf_error = _validate_feed_url_ssrf(url)
+            if ssrf_error:
+                return jsonify({"status": "error", "message": ssrf_error}), 422
 
             # URL-Validierung: Erreichbarkeit prüfen (FEED-05)
             try:
@@ -713,15 +812,24 @@ def register_moodlight_endpoints(app):
             if days_param not in (7, 30):
                 days_param = 7
 
+            # B-PERF: Redis-Cache mit 120s TTL — Key inkl. days-Parameter
+            cache_key = f"moodlight:feeds:trends:{days_param}"
+            cache = get_cache()
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return jsonify(cached)
+
             db = get_database()
             feeds = db.get_feed_trends(days=days_param)
 
-            return jsonify({
+            response = {
                 "status": "success",
                 "days": days_param,
                 "count": len(feeds),
                 "feeds": feeds
-            })
+            }
+            cache.set(cache_key, response, ttl=120)
+            return jsonify(response)
 
         except Exception as e:
             logger.error(f"Fehler in GET /api/moodlight/feeds/trends: {e}", exc_info=True)

@@ -15,6 +15,21 @@ from shared_config import CACHE_KEY_CURRENT, CACHE_KEY_CURRENT_LEGACY
 logger = logging.getLogger(__name__)
 
 
+def _invalidate_moodlight_cache():
+    """
+    Invalidiert alle gecachten Moodlight-Endpunkte nach einem neuen Sentiment-Update
+    (B-PERF: history/trend/stats/feeds-trends haben jetzt ebenfalls 120s TTL-Cache
+    und muessen wie CACHE_KEY_CURRENT bei neuen Daten sofort invalidiert werden).
+    """
+    cache = get_cache()
+    cache.delete(CACHE_KEY_CURRENT)
+    cache.delete(CACHE_KEY_CURRENT_LEGACY)
+    cache.delete_pattern("moodlight:history:*")
+    cache.delete_pattern("moodlight:trend")
+    cache.delete_pattern("moodlight:stats")
+    cache.delete_pattern("moodlight:feeds:trends:*")
+
+
 class SentimentUpdateWorker:
     """Background Worker für periodische Sentiment-Updates"""
 
@@ -150,10 +165,8 @@ class SentimentUpdateWorker:
         except Exception as e:
             logger.error(f"Fehler beim Persistieren der Headlines (manueller Trigger): {e}")
 
-        # Redis-Cache invalidieren
-        cache = get_cache()
-        cache.delete(CACHE_KEY_CURRENT)
-        cache.delete(CACHE_KEY_CURRENT_LEGACY)
+        # Redis-Cache invalidieren (B-PERF: alle gecachten Endpunkte)
+        _invalidate_moodlight_cache()
 
         elapsed = time.time() - start
         logger.info(f"=== Manueller Trigger abgeschlossen in {elapsed:.2f}s ===")
@@ -167,28 +180,58 @@ class SentimentUpdateWorker:
         }
 
     def _worker_loop(self):
-        """Haupt-Worker-Loop"""
-        # Erste Ausführung nach 10 Sekunden (damit App Zeit hat hochzufahren) —
-        # Event.wait() statt time.sleep(), damit stop() sofort abbricht statt zu blockieren (B5)
-        if self._wake_event.wait(timeout=10):
-            return  # stop() wurde während der Startverzögerung aufgerufen
+        """
+        Haupt-Worker-Loop.
+
+        B-MITTEL: Deadline-basierte Warte-Schleife statt einzelnem Event.wait(interval).
+        Deckt drei zuvor bestaetigte Bugs ab:
+        1. Thread-Tod in den ersten 10s: der Startverzoegerungs-Wait gab bei JEDEM
+           Event.set() zurueck (auch durch reconfigure()), nicht nur bei stop().
+        2. Verschluckter Wake waehrend _perform_update(): ein reconfigure()-Wake
+           waehrend der laufenden Analyse wurde vom folgenden clear() geloescht,
+           bevor er ausgewertet werden konnte — das neue Intervall griff dann erst
+           nach Ablauf des ALTEN (ggf. sehr langen) Intervalls.
+        3. Ungewollter Sofort-Trigger: nach einem reconfigure()-Wake ging die Schleife
+           direkt zurueck zu `while self.running` und fuehrte SOFORT eine Analyse aus,
+           obwohl reconfigure() nur das Intervall aendern sollte (kein Sofort-Trigger-
+           Vertrag). trigger() bleibt der einzige Weg fuer Sofort-Analysen.
+        """
+        deadline = time.time() + 10  # Erste Ausfuehrung nach 10s Startverzoegerung
 
         while self.running:
+            remaining = deadline - time.time()
+            if remaining > 0:
+                # In <=5s-Schritten warten statt einmal auf die volle Restzeit —
+                # haelt die Reaktionszeit auf stop()/reconfigure() niedrig
+                woke = self._wake_event.wait(timeout=min(remaining, 5))
+                if woke:
+                    if not self.running:
+                        return  # stop() wurde aufgerufen
+                    # reconfigure() hat gerufen — Deadline gegen das (ggf. neue)
+                    # interval_seconds NEU berechnen, OHNE sofortige Analyse.
+                    # Kein clear() vor dieser Neuberechnung — verhindert Bug 2
+                    # (verschluckter Wake waehrend eines laufenden Updates, da
+                    # hier kein Update laeuft und der Wake sofort ausgewertet wird).
+                    self._wake_event.clear()
+                    deadline = time.time() + self.interval_seconds
+                continue  # Deadline noch nicht erreicht (oder neu gesetzt) — weiter warten
+
+            # Deadline erreicht — Analyse durchfuehren
             try:
                 with self.app.app_context():
                     self._perform_update()
             except Exception as e:
                 logger.error(f"Fehler im Background Worker: {e}", exc_info=True)
 
-            # Warten bis zum nächsten Update — Event.wait() statt time.sleep() (B5):
-            # reconfigure() kann das Intervall sofort wirksam werden lassen, stop()
-            # bricht die Wartezeit sofort ab statt bis zu 2h zu blockieren
+            if not self.running:
+                return
+
             logger.info(f"Nächstes Update in {self.interval_seconds} Sekunden...")
+            # Event VOR der Deadline-Berechnung leeren, falls waehrend _perform_update()
+            # ein reconfigure() gefeuert hat — dessen Intervall-Aenderung ist in
+            # self.interval_seconds bereits sichtbar, wird hier korrekt uebernommen
             self._wake_event.clear()
-            if self._wake_event.wait(timeout=self.interval_seconds):
-                # Event wurde gesetzt (stop() oder reconfigure()) — running erneut prüfen
-                if not self.running:
-                    break
+            deadline = time.time() + self.interval_seconds
 
     def _perform_update(self):
         """Führe Sentiment-Update durch.
@@ -276,10 +319,8 @@ class SentimentUpdateWorker:
             except Exception as headline_err:
                 logger.error(f"Fehler beim Persistieren der Headlines (Sentiment bleibt gespeichert): {headline_err}")
 
-            # 4. Redis-Cache invalidieren (aktiver Key + Legacy-Key, B3)
-            cache = get_cache()
-            cache.delete(CACHE_KEY_CURRENT)
-            cache.delete(CACHE_KEY_CURRENT_LEGACY)
+            # 4. Redis-Cache invalidieren (aktiver Key + Legacy-Key + Pattern, B3/B-PERF)
+            _invalidate_moodlight_cache()
             logger.info("Cache invalidiert - nächster Request holt frische Daten")
 
             # 5. Statistik loggen
@@ -289,12 +330,65 @@ class SentimentUpdateWorker:
         except Exception as e:
             logger.error(f"Fehler beim Sentiment-Update: {e}", exc_info=True)
 
-    def _fetch_headlines(self):
+    @staticmethod
+    def _fetch_single_feed(feed_row: dict, num_headlines_per_source: int) -> tuple:
         """
-        Hole Headlines von RSS-Feeds (aus PostgreSQL-Datenbank)
+        Holt Headlines von einem einzelnen Feed (B-PERF: fuer Parallelisierung
+        via ThreadPoolExecutor ausgelagert). Reine Netzwerk-/Parse-Arbeit,
+        keine DB-Zugriffe hier — Status-Update erfolgt im Aufrufer.
+
+        Returns:
+            (feed_row, entries, success) — entries ist eine Liste von
+            (headline_text, link) Tupeln in Feed-Reihenfolge.
         """
         import feedparser
         import requests
+
+        source = feed_row['name']
+        url = feed_row['url']
+        entries = []
+        try:
+            try:
+                response = requests.get(url, timeout=10, headers={'User-Agent': 'WorldMoodAnalyzer/2.0'})
+                response.raise_for_status()
+                feed = feedparser.parse(response.content)
+            except requests.exceptions.Timeout:
+                logger.warning(f"Timeout bei {source}")
+                return (feed_row, entries, False)
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Fehler beim Abrufen von {source}: {e}")
+                return (feed_row, entries, False)
+
+            if feed.bozo and isinstance(feed.bozo_exception, Exception):
+                logger.warning(f"Feed-Fehler bei {source}: {feed.bozo_exception}")
+                return (feed_row, entries, False)
+
+            count = 0
+            if feed.entries:
+                for entry in feed.entries:
+                    if count >= num_headlines_per_source:
+                        break
+                    link = getattr(entry, 'link', None)
+                    title = getattr(entry, 'title', None)
+                    if title and title.strip():
+                        entries.append((title.strip(), link))
+                        count += 1
+
+            return (feed_row, entries, True)
+
+        except Exception as e:
+            logger.error(f"Fehler bei {source}: {e}")
+            return (feed_row, entries, False)
+
+    def _fetch_headlines(self):
+        """
+        Hole Headlines von RSS-Feeds (aus PostgreSQL-Datenbank).
+
+        B-PERF: Feed-Fetching parallelisiert mit ThreadPoolExecutor (max 6 Worker,
+        10s Timeout pro Feed) — Ergebnisreihenfolge bleibt stabil nach Feed-Reihenfolge,
+        da wir ueber `feeds` (nicht ueber die Future-Fertigstellungsreihenfolge) iterieren.
+        """
+        from concurrent.futures import ThreadPoolExecutor
 
         db = get_database()
         feeds = db.get_active_feeds()
@@ -307,50 +401,29 @@ class SentimentUpdateWorker:
         processed_links = set()
         num_headlines_per_source = self.headlines_per_source
 
-        for feed_row in feeds:
-            source = feed_row['name']
-            url = feed_row['url']
-            try:
-                try:
-                    response = requests.get(url, timeout=15, headers={'User-Agent': 'WorldMoodAnalyzer/2.0'})
-                    response.raise_for_status()
-                    feed = feedparser.parse(response.content)
-                except requests.exceptions.Timeout:
-                    logger.warning(f"Timeout bei {source}")
-                    continue
-                except requests.exceptions.RequestException as e:
-                    logger.warning(f"Fehler beim Abrufen von {source}: {e}")
-                    continue
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            # map() erhaelt die Eingabereihenfolge in der Ausgabe (stabil nach Feed-Reihenfolge),
+            # auch wenn einzelne Futures in anderer Reihenfolge fertig werden
+            results = executor.map(
+                lambda f: self._fetch_single_feed(f, num_headlines_per_source),
+                feeds
+            )
 
-                if feed.bozo and isinstance(feed.bozo_exception, Exception):
-                    logger.warning(f"Feed-Fehler bei {source}: {feed.bozo_exception}")
-                    continue
+            for feed_row, entries, success in results:
+                feed_id = feed_row['id']
+                source = feed_row['name']
+                for headline_text, link in entries:
+                    unique_key = link if link else headline_text
+                    if unique_key not in processed_links:
+                        headlines.append({
+                            "headline": headline_text,
+                            "source": source,
+                            "link": link,
+                            "feed_id": feed_id  # NEU: numerische Feed-ID für DB-FK
+                        })
+                        processed_links.add(unique_key)
 
-                headlines_from_source = 0
-                if feed.entries:
-                    for entry in feed.entries:
-                        if headlines_from_source >= num_headlines_per_source:
-                            break
-
-                        link = getattr(entry, 'link', None)
-                        title = getattr(entry, 'title', None)
-
-                        if title and title.strip():
-                            headline_text = title.strip()
-                            unique_key = link if link else headline_text
-
-                            if unique_key not in processed_links:
-                                headlines.append({
-                                    "headline": headline_text,
-                                    "source": source,
-                                    "link": link,
-                                    "feed_id": feed_row['id']  # NEU: numerische Feed-ID für DB-FK
-                                })
-                                processed_links.add(unique_key)
-                                headlines_from_source += 1
-
-            except Exception as e:
-                logger.error(f"Fehler bei {source}: {e}")
+                db.update_feed_fetch_status(feed_id, success=success)
 
         return headlines
 

@@ -121,14 +121,14 @@ class TestGetScorePercentilesMethods(unittest.TestCase):
         self.assertTrue(callable(getattr(Database, 'get_score_percentiles', None)))
 
     def test_fallback_bei_zu_wenig_datenpunkten(self):
-        """Gibt Fallback zurück wenn count < 3"""
+        """Gibt Fallback zurück wenn count < 20"""
         from database import Database
 
         db = Database.__new__(Database)
 
-        # Mock-Cursor der count=2 zurückgibt
+        # Mock-Cursor der count=10 zurückgibt (< 20, also Fallback)
         mock_row = {
-            'count': 2,
+            'count': 10,
             'p20': None, 'p40': None, 'p60': None, 'p80': None,
             'median': None, 'min': None, 'max': None
         }
@@ -171,13 +171,13 @@ class TestGetScorePercentilesMethods(unittest.TestCase):
         self.assertEqual(result['count'], 0)
 
     def test_echte_werte_bei_ausreichend_datenpunkten(self):
-        """Gibt echte Perzentile zurück wenn count >= 3"""
+        """Gibt echte Perzentile zurück wenn count >= 20"""
         from database import Database
 
         db = Database.__new__(Database)
 
         mock_row = {
-            'count': 10,
+            'count': 25,
             'p20': -0.35, 'p40': -0.1, 'p60': 0.15,
             'p80': 0.45, 'median': 0.05, 'min': -0.8, 'max': 0.9
         }
@@ -191,7 +191,7 @@ class TestGetScorePercentilesMethods(unittest.TestCase):
             result = db.get_score_percentiles(days=7)
 
         self.assertFalse(result['fallback'])
-        self.assertEqual(result['count'], 10)
+        self.assertEqual(result['count'], 25)
         self.assertAlmostEqual(result['p20'], -0.35, places=4)
         self.assertAlmostEqual(result['p40'], -0.1, places=4)
         self.assertAlmostEqual(result['p60'], 0.15, places=4)

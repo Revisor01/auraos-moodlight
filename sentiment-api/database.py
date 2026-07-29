@@ -118,8 +118,12 @@ class Database:
             raise Exception("Datenbankverbindung nicht verfügbar")
 
         conn = self._connection_pool.getconn()
-        cursor = conn.cursor(cursor_factory=cursor_factory) if cursor_factory else conn.cursor()
+        cursor = None
         try:
+            # B-MITTEL: conn.cursor() INS try gezogen — schlaegt die Cursor-Erstellung
+            # selbst fehl, muss putconn() im finally trotzdem laufen, sonst leakt
+            # die Connection dauerhaft aus dem Pool
+            cursor = conn.cursor(cursor_factory=cursor_factory) if cursor_factory else conn.cursor()
             yield cursor
             conn.commit()
         except Exception:
@@ -129,7 +133,8 @@ class Database:
                 pass
             raise
         finally:
-            cursor.close()
+            if cursor is not None:
+                cursor.close()
             self._connection_pool.putconn(conn)
 
     def save_sentiment(
@@ -382,7 +387,7 @@ class Database:
                 location,
                 EXTRACT(EPOCH FROM (NOW() - last_seen)) / 60 AS minutes_since_last_seen
             FROM device_statistics
-            WHERE last_seen >= NOW() - INTERVAL '%s hours'
+            WHERE last_seen >= NOW() - make_interval(hours => %s)
             ORDER BY last_seen DESC;
         """
 
@@ -417,6 +422,38 @@ class Database:
         except Exception as e:
             logger.error(f"Fehler beim Laden der aktiven Feeds: {e}")
             return []
+
+    def update_feed_fetch_status(self, feed_id: int, success: bool) -> bool:
+        """
+        Aktualisiert den Abruf-Status eines Feeds nach einem Fetch-Versuch (B-MITTEL).
+
+        Args:
+            feed_id: ID des Feeds
+            success: True bei erfolgreichem Abruf (setzt last_fetched_at=NOW(), error_count=0),
+                     False bei Fehler (erhoeht error_count um 1)
+
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        if success:
+            query = """
+                UPDATE feeds
+                SET last_fetched_at = NOW(), error_count = 0
+                WHERE id = %s;
+            """
+        else:
+            query = """
+                UPDATE feeds
+                SET error_count = error_count + 1
+                WHERE id = %s;
+            """
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query, (feed_id,))
+                return True
+        except Exception as e:
+            logger.error(f"Fehler beim Aktualisieren des Feed-Status (id={feed_id}): {e}")
+            return False
 
     def get_all_feeds(self) -> List[Dict[str, Any]]:
         """
@@ -607,13 +644,13 @@ class Database:
                 MIN(sentiment_score) AS min,
                 MAX(sentiment_score) AS max
             FROM sentiment_history
-            WHERE timestamp >= NOW() - INTERVAL '%s days';
+            WHERE timestamp >= NOW() - (%s * INTERVAL '1 day');
         """
         try:
             with self.get_cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query, (days,))
                 row = cur.fetchone()
-                if not row or row['count'] < 3:
+                if not row or row['count'] < 20:
                     logger.warning(
                         f"Zu wenige Datenpunkte für Perzentil-Berechnung "
                         f"(count={row['count'] if row else 0}, days={days}) — verwende Fallback"
@@ -659,7 +696,7 @@ class Database:
                 ROUND(MAX(h.sentiment_score)::numeric, 4) AS max_score
             FROM headlines h
             JOIN feeds f ON h.feed_id = f.id
-            WHERE h.analyzed_at >= NOW() - INTERVAL '%s days'
+            WHERE h.analyzed_at >= NOW() - (%s * INTERVAL '1 day')
               AND f.active = TRUE
             GROUP BY f.id, f.name
             HAVING COUNT(h.id) > 0
@@ -841,6 +878,25 @@ class RedisCache:
             logger.debug(f"Cache gelöscht: {key}")
         except Exception as e:
             logger.error(f"Fehler beim Löschen aus Redis Cache ({key}): {e}")
+
+    def delete_pattern(self, pattern: str):
+        """
+        Lösche alle Keys, die zu einem Pattern passen (B-PERF).
+
+        Nutzt scan_iter() statt keys() — scan_iter() iteriert inkrementell mit
+        Cursor statt den kompletten Keyspace in einem Schritt zu blockieren
+        (KEYS blockiert Redis bei vielen Keys, SCAN nicht).
+
+        Args:
+            pattern: Redis-Glob-Pattern (z.B. "moodlight:history:*")
+        """
+        try:
+            keys = list(self.client.scan_iter(match=pattern, count=100))
+            if keys:
+                self.client.delete(*keys)
+                logger.debug(f"Cache-Pattern gelöscht: {pattern} ({len(keys)} Keys)")
+        except Exception as e:
+            logger.error(f"Fehler beim Löschen des Cache-Patterns ({pattern}): {e}")
 
     def clear_all(self):
         """Lösche alle Cache-Einträge"""
