@@ -137,43 +137,6 @@ bool safeWiFiConnect(const String &ssid, const String &password, unsigned long t
     return true;
 }
 
-// === WiFi AP-Modus starten ===
-void startAPMode()
-{
-    debug(F("Starte Access Point Modus..."));
-
-    // LED Animation fuer AP-Modus
-    pixels.fill(pixels.Color(255, 255, 0)); // Gelb
-    pixels.show();
-    delay(500);
-
-    // AP-Modus konfigurieren
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(DEFAULT_AP_NAME, DEFAULT_AP_PASSWORD);
-
-    IPAddress IP = CAPTIVE_PORTAL_IP;
-    IPAddress subnet(255, 255, 255, 0);
-    WiFi.softAPConfig(IP, IP, subnet);
-
-    delay(500);
-
-    // DNS-Server fuer Captive Portal starten
-    dnsServer.start(DNS_PORT, "*", IP);
-    appState.isInConfigMode = true;
-
-    debug("AP gestartet mit IP " + WiFi.softAPIP().toString());
-    debug(String(F("SSID: ")) + DEFAULT_AP_NAME);
-
-    // Captive Portal Request Handler hinzufuegen
-    server.addHandler(new CaptiveRequestHandler());
-
-    // Status LED fuer AP-Modus
-    setStatusLED(5);
-
-    // Merke Zeit fuer Timeout
-    appState.apModeStartTime = millis();
-}
-
 // === WiFi Station-Modus starten ===
 bool startWiFiStation()
 {

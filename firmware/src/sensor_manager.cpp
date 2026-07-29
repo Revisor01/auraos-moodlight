@@ -7,7 +7,6 @@
 #include <WiFi.h>
 #include <DHT.h>
 #include <ArduinoHA.h>
-#include <stdarg.h>
 
 // Globals aus moodlight.cpp
 extern AppState appState;
@@ -51,7 +50,10 @@ int mapSentimentToLED(float sentimentScore)
 
 // === Verarbeite den empfangenen Sentiment Score (-1 bis +1) ===
 // Aktualisiert nur MQTT/HA-Werte — LED-Steuerung erfolgt über led_index aus der API
-void handleSentiment(float sentimentScore)
+// apiCategory: von der API gelieferte Kategorie (falls vorhanden), sonst leer für lokale Berechnung.
+// Wichtig: appState.sentimentCategory wird HIER (nach dem Alt-Wert-Vergleich) gesetzt,
+// nicht vom Aufrufer VOR dem Aufruf — sonst ist der Änderungsvergleich unten immer false (A4).
+void handleSentiment(float sentimentScore, const String &apiCategory)
 {
     sentimentScore = constrain(sentimentScore, -1.0, 1.0);
 
@@ -70,7 +72,7 @@ void handleSentiment(float sentimentScore)
     }
 
     // Kategorie aus API-Response nutzen falls vorhanden, sonst lokal bestimmen
-    String categoryText = appState.sentimentCategory;
+    String categoryText = apiCategory;
     if (categoryText.isEmpty())
     {
         int localIndex = mapSentimentToLED(sentimentScore);
@@ -85,7 +87,7 @@ void handleSentiment(float sentimentScore)
         }
     }
 
-    // Sende Kategorie an HA nur bei Änderung
+    // Sende Kategorie an HA nur bei Änderung (Vergleich gegen den ALTEN gespeicherten Wert)
     if (categoryText != appState.sentimentCategory || !appState.initialAnalysisDone)
     {
         if (appState.mqttEnabled && mqtt.isConnected())
@@ -96,20 +98,6 @@ void handleSentiment(float sentimentScore)
         appState.sentimentCategory = categoryText;
         debug("Neue Sentiment Kategorie: " + categoryText);
     }
-
-    // API ist erreichbar
-    appState.sentimentAPIAvailable = true;
-    appState.consecutiveSentimentFailures = 0;
-    appState.lastSuccessfulSentimentUpdate = millis();
-}
-
-// Safer string handling function
-void formatString(char *buffer, size_t maxLen, const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, maxLen, format, args);
-    va_end(args);
 }
 
 // === Lade Backend-Statistiken ===
@@ -170,13 +158,6 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
         http.end();
         return false;
     }
-
-    // Force close WiFi client
-    if (wifiClientHTTP.connected()) {
-        wifiClientHTTP.stop();
-    }
-
-    return false;
 }
 
 // === Sicherer HTTP GET mit JSON-Parsing ===
@@ -317,14 +298,13 @@ void getSentiment()
             debug(F("led_index nicht in Response — lokaler Fallback über mapSentimentToLED()"));
         }
 
-        // Kategorie aus API-Response übernehmen (für MQTT/HA)
-        if (doc["category"].is<const char*>())
-        {
-            appState.sentimentCategory = doc["category"].as<String>();
-        }
+        // Kategorie aus API-Response lesen (für MQTT/HA) — Zuweisung an
+        // appState.sentimentCategory erfolgt INNERHALB handleSentiment(),
+        // damit der Änderungsvergleich dort gegen den alten Wert läuft (A4)
+        String apiCategory = doc["category"].is<const char*>() ? doc["category"].as<String>() : String();
 
         // handleSentiment() für MQTT/HA-Werte (Score + Kategorie)
-        handleSentiment(receivedSentiment);
+        handleSentiment(receivedSentiment, apiCategory);
 
         // Perzentil-Daten für Dashboard-Visualisierung speichern
         if (doc["percentile"].is<float>()) appState.percentile = doc["percentile"].as<float>();

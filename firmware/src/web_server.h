@@ -21,8 +21,6 @@ void handleStaticFile(String path);
 
 // API-Handler
 void handleApiStatus();
-void handleApiDeleteDataPoint();
-void handleApiResetAllData();
 void handleApiBackendStats();
 void handleUiUpload();
 
