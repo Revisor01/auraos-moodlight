@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 Phase: 28 (all complete)
 Plan: All done
 Status: Milestone complete
-Last activity: 2026-07-29 - Completed quick task 260729-h73: Code-Review-Fixes (MQTT-Doppel-Send, Firmware/Backend/UI, CLAUDE.md)
+Last activity: 2026-07-30 - Completed quick task 260730-02i: Review-Runde 2 (NeoPixel-UAF Root-Cause-Fix, MQTT-Passwort, Backend-Härtung, UI-XSS, Build-Script)
 
 Progress: [██████████] 3/3 Phasen abgeschlossen
 
@@ -54,9 +54,10 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260729-h73 | Code-Review-Fixes: MQTT-Doppel-Send, Firmware-Validierung, Backend-Fehlerbehandlung, Web-UI-Bugs, CLAUDE.md | 2026-07-29 | 25c9856 | [260729-h73-code-review-fixes-mqtt-doppel-send-firmw](./quick/260729-h73-code-review-fixes-mqtt-doppel-send-firmw/) |
+| 260730-02i | Review-Runde 2: NeoPixel-Use-after-free (Root Cause LED-Pulsieren/Reboots), MQTT-Passwort-Roundtrip, Backend-Härtung (SECRET_KEY, Rate-Limit, Worker-Lebensdauer, SSRF-Guard, Redis-Caching), UI-XSS-Reste, moment.js-Entfernung, build-release.sh | 2026-07-30 | e690ec0, 6e7f74b, d9e5101, 4c57fa9 | [260730-02i-review-runde-2-neopixel-uaf-mqtt-passwor](./quick/260730-02i-review-runde-2-neopixel-uaf-mqtt-passwor/) |
 
 ## Session Continuity
 
-Last session: 2026-03-28
-Stopped at: All phases complete
+Last session: 2026-07-30
+Stopped at: Review-Runde 2 complete, ready for orchestrator (DB-Migration-Anwendung auf Prod, Deployment)
 Resume file: None
