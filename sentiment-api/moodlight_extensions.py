@@ -11,9 +11,10 @@ Integration in app.py:
 import logging
 from flask import jsonify, request, session
 from functools import wraps
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from database import get_database, get_cache, compute_led_index
 from shared_config import get_sentiment_category as get_category_from_score
+from shared_config import CACHE_KEY_CURRENT, CACHE_KEY_CURRENT_LEGACY
 from background_worker import get_background_worker
 import time
 import requests as http_requests
@@ -36,7 +37,7 @@ def api_login_required(f):
 # Wir liefern nur den reinen Sentiment-Score
 
 
-CURRENT_CACHE_KEY = 'moodlight:current:v2'
+CURRENT_CACHE_KEY = CACHE_KEY_CURRENT  # Alias fuer Rueckwaertskompatibilitaet innerhalb dieses Moduls
 
 
 def register_moodlight_endpoints(app):
@@ -189,20 +190,21 @@ def register_moodlight_endpoints(app):
             hours_param = request.args.get('hours', type=int)
             from_param = request.args.get('from')
             to_param = request.args.get('to')
-            limit = request.args.get('limit', 50000, type=int)
+            # limit deckeln (B8) — verhindert übermäßig große Result-Sets/Speicherverbrauch
+            limit = min(request.args.get('limit', 50000, type=int), 50000)
 
-            # Zeitstempel konvertieren
+            # Zeitstempel konvertieren (timezone-aware UTC statt naiver datetime.utcnow(), B8)
             from_time = None
             to_time = None
 
             if all_param:
                 # Alle Daten: Kein Zeitfilter (from_time bleibt None)
-                to_time = datetime.utcnow()
+                to_time = datetime.now(timezone.utc)
                 logger.info("History: Hole ALLE Daten (kein Zeitlimit)")
             elif hours_param:
                 # Wenn 'hours' Parameter vorhanden, berechne from_time
-                from_time = datetime.utcnow() - timedelta(hours=hours_param)
-                to_time = datetime.utcnow()
+                from_time = datetime.now(timezone.utc) - timedelta(hours=hours_param)
+                to_time = datetime.now(timezone.utc)
             elif from_param:
                 # Expliziter from-Parameter
                 try:
@@ -217,8 +219,8 @@ def register_moodlight_endpoints(app):
                         return jsonify({"error": "Ungültiges 'to' Format (ISO8601 erwartet)"}), 400
             else:
                 # Keine Parameter: Default 7 Tage
-                from_time = datetime.utcnow() - timedelta(days=7)
-                to_time = datetime.utcnow()
+                from_time = datetime.now(timezone.utc) - timedelta(days=7)
+                to_time = datetime.now(timezone.utc)
 
             # Daten aus DB holen
             db = get_database()
@@ -350,7 +352,7 @@ def register_moodlight_endpoints(app):
         try:
             cache = get_cache()
             cache.delete(CURRENT_CACHE_KEY)
-            cache.delete('moodlight:current')  # Alten Key beim nächsten Clear-Aufruf bereinigen
+            cache.delete(CACHE_KEY_CURRENT_LEGACY)  # Alten Key beim nächsten Clear-Aufruf bereinigen
 
             logger.info("Moodlight Cache manuell gelöscht")
 

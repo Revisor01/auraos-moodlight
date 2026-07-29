@@ -1,0 +1,25 @@
+# Secrets und lokale Konfiguration
+.env
+.env.*
+
+# Python Bytecode/Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Tests (nicht Teil des Produktions-Images)
+tests/
+
+# Shell-Skripte (Deploy-/Update-Helfer, nicht Teil des Images)
+*.sh
+
+# Git
+.git/
+.gitignore
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store

@@ -6,10 +6,11 @@ Läuft alle 30 Minuten und speichert Ergebnisse in PostgreSQL
 
 import logging
 import time
-from threading import Thread
+from threading import Thread, Event, Lock
 from datetime import datetime
 from database import get_database, get_cache
 from shared_config import get_sentiment_category
+from shared_config import CACHE_KEY_CURRENT, CACHE_KEY_CURRENT_LEGACY
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,13 @@ class SentimentUpdateWorker:
         self.headlines_per_source = 1  # dynamisch via reconfigure() änderbar
         self.running = False
         self.thread = None
+        # B5: Event statt time.sleep() — stop()/reconfigure() wirken sofort statt
+        # erst nach Ablauf des aktuellen (ggf. sehr langen) Sleep-Intervalls
+        self._wake_event = Event()
+        # B5: Lock zwischen trigger() (manueller Dashboard-Trigger) und _perform_update()
+        # (periodischer Worker-Lauf) — verhindert parallele Anthropic-Analysen
+        # (doppelte API-Kosten, konkurrierende DB-Writes)
+        self._update_lock = Lock()
 
     def start(self):
         """Starte Background Worker"""
@@ -40,6 +48,7 @@ class SentimentUpdateWorker:
             return
 
         self.running = True
+        self._wake_event.clear()
         self.thread = Thread(target=self._worker_loop, daemon=True)
         self.thread.start()
         logger.info(f"Background Worker gestartet (Intervall: {self.interval_seconds}s)")
@@ -47,6 +56,7 @@ class SentimentUpdateWorker:
     def stop(self):
         """Stoppe Background Worker"""
         self.running = False
+        self._wake_event.set()  # weckt _worker_loop() sofort aus dem Wartezustand
         if self.thread:
             self.thread.join(timeout=5)
         logger.info("Background Worker gestoppt")
@@ -63,6 +73,9 @@ class SentimentUpdateWorker:
             old_interval = self.interval_seconds
             self.interval_seconds = interval_seconds
             logger.info(f"Worker-Intervall geändert: {old_interval}s → {interval_seconds}s")
+            # Loop sofort aufwecken, damit das neue Intervall ab jetzt gilt statt
+            # erst nach Ablauf des alten (ggf. sehr langen) Wartezeitraums (B5)
+            self._wake_event.set()
 
         if headlines_per_source is not None and headlines_per_source > 0:
             old_headlines = self.headlines_per_source
@@ -74,9 +87,24 @@ class SentimentUpdateWorker:
         Führe sofortige Sentiment-Analyse durch (für manuellen Trigger vom Dashboard).
         Gibt Ergebnis-Dict zurück oder wirft Exception bei Fehler.
 
+        Non-blocking Lock-Versuch (B5): läuft bereits eine Analyse (periodischer
+        Worker-Lauf ODER ein anderer manueller Trigger), wird sofort mit RuntimeError
+        abgebrochen statt parallel zu laufen (doppelte Anthropic-API-Kosten, konkurrierende
+        DB-Writes). Der Aufrufer (moodlight_extensions.py) meldet das als HTTP 422.
+
         Returns:
             dict mit: sentiment_score, category, headlines_analyzed, source_count, duration_seconds
         """
+        if not self._update_lock.acquire(blocking=False):
+            raise RuntimeError("Es läuft bereits eine Sentiment-Analyse — bitte warten")
+
+        try:
+            return self._do_trigger()
+        finally:
+            self._update_lock.release()
+
+    def _do_trigger(self) -> dict:
+        """Eigentliche Trigger-Logik, wird nur unter _update_lock aufgerufen (B5)."""
         start = time.time()
         logger.info("=== Manueller Trigger: Starte Sentiment-Update ===")
 
@@ -87,10 +115,10 @@ class SentimentUpdateWorker:
 
         feed_count = len(get_database().get_active_feeds())
 
-        # Sentiment analysieren
+        # Sentiment analysieren (None = API-Fehler oder Teilparse, siehe analyze_sentiment_claude, B2)
         analysis_result = self.analyze_function(headlines)
-        if not analysis_result or 'total_sentiment' not in analysis_result:
-            raise RuntimeError("Analyse lieferte kein verwertbares Ergebnis")
+        if analysis_result is None or 'total_sentiment' not in analysis_result:
+            raise RuntimeError("Analyse lieferte kein verwertbares Ergebnis (Anthropic API-Fehler oder Teilparse)")
 
         sentiment_score = analysis_result['total_sentiment']
         stats = analysis_result.get('statistics', {})
@@ -124,8 +152,8 @@ class SentimentUpdateWorker:
 
         # Redis-Cache invalidieren
         cache = get_cache()
-        cache.delete('moodlight:current:v2')
-        cache.delete('moodlight:current')
+        cache.delete(CACHE_KEY_CURRENT)
+        cache.delete(CACHE_KEY_CURRENT_LEGACY)
 
         elapsed = time.time() - start
         logger.info(f"=== Manueller Trigger abgeschlossen in {elapsed:.2f}s ===")
@@ -140,8 +168,10 @@ class SentimentUpdateWorker:
 
     def _worker_loop(self):
         """Haupt-Worker-Loop"""
-        # Erste Ausführung nach 10 Sekunden (damit App Zeit hat hochzufahren)
-        time.sleep(10)
+        # Erste Ausführung nach 10 Sekunden (damit App Zeit hat hochzufahren) —
+        # Event.wait() statt time.sleep(), damit stop() sofort abbricht statt zu blockieren (B5)
+        if self._wake_event.wait(timeout=10):
+            return  # stop() wurde während der Startverzögerung aufgerufen
 
         while self.running:
             try:
@@ -150,12 +180,34 @@ class SentimentUpdateWorker:
             except Exception as e:
                 logger.error(f"Fehler im Background Worker: {e}", exc_info=True)
 
-            # Warten bis zum nächsten Update
+            # Warten bis zum nächsten Update — Event.wait() statt time.sleep() (B5):
+            # reconfigure() kann das Intervall sofort wirksam werden lassen, stop()
+            # bricht die Wartezeit sofort ab statt bis zu 2h zu blockieren
             logger.info(f"Nächstes Update in {self.interval_seconds} Sekunden...")
-            time.sleep(self.interval_seconds)
+            self._wake_event.clear()
+            if self._wake_event.wait(timeout=self.interval_seconds):
+                # Event wurde gesetzt (stop() oder reconfigure()) — running erneut prüfen
+                if not self.running:
+                    break
 
     def _perform_update(self):
-        """Führe Sentiment-Update durch"""
+        """Führe Sentiment-Update durch.
+
+        Non-blocking Lock-Versuch (B5): läuft bereits eine manuell getriggerte
+        Analyse, wird dieser periodische Zyklus übersprungen statt parallel zu
+        laufen (doppelte Anthropic-API-Kosten, konkurrierende DB-Writes).
+        """
+        if not self._update_lock.acquire(blocking=False):
+            logger.warning("Periodisches Update übersprungen — es läuft bereits eine Analyse (manueller Trigger)")
+            return
+
+        try:
+            self._do_perform_update()
+        finally:
+            self._update_lock.release()
+
+    def _do_perform_update(self):
+        """Eigentliche Update-Logik, wird nur unter _update_lock aufgerufen (B5)."""
         start_time = time.time()
         logger.info("=== Background Worker: Starte Sentiment-Update ===")
 
@@ -171,10 +223,16 @@ class SentimentUpdateWorker:
             logger.info(f"Headlines gesammelt: {len(headlines)}")
 
             # 2. Sentiment analysieren (nutzt die bestehende analyze_function)
+            # None = Anthropic API-Fehler oder Teilparse (B2) — Zyklus OHNE DB-Write
+            # überspringen, sonst wird der Fehler als Sentiment 0.0 gespeichert
+            # (Ursache der frueheren 30-Tage-Nullserie)
             analysis_result = self.analyze_function(headlines)
 
-            if not analysis_result or 'total_sentiment' not in analysis_result:
-                logger.error("Ungültige Analyse-Ergebnisse")
+            if analysis_result is None or 'total_sentiment' not in analysis_result:
+                logger.warning(
+                    "Sentiment-Update übersprungen: Analyse lieferte kein verwertbares "
+                    "Ergebnis (Anthropic API-Fehler oder Teilparse) — kein DB-Write."
+                )
                 return
 
             sentiment_score = analysis_result['total_sentiment']
@@ -218,9 +276,10 @@ class SentimentUpdateWorker:
             except Exception as headline_err:
                 logger.error(f"Fehler beim Persistieren der Headlines (Sentiment bleibt gespeichert): {headline_err}")
 
-            # 4. Redis-Cache invalidieren
+            # 4. Redis-Cache invalidieren (aktiver Key + Legacy-Key, B3)
             cache = get_cache()
-            cache.delete('moodlight:current')
+            cache.delete(CACHE_KEY_CURRENT)
+            cache.delete(CACHE_KEY_CURRENT_LEGACY)
             logger.info("Cache invalidiert - nächster Request holt frische Daten")
 
             # 5. Statistik loggen

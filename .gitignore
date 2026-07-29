@@ -58,3 +58,7 @@ releases/
 
 # Temporaere HTML-Dateien
 *.tmp.html
+
+# Python (sentiment-api)
+__pycache__/
+*.pyc
