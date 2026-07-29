@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 Phase: 28 (all complete)
 Plan: All done
 Status: Milestone complete
-Last activity: 2026-03-28
+Last activity: 2026-07-29 - Completed quick task 260729-h73: Code-Review-Fixes (MQTT-Doppel-Send, Firmware/Backend/UI, CLAUDE.md)
 
 Progress: [██████████] 3/3 Phasen abgeschlossen
 
@@ -48,6 +48,12 @@ Progress: [██████████] 3/3 Phasen abgeschlossen
 ### Blockers/Concerns
 
 None.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260729-h73 | Code-Review-Fixes: MQTT-Doppel-Send, Firmware-Validierung, Backend-Fehlerbehandlung, Web-UI-Bugs, CLAUDE.md | 2026-07-29 | 25c9856 | [260729-h73-code-review-fixes-mqtt-doppel-send-firmw](./quick/260729-h73-code-review-fixes-mqtt-doppel-send-firmw/) |
 
 ## Session Continuity
 
