@@ -41,7 +41,7 @@ extern void saveSettings();
 extern void loadSettings();
 extern void updateLEDs();
 extern void setStatusLED(int mode);
-extern void handleSentiment(float score);
+extern void handleSentiment(float score, const String &apiCategory);
 extern void getSentiment();
 extern bool fetchBackendStatistics(JsonDocument &doc, int hours);
 extern int mapSentimentToLED(float score);
@@ -521,8 +521,6 @@ void handleUiUpload() {
                 copyFile("/index.html", "/backup/index.html");
             if (LittleFS.exists("/setup.html"))
                 copyFile("/setup.html", "/backup/setup.html");
-            if (LittleFS.exists("/diagnostics.html"))
-                copyFile("/diagnostics.html", "/backup/diagnostics.html");
             if (LittleFS.exists("/mood.html"))
                 copyFile("/mood.html", "/backup/mood.html");
 
@@ -536,7 +534,6 @@ void handleUiUpload() {
             debug(F("Kopiere Hauptdateien"));
             copyFile("/extract/index.html", "/index.html");
             copyFile("/extract/setup.html", "/setup.html");
-            copyFile("/extract/diagnostics.html", "/diagnostics.html");
             copyFile("/extract/mood.html", "/mood.html");
 
             // Copy CSS files
@@ -631,7 +628,7 @@ void handleApiStatus() {
     uint8_t g = (currentColor >> 8) & 0xFF;
     uint8_t b = currentColor & 0xFF;
     char hexColor[8];
-    sprintf(hexColor, "#%02X%02X%02X", r, g, b);
+    snprintf(hexColor, sizeof(hexColor), "#%02X%02X%02X", r, g, b);
     doc["ledColor"] = hexColor;
 
     // Perzentil-Daten für Dashboard
@@ -649,7 +646,7 @@ void handleApiStatus() {
         JsonArray colors = doc["ledColors"].to<JsonArray>();
         for (int i = 0; i < 5; i++) {
             char hex[8];
-            sprintf(hex, "#%06X", appState.customColors[i]);
+            snprintf(hex, sizeof(hex), "#%06X", appState.customColors[i] & 0xFFFFFF);
             colors.add(hex);
         }
         JsonObject historical = doc["historical"].to<JsonObject>();
@@ -689,22 +686,6 @@ void handleApiStatus() {
     size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
     server.send(200, "application/json", jsonBuffer);
     jsonPool.release(jsonBuffer);
-}
-
-// Handle deleting a specific data point - FIXED
-// ===== DISABLED IN v9.0: Local CSV Management =====
-// Data is managed in backend, cannot delete from device
-void handleApiDeleteDataPoint() {
-    server.send(410, "application/json",
-        "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
-    debug(F("Delete datapoint disabled - backend manages data"));
-}
-
-// ===== DISABLED IN v9.0: Local CSV Management =====
-void handleApiResetAllData() {
-    server.send(410, "application/json",
-        "{\"error\":\"Feature removed in v9.0 - Data is managed in backend\"}");
-    debug(F("Reset all data disabled - backend manages data"));
 }
 
 // API-Endpunkt für Speicherinformationen
@@ -795,71 +776,6 @@ void logSystemStatus() {
 // ===== Web-Server Setup =====
 
 void setupWebServer() {
-    server.onNotFound([]() {
-        String path = server.uri();
-        String method = (server.method() == HTTP_GET) ? "GET" :
-                        (server.method() == HTTP_POST) ? "POST" :
-                        (server.method() == HTTP_PUT) ? "PUT" :
-                        (server.method() == HTTP_DELETE) ? "DELETE" : "OTHER";
-
-        debug(String(F("404 Not Found: ")) + method + " " + path);
-
-        // Print query parameters if any
-        if (server.args() > 0) {
-            debug(F("Query parameters:"));
-            for (int i = 0; i < server.args(); i++) {
-                debug(String(F("  ")) + server.argName(i) + ": " + server.arg(i));
-            }
-        }
-
-        // Check for favicons that might be requested by browsers
-        if (path.indexOf("favicon") != -1) {
-            debug(F("Favicon request - serving empty response"));
-            server.send(204); // No content
-            return;
-        }
-
-        // Rest of your handler...
-        // If path ends with slash, append index.html
-        if (path.endsWith("/")) path += "index.html";
-
-        // Try handling as static file first
-        if (LittleFS.exists(path)) {
-            debug(String(F("File exists, serving: ")) + path);
-            handleStaticFile(path);
-            return;
-        }
-
-        // Special case handling for common paths
-        if (path == "/") {
-            debug(F("Root request, serving index.html"));
-            handleStaticFile("/index.html");
-            return;
-        }
-
-        if (path == "/setup" || path == "/setup.html") {
-            debug(F("Setup page requested, serving setup.html"));
-            handleStaticFile("/setup.html");
-            return;
-        }
-
-        if (path == "/diagnostics" || path == "/diagnostics.html") {
-            debug(F("D  iagnostics page requested, serving diagnostics.html"));
-            handleStaticFile("/diagnostics.html");
-            return;
-        }
-
-        if (path == "/mood" || path == "/mood.html") {
-            debug(F("Mood page requested, serving mood.html"));
-            handleStaticFile("/mood.html");
-            return;
-        }
-
-        // If we got here, no handler found
-        debug(String(F("No handler for: ")) + path + F(", sending 404"));
-        server.send(404, "text/plain", "404: Not Found - " + path);
-    });
-
     // Statische Dateien aus LittleFS
     server.on("/", HTTP_GET, []()
               { handleStaticFile("/index.html"); });
@@ -900,7 +816,7 @@ void setupWebServer() {
         doc["fsTotal"] = (unsigned long)total;
         doc["fsUsed"] = (unsigned long)used;
         doc["fsFree"] = (unsigned long)(total - used);
-        doc["fsPercent"] = (float)used * 100.0 / total;
+        doc["fsPercent"] = (total > 0) ? ((float)used * 100.0 / total) : 0;
 
         doc["uptime"] = millis() / 1000;
 
@@ -920,7 +836,7 @@ void setupWebServer() {
 
         bool memoryOk = ESP.getFreeHeap() > 30000;
         bool fragmentationOk = (float)ESP.getMaxAllocHeap() / ESP.getFreeHeap() > 0.7;
-        bool filesystemOk = ((float)used * 100.0 / total) < 80.0;
+        bool filesystemOk = (total == 0) || (((float)used * 100.0 / total) < 80.0);
         bool wifiOk = WiFi.status() == WL_CONNECTED && WiFi.RSSI() > -80;
         bool mqttOk = !appState.mqttEnabled || (appState.mqttEnabled && mqtt.isConnected());
 
@@ -1000,7 +916,7 @@ void setupWebServer() {
         uint64_t total, used, free;
         getStorageInfo(total, used, free);
         doc["freeSpace"] = (unsigned long)free;
-        doc["freeSpacePercent"] = (float)free * 100.0 / total;
+        doc["freeSpacePercent"] = (total > 0) ? ((float)free * 100.0 / total) : 0;
 
         char* jsonBuffer = jsonPool.acquire();
         size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
@@ -1031,26 +947,12 @@ void setupWebServer() {
         }
     });
 
-    server.on("/api/repair/stats", HTTP_GET, []() {
-        // v9.0: CSV repair removed - stats managed in backend
-        JsonDocument doc;
-        doc["success"] = false;
-        doc["message"] = F("CSV-Reparatur entfernt in v9.0 - Statistiken werden vom Backend verwaltet");
-
-        char* jsonBuffer = jsonPool.acquire();
-        size_t len = serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
-        server.send(200, "application/json", jsonBuffer);
-        jsonPool.release(jsonBuffer);
-    });
-
     // For CSS and JS files that might be missing
     server.on("/css/style.css", HTTP_GET, []() { handleStaticFile("/css/style.css"); });
     server.on("/css/mood.css", HTTP_GET, []() { handleStaticFile("/css/mood.css"); });
     server.on("/js/script.js", HTTP_GET, []() { handleStaticFile("/js/script.js"); });
     server.on("/js/mood.js", HTTP_GET, []() { handleStaticFile("/js/mood.js"); });
     server.on("/js/setup.js", HTTP_GET, []() { handleStaticFile("/js/setup.js"); });
-    server.on("/api/stats/delete", HTTP_GET, handleApiDeleteDataPoint);
-    server.on("/api/stats/reset", HTTP_GET, handleApiResetAllData);
 
     server.on("/ui-upload", HTTP_POST,
         []() {
@@ -1164,7 +1066,7 @@ void setupWebServer() {
             // uint32 Farbe in Hex-String konvertieren
             uint32_t color = appState.customColors[i];
             char hexColor[8];
-            sprintf(hexColor, "#%06X", color);
+            snprintf(hexColor, sizeof(hexColor), "#%06X", color & 0xFFFFFF);
             colors.add(hexColor);
         }
 
@@ -1309,16 +1211,18 @@ void setupWebServer() {
             }
         }
         if (doc["moodInterval"].is<float>()) {
-            unsigned long newMoodInterval = 1000UL * doc["moodInterval"].as<unsigned long>();
-            newMoodInterval = constrain(newMoodInterval, 10000, 7200000);  // Mind. 10s, Max 2h
+            unsigned long moodSeconds = constrain(doc["moodInterval"].as<unsigned long>(), 10UL, 7200UL);  // Mind. 10s, Max 2h — vor der Multiplikation clampen (32-Bit-Overflow-Schutz)
+            unsigned long newMoodInterval = 1000UL * moodSeconds;
             if (newMoodInterval != appState.moodUpdateInterval) {
                 appState.moodUpdateInterval = newMoodInterval;
                 changed = true;
                 debug(String(F("Mood Interval geändert zu: ")) + String(appState.moodUpdateInterval / 1000) + F("s"));
             }
         }
-        if (doc["dhtEnabled"].is<float>()) {
-            bool newDhtEnabled = doc["dhtEnabled"].as<bool>();
+        if (doc["dhtEnabled"].is<bool>() || doc["dhtEnabled"].is<int>() || doc["dhtEnabled"].is<float>()) {
+            bool newDhtEnabled = doc["dhtEnabled"].is<bool>()
+                ? doc["dhtEnabled"].as<bool>()
+                : (doc["dhtEnabled"].as<float>() != 0);
             if (newDhtEnabled != appState.dhtEnabled) {
                 appState.dhtEnabled = newDhtEnabled;
                 changed = true;
@@ -1329,8 +1233,8 @@ void setupWebServer() {
 
         // NEU: DHT Intervall hier verarbeiten
         if (doc["dhtInterval"].is<float>()) {
-            unsigned long newDhtInterval = 1000UL * doc["dhtInterval"].as<unsigned long>();
-            newDhtInterval = constrain(newDhtInterval, 10000, 3600000);  // Mind. 10s, Max 1h
+            unsigned long dhtSeconds = constrain(doc["dhtInterval"].as<unsigned long>(), 10UL, 3600UL);  // Mind. 10s, Max 1h — vor der Multiplikation clampen (32-Bit-Overflow-Schutz)
+            unsigned long newDhtInterval = 1000UL * dhtSeconds;
             if (newDhtInterval != appState.dhtUpdateInterval) {
                 appState.dhtUpdateInterval = newDhtInterval;
                 changed = true;
@@ -1384,14 +1288,27 @@ void setupWebServer() {
             JsonArray colorArray = doc["colors"].as<JsonArray>();
             int index = 0;
 
+            bool parseError = false;
             for (JsonVariant colorValue : colorArray) {
                 if (index < 5 && colorValue.is<String>()) {
                     String hexColor = colorValue.as<String>();
+                    const char* hexStr = hexColor.c_str();
+                    if (hexStr[0] == '#') hexStr++; // führendes '#' überspringen
                     uint32_t rgb = 0;
-                    sscanf(hexColor.c_str(), "%x", &rgb);
-                    appState.customColors[index] = rgb;
+                    if (sscanf(hexStr, "%x", &rgb) != 1) {
+                        debug(String(F("Ungültiger Farbwert ignoriert: ")) + hexColor);
+                        parseError = true;
+                        index++;
+                        continue;
+                    }
+                    appState.customColors[index] = rgb & 0xFFFFFF;
                     index++;
                 }
+            }
+
+            if (parseError) {
+                server.send(400, "text/plain", "Ungültiger Farbwert");
+                return;
             }
 
             // Einstellungen speichern
@@ -1492,18 +1409,37 @@ void setupWebServer() {
         bool needsReboot = false;
 
         // Werte aus JSON extrahieren und prüfen, ob Änderung vorliegt
-        if (doc["ledPin"].is<int>() && doc["ledPin"].as<int>() != appState.ledPin) {
-            appState.ledPin = doc["ledPin"].as<int>();
-            needsReboot = true;  // Pin-Änderung erfordert Neustart
+        // Pins 6-11 sind intern mit dem Flash verbunden — deren Nutzung würde das Gerät bricken
+        if (doc["ledPin"].is<int>()) {
+            int newLedPin = doc["ledPin"].as<int>();
+            if (newLedPin >= 0 && newLedPin <= 39 && !(newLedPin >= 6 && newLedPin <= 11)) {
+                if (newLedPin != appState.ledPin) {
+                    appState.ledPin = newLedPin;
+                    needsReboot = true;  // Pin-Änderung erfordert Neustart
+                }
+            } else {
+                debug(String(F("Ungültiger LED-Pin ignoriert: ")) + newLedPin);
+            }
         }
-        if (doc["dhtPin"].is<int>() && doc["dhtPin"].as<int>() != appState.dhtPin) {
-            appState.dhtPin = doc["dhtPin"].as<int>();
-            needsReboot = true;  // Pin-Änderung erfordert Neustart
+        if (doc["dhtPin"].is<int>()) {
+            int newDhtPin = doc["dhtPin"].as<int>();
+            if (newDhtPin >= 0 && newDhtPin <= 39 && !(newDhtPin >= 6 && newDhtPin <= 11)) {
+                if (newDhtPin != appState.dhtPin) {
+                    appState.dhtPin = newDhtPin;
+                    needsReboot = true;  // Pin-Änderung erfordert Neustart
+                }
+            } else {
+                debug(String(F("Ungültiger DHT-Pin ignoriert: ")) + newDhtPin);
+            }
         }
 
-        if (doc["numLeds"].is<int>() && doc["numLeds"].as<int>() != appState.numLeds) {
-            appState.numLeds = doc["numLeds"].as<int>();
-            needsReboot = true;  // LED-Anzahl-Änderung erfordert Neustart
+        if (doc["numLeds"].is<int>()) {
+            int newNumLeds = constrain(doc["numLeds"].as<int>(), 1, MAX_LEDS);
+            if (newNumLeds != appState.numLeds) {
+                appState.numLeds = newNumLeds;
+                appState.statusLedIndex = appState.numLeds - 1;
+                needsReboot = true;  // LED-Anzahl-Änderung erfordert Neustart
+            }
         }
 
         // DHT Intervall wird hier NICHT mehr verarbeitet
@@ -1533,6 +1469,15 @@ void setupWebServer() {
         preferences.begin("moodlight", false);
         preferences.clear();
         preferences.end();
+
+        // Persistierte JSON-Einstellungen löschen — sonst lädt loadSettings()
+        // beim nächsten Boot bevorzugt die alte Datei und der Reset greift nicht
+        if (LittleFS.exists("/data/settings.json")) {
+            LittleFS.remove("/data/settings.json");
+        }
+        if (LittleFS.exists("/data/settings.json.bak")) {
+            LittleFS.remove("/data/settings.json.bak");
+        }
 
         // Standardwerte wiederherstellen
         appState.wifiSSID = "";
@@ -1566,10 +1511,10 @@ void setupWebServer() {
             int idx = (appState.logIndex + i) % LOG_BUFFER_SIZE;
             if (appState.logBuffer[idx][0] != '\0') {
                 logs += appState.logBuffer[idx];
-                logs += "<br>";
+                logs += "\n";
             }
         }
-        server.send(200, "text/html", logs);
+        server.send(200, "text/plain", logs);
     });
 
     // Status-Endpunkt für AJAX-Aktualisierungen
@@ -1612,7 +1557,7 @@ void setupWebServer() {
         uint8_t g = (currentColor >> 8) & 0xFF;
         uint8_t b = currentColor & 0xFF;
         char hexColor[8];
-        sprintf(hexColor, "#%02X%02X%02X", r, g, b);
+        snprintf(hexColor, sizeof(hexColor), "#%02X%02X%02X", r, g, b);
         doc["ledColor"] = hexColor;
 
         // Status-LED Info
@@ -1695,8 +1640,14 @@ void setupWebServer() {
             String hexColor = server.arg("hex");
 
             // Hex zu RGB konvertieren
+            const char* hexStr = hexColor.c_str();
+            if (hexStr[0] == '#') hexStr++; // führendes '#' überspringen
             uint32_t rgb = 0;
-            sscanf(hexColor.c_str(), "%x", &rgb);
+            if (sscanf(hexStr, "%x", &rgb) != 1) {
+                server.send(400, "text/plain", "Ungültiger Hex-Farbwert");
+                return;
+            }
+            rgb &= 0xFFFFFF;
 
             // RGB-Komponenten extrahieren
             uint8_t r = (rgb >> 16) & 0xFF;
@@ -1773,7 +1724,7 @@ void setupWebServer() {
 
         // Farbe als HEX
         char hexColor[10];
-        sprintf(hexColor, "#%06X", appState.manualColor);
+        snprintf(hexColor, sizeof(hexColor), "#%06X", appState.manualColor & 0xFFFFFF);
         doc["manColor"] = hexColor;
 
         // v9.0: headlinesPS removed
@@ -1796,7 +1747,7 @@ void setupWebServer() {
         JsonArray colors = doc["colors"].to<JsonArray>();
         for (int i = 0; i < 5; i++) {
             char hexColorArr[10];
-            sprintf(hexColorArr, "#%06X", appState.customColors[i]);
+            snprintf(hexColorArr, sizeof(hexColorArr), "#%06X", appState.customColors[i] & 0xFFFFFF);
             colors.add(hexColorArr);
         }
 
@@ -1829,7 +1780,7 @@ void setupWebServer() {
         "/update", HTTP_POST, []() {
             server.sendHeader("Connection", "close");
             if (Update.hasError()) {
-                server.send(200, "text/html", "<html><body><h1>Update Failed!</h1><a href='/'>Return to Homepage</a></body></html>");
+                server.send(500, "text/html", "<html><body><h1>Update Failed!</h1><a href='/'>Return to Homepage</a></body></html>");
                 // Kein Restart bei fehlgeschlagenem Update
             } else {
                 server.send(200, "text/html", "<html><body><h1>Update Successful!</h1><p>Device is restarting...</p><script>setTimeout(function(){window.location.href='/';}, 10000);</script></body></html>");
@@ -1840,10 +1791,12 @@ void setupWebServer() {
         []() {
             HTTPUpload &upload = server.upload();
             static String extractedVersion = "";
+            static bool magicByteChecked = false;
 
             if (upload.status == UPLOAD_FILE_START) {
                 String filename = upload.filename;
                 debug("Update: " + filename);
+                magicByteChecked = false;
 
                 // Check naming convention: Firmware-X.X-AuraOS.bin
                 if (filename.startsWith("Firmware-") && filename.endsWith(".bin")) {
@@ -1866,6 +1819,16 @@ void setupWebServer() {
                 }
             }
             else if (upload.status == UPLOAD_FILE_WRITE) {
+                // Bricking-Vorsorge: erster Chunk muss mit dem ESP32-Firmware-Magic-Byte
+                // 0xE9 beginnen — verhindert das Flashen offensichtlich falscher Dateien
+                if (!magicByteChecked) {
+                    magicByteChecked = true;
+                    if (upload.currentSize == 0 || upload.buf[0] != 0xE9) {
+                        debug(F("ERROR: Ungültige Firmware-Datei (Magic Byte 0xE9 fehlt) - Update abgebrochen"));
+                        Update.abort();
+                        return;
+                    }
+                }
                 if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                     debug(F("ERROR: Update Write fehlgeschlagen"));
                     Update.printError(Serial);
@@ -2031,7 +1994,7 @@ void runSystemHealthCheck() {
     // Speicherplatz-Prüfung
     uint64_t total, used, free;
     getStorageInfo(total, used, free);
-    float percentUsed = (float)used * 100.0 / total;
+    float percentUsed = (total > 0) ? ((float)used * 100.0 / total) : 0;
 
     if (percentUsed > STORAGE_WARNING_PERCENT) {
         debug(F("Hohe Dateisystembelegung erkannt"));

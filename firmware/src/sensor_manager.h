@@ -18,7 +18,8 @@ void initDHT();
 
 // Sentiment-Hilfsfunktionen
 int mapSentimentToLED(float sentimentScore);
-void handleSentiment(float sentimentScore);
+// apiCategory: von der API gelieferte Kategorie, sonst leer lassen (lokale Berechnung als Fallback)
+void handleSentiment(float sentimentScore, const String &apiCategory = "");
 
 // HTTP-Hilfsfunktion
 bool safeHttpGet(const String &url, JsonDocument &doc);
@@ -31,6 +32,3 @@ void readAndPublishDHT();
 
 // Backend-Statistiken
 bool fetchBackendStatistics(JsonDocument &doc, int hours = 168);
-
-// String-Formatierung
-void formatString(char *buffer, size_t maxLen, const char *format, ...);

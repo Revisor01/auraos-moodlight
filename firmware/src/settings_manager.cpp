@@ -134,8 +134,15 @@ bool loadSettingsFromFile() {
 void saveSettings()
 {
 
-    // Erst in JSON-Datei speichern (neue Methode)
-    saveSettingsToFile();
+    // Erst in JSON-Datei speichern (neue Methode) — JSON hat beim Laden Vorrang,
+    // daher bei Fehlschlag die (moeglicherweise veraltete) Datei entfernen statt
+    // stillschweigend mit stale Daten weiterzuarbeiten
+    if (!saveSettingsToFile()) {
+        debug(F("FEHLER: Einstellungen konnten nicht in JSON-Datei gespeichert werden — entferne evtl. veraltete Datei"));
+        if (LittleFS.exists("/data/settings.json")) {
+            LittleFS.remove("/data/settings.json");
+        }
+    }
     // Dann in Preferences speichern (bestehende Methode)
     preferences.begin("moodlight", false);
 
@@ -187,14 +194,15 @@ void loadSettings()
         debug(F("Lade Einstellungen aus Preferences als Fallback..."));
         preferences.begin("moodlight", true); // read-only
 
-        // Lade allgemeine Einstellungen
-        appState.moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
-        appState.dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
+        // Lade allgemeine Einstellungen (symmetrisch zu saveSettings() — nicht auf Defaults zurückfallen,
+        // wenn bereits Werte in Preferences existieren)
+        appState.moodUpdateInterval = preferences.getULong("moodInterval", DEFAULT_MOOD_UPDATE_INTERVAL);
+        appState.dhtUpdateInterval = preferences.getULong("dhtInterval", DEFAULT_DHT_READ_INTERVAL);
         // v9.0: headlines_per_source removed
-        appState.autoMode = true;
-        appState.lightOn = true;
-        appState.manualBrightness = DEFAULT_LED_BRIGHTNESS;
-        appState.manualColor = pixels.Color(255, 255, 255);
+        appState.autoMode = preferences.getBool("autoMode", true);
+        appState.lightOn = preferences.getBool("lightOn", true);
+        appState.manualBrightness = preferences.getUChar("manBright", DEFAULT_LED_BRIGHTNESS);
+        appState.manualColor = preferences.getUInt("manColor", pixels.Color(255, 255, 255));
 
         // Lade WiFi-Einstellungen
         appState.wifiSSID = preferences.getString("wifiSSID", "");

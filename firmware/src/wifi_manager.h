@@ -13,9 +13,6 @@ void initTime();
 // Sichere WiFi-Verbindung mit Timeout
 bool safeWiFiConnect(const String &ssid, const String &password, unsigned long timeout = 15000);
 
-// AP-Modus starten (ohne Server-Start, fuer loop()-Kontext)
-void startAPMode();
-
 // WiFi Station-Modus starten und verbinden
 bool startWiFiStation();
 

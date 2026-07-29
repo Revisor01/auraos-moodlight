@@ -31,7 +31,7 @@ extern WatchdogManager watchdog;
 extern void updateLEDs();
 extern void setStatusLED(int mode);
 extern void saveSettings();
-extern void handleSentiment(float sentimentScore);
+extern void handleSentiment(float sentimentScore, const String &apiCategory);
 
 // ============================================================
 // HA-Callbacks
@@ -288,14 +288,16 @@ void setupHA()
     haLight.onStateCommand(onStateCommand);           // Callback für An/Aus
     haLight.onBrightnessCommand(onBrightnessCommand); // Callback für Helligkeit
     haLight.onRGBColorCommand(onRGBColorCommand);     // Callback für Farbe
-    haLight.setRetain(true);                          // Zustand behalten
+    // Kein setRetain(true): retain wuerde HA-Befehle beim Broker retained
+    // publizieren und bei jedem Reconnect erneut zustellen — Callbacks
+    // feuern dann mit veralteten Werten. sendInitialStates() versorgt
+    // HA nach jedem (Re-)Connect ohnehin korrekt mit dem aktuellen Zustand.
 
     // Modus Auswahl (Auto/Manual)
     haMode.setName("Betriebsmodus");
     haMode.setOptions("Auto;Manual"); // Optionen für die Dropdown-Liste
     haMode.setIcon("mdi:cogs");
     haMode.onCommand(onModeCommand); // Callback registrieren
-    haMode.setRetain(true);          // Zustand behalten
 
     // Update Intervall (Stimmung)
     haUpdateInterval.setName("Stimmung Update Intervall");
@@ -305,7 +307,6 @@ void setupHA()
     haUpdateInterval.setUnitOfMeasurement("s"); // Einheit
     haUpdateInterval.setIcon("mdi:timer-sync-outline");
     haUpdateInterval.onCommand(onUpdateIntervalCommand); // Callback registrieren
-    haUpdateInterval.setRetain(true);                    // Zustand behalten
 
     // Update Intervall (DHT Sensor)
     haDhtInterval.setName("Sensor Update Intervall");
@@ -315,7 +316,6 @@ void setupHA()
     haDhtInterval.setUnitOfMeasurement("s");
     haDhtInterval.setIcon("mdi:sun-clock");
     haDhtInterval.onCommand(onDHTIntervalCommand); // Callback registrieren
-    haDhtInterval.setRetain(true);                 // Zustand behalten
 
     // Refresh Button
     haRefreshSentiment.setName("Weltlage aktualisieren");
@@ -458,7 +458,8 @@ void checkAndReconnectMQTT() {
                     appState.mqttWasConnected = true;
                     mqttReconnectBackoff = 10000; // Reset backoff on success
 
-                    // Initiale Zustände für nächsten Loop-Zyklus einplanen
+                    // Flag setzen — wird unten in derselben Invocation ausgewertet
+                    // und sendInitialStates() sofort aufgerufen
                     appState.mqttInitialStatesPending = true;
 
                     // Update status LED without direct update
@@ -529,6 +530,7 @@ void connectMQTTOnStartup() {
 
     if (mqttInitSuccess) {
         debug(F("MQTT erfolgreich initialisiert und verbunden."));
+        appState.mqttWasConnected = true;
         sendInitialStates();
     } else {
         debug(F("MQTT-Initialisierung/Verbindung fehlgeschlagen - Fahre ohne MQTT fort"));
