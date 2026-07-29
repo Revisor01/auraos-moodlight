@@ -25,6 +25,11 @@ WiFiClient wifiClientHTTP;
 void initDHT() {
     if (dhtSensor) {
         delete dhtSensor;
+        dhtSensor = nullptr;
+    }
+    if (!appState.dhtEnabled) {
+        debug(F("DHT deaktiviert — ueberspringe Hardware-Initialisierung"));
+        return;
     }
     // Internen Pull-Up aktivieren (ersetzt externen 4.7kΩ Widerstand)
     pinMode(appState.dhtPin, INPUT_PULLUP);
@@ -108,7 +113,16 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
         return false;
     }
 
-    String statsUrl = String(DEFAULT_STATS_API_URL) + "?hours=" + String(hours);
+    // Stats-URL aus appState.apiUrl ableiten (Suffix "/current" -> "/history"),
+    // Fallback auf DEFAULT_STATS_API_URL falls apiUrl nicht dem erwarteten Muster folgt
+    String baseApiUrl = appState.apiUrl;
+    String statsBaseUrl;
+    if (baseApiUrl.endsWith("/current")) {
+        statsBaseUrl = baseApiUrl.substring(0, baseApiUrl.length() - String("/current").length()) + "/history";
+    } else {
+        statsBaseUrl = DEFAULT_STATS_API_URL;
+    }
+    String statsUrl = statsBaseUrl + "?hours=" + String(hours);
     debug(String(F("Lade Statistiken von Backend: ")) + statsUrl);
 
     HTTPClient http;
@@ -126,17 +140,11 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
         return false;
     }
 
-    http.setTimeout(15000);  // Längeres Timeout für Statistiken
+    http.setTimeout(8000);  // A-HOCH-3: 15s -> 8s
 
-    int httpCode = 0;
-    try {
-        httpCode = http.GET();
-        debug(String(F("Backend-Statistiken HTTP Code: ")) + String(httpCode));
-    } catch (...) {
-        debug(F("Exception während HTTP GET für Backend-Statistiken"));
-        http.end();
-        return false;
-    }
+    // A-NIEDRIG: Schein-try/catch entfernt — Arduino HTTPClient wirft hier keine C++-Exceptions
+    int httpCode = http.GET();
+    debug(String(F("Backend-Statistiken HTTP Code: ")) + String(httpCode));
 
     // WDT nach blockierendem HTTP-Call sofort füttern (kann bis zu 15s dauern)
     watchdog.feed();
@@ -182,15 +190,9 @@ bool safeHttpGet(const String &url, JsonDocument &doc)
     if (http.begin(wifiClientHTTP, url)) {
         http.setTimeout(10000);
 
-        // Make request with error handling
-        int httpCode = 0;
-        try {
-            httpCode = http.GET();
-            debug(String(F("HTTP response code: ")) + httpCode);
-        }
-        catch (...) {
-            debug(F("Exception during HTTP GET"));
-        }
+        // A-NIEDRIG: Schein-try/catch entfernt — Arduino HTTPClient wirft hier keine C++-Exceptions
+        int httpCode = http.GET();
+        debug(String(F("HTTP response code: ")) + httpCode);
 
         // WDT nach blockierendem HTTP-Call sofort füttern (kann bis zu 10s dauern)
         watchdog.feed();
@@ -244,6 +246,12 @@ void getSentiment()
         debug(F("Wechsel in Neutral-Modus."));
         appState.sentimentAPIAvailable = false;
         handleSentiment(0.0);
+        // LED-Index auf Neutral setzen, damit der "Neutral-Modus" auch die LEDs neutral faerbt
+        appState.currentLedIndex = 2;
+        if (appState.autoMode && appState.lightOn)
+        {
+            updateLEDs();
+        }
         setStatusLED(2);
     }
 
@@ -362,6 +370,12 @@ void getSentiment()
             if (!appState.initialAnalysisDone)
             {
                 handleSentiment(0.0);
+                // LEDs auf Neutral-Zustand aktualisieren — handleSentiment() aktualisiert
+                // nur MQTT/HA-Werte, nicht die LEDs selbst
+                if (appState.autoMode && appState.lightOn)
+                {
+                    updateLEDs();
+                }
             }
 
             // Set status LED to API error
@@ -378,7 +392,6 @@ void getSentiment()
 
     // Always clean up
     isUpdating = false;
-    updateLEDs();
 
     debug(String(F("Sentiment Update abgeschlossen. Nächstes Update in ")) + String(appState.moodUpdateInterval / 1000) + F(" Sekunden."));
 }
@@ -401,22 +414,16 @@ void readAndPublishDHT()
         bool tempValid = false;
         bool humValid = false;
 
-        // Try/catch block for DHT reads to prevent crashes
-        try
-        {
-            temp = dhtSensor->readTemperature();
-            tempValid = !isnan(temp);
+        // A-NIEDRIG: Schein-try/catch entfernt — DHT-Library wirft keine C++-Exceptions,
+        // ungueltige Lesungen werden bereits ueber isnan()-Checks abgefangen
+        temp = dhtSensor->readTemperature();
+        tempValid = !isnan(temp);
 
-            // Small delay between reads for stability
-            delay(10);
+        // Small delay between reads for stability
+        delay(10);
 
-            hum = dhtSensor->readHumidity();
-            humValid = !isnan(hum);
-        }
-        catch (...)
-        {
-            debug(F("Exception bei DHT-Lesung aufgetreten!"));
-        }
+        hum = dhtSensor->readHumidity();
+        humValid = !isnan(hum);
 
         // Process temperature if valid
         if (tempValid)

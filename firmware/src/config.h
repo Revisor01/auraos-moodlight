@@ -52,10 +52,9 @@
 #define HEALTH_CHECK_SHORT_INTERVAL 300000    // 5 Minuten (loop sysHealth.update)
 
 // Timing: Loop
-#define LOOP_SERVER_HANDLE_MS 20              // Webserver-Handle Intervall
 #define LOOP_CONNECTION_CHECK_MS 2000         // WiFi/MQTT Verbindungscheck
 #define LOOP_MQTT_INTERVAL_MS 100             // MQTT loop Intervall
-#define LOOP_DELAY_MS 20                      // Loop-Ende Pause
+#define LOOP_DELAY_MS 10                      // Loop-Ende Pause
 #define SETTINGS_SAVE_DEBOUNCE_MS 2000        // Einstellungen Speicher-Debounce
 
 // System Health
@@ -69,8 +68,8 @@
 #define SCHEDULED_REBOOT_DELAY 30000         // 30s Verzögerung für geplanten Neustart
 
 // NTP
+// GMT/Daylight-Offset ungenutzt: initTime() nutzt configTime(0,0,...) + setenv("TZ",...)
+// fuer korrekte Sommerzeit-Behandlung statt fixem Offset.
 #define NTP_SERVER "pool.ntp.org"
-#define NTP_GMT_OFFSET_SEC 3600
-#define NTP_DAYLIGHT_OFFSET_SEC 3600
 
 #endif // CONFIG_H

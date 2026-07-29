@@ -7,8 +7,11 @@
 // Hardware-Instanz — definiert in wifi_manager.cpp
 extern DNSServer dnsServer;
 
-// NTP-Zeit initialisieren
+// NTP-Zeit initialisieren (nicht-blockierend, startet SNTP-Sync)
 void initTime();
+
+// Prueft nicht-blockierend, ob die asynchrone NTP-Sync abgeschlossen ist
+void checkNtpTimeSync();
 
 // Sichere WiFi-Verbindung mit Timeout
 bool safeWiFiConnect(const String &ssid, const String &password, unsigned long timeout = 15000);

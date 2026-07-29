@@ -125,7 +125,7 @@ struct AppState {
     // Fix-Groesse char-Arrays statt String-Objekte — verhindert Heap-Fragmentierung
     // durch staendiges Allokieren/Freigeben von String-Speicher im Ringpuffer.
     static const int LOG_ENTRY_SIZE = 192;
-    char logBuffer[20][LOG_ENTRY_SIZE];  // Ringpuffer fuer Log-Zeilen (20 Eintraege, Fix-Wert)
+    char logBuffer[LOG_BUFFER_SIZE][LOG_ENTRY_SIZE];  // Ringpuffer fuer Log-Zeilen (LOG_BUFFER_SIZE aus config.h, Wert 20)
     int logIndex = 0;      // Aktuelle Position im Ringpuffer
 
 };

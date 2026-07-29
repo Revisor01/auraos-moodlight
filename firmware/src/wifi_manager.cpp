@@ -36,12 +36,12 @@ public:
     CaptiveRequestHandler() {}
     virtual ~CaptiveRequestHandler() {}
 
-    bool canHandle(HTTPMethod method, String uri)
+    bool canHandle(HTTPMethod method, const String &uri) override
     {
         return true; // Faengt alles ab
     }
 
-    bool handle(WebServer &server, HTTPMethod requestMethod, String requestUri) {
+    bool handle(WebServer &server, HTTPMethod requestMethod, const String &requestUri) override {
         // Don't create new strings in this critical handler
         if (requestUri.startsWith("/setup") ||
             requestUri.startsWith("/wifiscan") ||
@@ -61,25 +61,31 @@ public:
 };
 
 // === NTP-Zeit initialisieren ===
+// Nicht-blockierend: startet SNTP-Sync und kehrt sofort zurueck. SNTP synct
+// asynchron im Hintergrund; das Ergebnis wird beim naechsten Aufruf von
+// checkNtpTimeSync() im naechsten Loop-Durchlauf geprueft (statt hier 1s zu blockieren).
 void initTime() {
     if (WiFi.status() != WL_CONNECTED) {
         debug(F("NTP: Kann Zeit nicht synchronisieren, kein WLAN"));
         return;
     }
 
-    debug(F("NTP: Synchronisiere Zeit..."));
+    debug(F("NTP: Starte Zeitsynchronisation..."));
 
     // Simple time config with fewer parameters
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    configTime(0, 0, NTP_SERVER, "time.nist.gov");
 
     // Set timezone
     setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
     tzset();
 
-    // Wait briefly for time to be set
-    delay(1000);
+    // Kein blockierendes delay(1000) mehr — Ergebnis wird asynchron geprueft
+}
 
-    // Check if time is set
+// === NTP-Sync-Status pruefen (nicht-blockierend, im naechsten Loop-Durchlauf aufrufen) ===
+void checkNtpTimeSync() {
+    if (appState.timeInitialized) return;
+
     time_t now;
     time(&now);
 
@@ -91,8 +97,6 @@ void initTime() {
         char dateStr[64];
         strftime(dateStr, sizeof(dateStr), "%d.%m.%Y %H:%M:%S", &timeinfo);
         debug(String(F("NTP: Zeit synchronisiert - ")) + dateStr);
-    } else {
-        debug(F("NTP: Zeitsynchronisation fehlgeschlagen"));
     }
 }
 
@@ -149,7 +153,7 @@ bool startWiFiStation()
     debug(String(F("Verbinde mit WiFi: ")) + appState.wifiSSID);
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
-    WiFi.persistent(true);
+    WiFi.persistent(false);
 
     // Use the safer WiFi connect method
     bool connected = safeWiFiConnect(appState.wifiSSID, appState.wifiPassword, 15000);
@@ -187,13 +191,11 @@ String scanWiFiNetworks()
         network["ssid"] = WiFi.SSID(i);
         network["rssi"] = WiFi.RSSI(i);
         network["secure"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-
-        // Kurze Pause zwischen Eintraegen
-        delay(10);
     }
 
     String jsonResult;
     serializeJson(doc, jsonResult);
+    WiFi.scanDelete(); // Scan-Ergebnisse freigeben, nachdem sie serialisiert wurden
     return jsonResult;
 }
 

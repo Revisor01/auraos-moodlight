@@ -21,7 +21,6 @@ void handleStaticFile(String path);
 
 // API-Handler
 void handleApiStatus();
-void handleApiBackendStats();
 void handleUiUpload();
 
 // System-Logging
@@ -32,9 +31,6 @@ void initJsonPool();
 
 // Web-Server initialisieren (registriert alle Routen)
 void setupWebServer();
-
-// Watchdog-Timer initialisieren
-void initWatchdog();
 
 // Regelmäßiger System-Gesundheitscheck (aus loop())
 void runSystemHealthCheck();
