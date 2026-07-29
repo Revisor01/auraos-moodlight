@@ -11,7 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
     .headline-item { display:flex; align-items:baseline; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); }
     .headline-score { font-weight:700; min-width:42px; font-size:0.85em; }
@@ -35,7 +35,7 @@
     .hist-values span strong { display:block; font-size:0.95rem; color:var(--text); font-family:'Courier New',Courier,monospace; }
     .hist-count { font-size:0.78rem; color:var(--text-muted); margin-top:0.25rem; }
     .fallback-hint { background:#fff8e1; border:1px solid #ffcc02; border-radius:6px; padding:0.75rem 1rem; font-size:0.82rem; margin-top:0.75rem; display:none; }
-    [data-theme="dark"] .fallback-hint { background:#3a3520; border-color:#665c1e; }
+    .dark .fallback-hint { background:#3a3520; border-color:#665c1e; }
     .led-explain { display:flex; align-items:center; gap:0.75rem; margin-top:1rem; padding:0.75rem 1rem; background:var(--border); border-radius:8px; }
     .led-color-dot { width:18px; height:18px; border-radius:50%; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
     .led-explain-text { font-size:0.82rem; color:var(--text); line-height:1.45; }
@@ -255,7 +255,8 @@
     var CURRENT_URL = 'https://analyse.godsapp.de/api/moodlight/current';
     var HEADLINES_URL = 'https://analyse.godsapp.de/api/moodlight/headlines?limit=20';
 
-    // LED-Farben (Index 0–4: sehr negativ → sehr positiv)
+    // LED-Farben (Index 0–4: sehr negativ → sehr positiv) — Fallback-Werte,
+    // falls /api/settings/colors (Geräte-eigener Endpoint) nicht erreichbar ist
     var LED_COLORS = [
         {r:255,g:0,b:0,     name:'Rot',     label:'sehr negativ'},
         {r:255,g:165,b:0,   name:'Orange',   label:'negativ'},
@@ -263,6 +264,37 @@
         {r:84,g:93,b:240,   name:'Indigo',   label:'positiv'},
         {r:142,g:68,b:173,  name:'Violett',  label:'sehr positiv'}
     ];
+    var LED_LABELS = ['sehr negativ', 'negativ', 'neutral', 'positiv', 'sehr positiv'];
+    var LED_NAMES = ['Rot', 'Orange', 'Blau', 'Indigo', 'Violett'];
+
+    function hexToRgb(hex) {
+        hex = (hex || '').replace('#', '');
+        if (hex.length !== 6) return null;
+        var num = parseInt(hex, 16);
+        if (isNaN(num)) return null;
+        return { r: (num >> 16) & 0xFF, g: (num >> 8) & 0xFF, b: num & 0xFF };
+    }
+
+    // C9: Farben vom Gerät selbst laden (gleicher Origin, /api/settings/colors),
+    // damit die Perzentil-Grafik die tatsächlich konfigurierten Custom-Farben
+    // zeigt statt fest codierter Standardwerte. Bei Fehler bleibt der obige
+    // Fallback (LED_COLORS) unverändert bestehen.
+    function loadLedColors() {
+        return fetch('/api/settings/colors')
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (!data || !Array.isArray(data.colors) || data.colors.length !== 5) return;
+                var updated = data.colors.map(function(hex, i) {
+                    var rgb = hexToRgb(hex);
+                    if (!rgb) return LED_COLORS[i];
+                    return { r: rgb.r, g: rgb.g, b: rgb.b, name: LED_NAMES[i], label: LED_LABELS[i] };
+                });
+                LED_COLORS = updated;
+            })
+            .catch(function() {
+                // Gerät nicht erreichbar — Fallback-Farben bleiben aktiv
+            });
+    }
 
     function scoreToPercent(score) {
         return ((parseFloat(score) + 1) / 2 * 100).toFixed(1) + '%';
@@ -346,7 +378,10 @@
             });
     }
 
-    document.addEventListener('DOMContentLoaded', loadPercentileContext);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Farben zuerst laden (oder Fallback behalten), danach Perzentil-Grafik rendern (C9)
+        loadLedColors().then(loadPercentileContext);
+    });
 
     function scoreClass(score) {
         if (score <= -0.4) return 'score-sehr-negativ';
@@ -358,23 +393,44 @@
 
     function renderHeadlines(headlines) {
         var container = document.getElementById('headlines-list');
+        container.innerHTML = '';
         if (!headlines || headlines.length === 0) {
-            container.innerHTML = '<span style="opacity: 0.6;">Keine Schlagzeilen verfügbar.</span>';
+            var empty = document.createElement('span');
+            empty.style.opacity = '0.6';
+            empty.textContent = 'Keine Schlagzeilen verfügbar.';
+            container.appendChild(empty);
             return;
         }
-        var html = '';
         for (var i = 0; i < headlines.length; i++) {
             var h = headlines[i];
             var score = typeof h.sentiment_score === 'number' ? h.sentiment_score.toFixed(2) : '--';
             var cls = typeof h.sentiment_score === 'number' ? scoreClass(h.sentiment_score) : 'score-neutral';
             var feed = h.feed_name || h.source_name || '';
-            html += '<div class="headline-item">';
-            html += '<span class="' + cls + ' headline-score">' + score + '</span>';
-            html += '<span class="headline-text">' + h.headline + '</span>';
-            if (feed) { html += '<span class="headline-feed">' + feed + '</span>'; }
-            html += '</div>';
+
+            // textContent statt innerHTML (C6) — verhindert HTML-Injection ueber
+            // Headline-/Feed-Texte, die vom Backend/RSS-Feeds stammen
+            var item = document.createElement('div');
+            item.className = 'headline-item';
+
+            var scoreSpan = document.createElement('span');
+            scoreSpan.className = cls + ' headline-score';
+            scoreSpan.textContent = score;
+            item.appendChild(scoreSpan);
+
+            var textSpan = document.createElement('span');
+            textSpan.className = 'headline-text';
+            textSpan.textContent = h.headline;
+            item.appendChild(textSpan);
+
+            if (feed) {
+                var feedSpan = document.createElement('span');
+                feedSpan.className = 'headline-feed';
+                feedSpan.textContent = feed;
+                item.appendChild(feedSpan);
+            }
+
+            container.appendChild(item);
         }
-        container.innerHTML = html;
     }
 
     function loadHeadlines() {

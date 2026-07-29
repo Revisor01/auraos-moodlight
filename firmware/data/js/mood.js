@@ -6,6 +6,11 @@ let weekdayAverages = [];
 let dailyAverages = [];
 let charts = {};
 
+// C2: aktuell gewählter Zeitraum (Stunden) — Auto-Refresh nutzt diesen Wert statt
+// immer den 168h-Default zu laden und damit z.B. die "Gesamter Zeitraum"-Ansicht
+// (720h) beim nächsten automatischen Reload zu überschreiben
+let currentHours = 168;
+
 // Dokumenten-Bereit-Handler
 document.addEventListener('DOMContentLoaded', function() {
     // Tabs einrichten
@@ -13,14 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Daten laden
     loadData();
-    
-    loadStorageInfo();
-    
-    // Alle 5 Minuten aktualisieren
-    setInterval(loadStorageInfo, 300000);
-    
-    // Automatisches Neuladen alle 5 Minuten
-    setInterval(loadData, 300000);
+
+    // Automatisches Neuladen alle 5 Minuten — nutzt den zuletzt gewählten Zeitraum (C2)
+    setInterval(function() { loadData(currentHours); }, 300000);
 });
 
 // Tabs initialisieren
@@ -43,10 +43,15 @@ function setupTabs() {
 
             // On-demand: Gesamtzeitraum erst bei Klick nachladen
             const hours = this.getAttribute('data-hours');
-            if (hours && !allDataLoaded) {
-                allDataLoaded = true;
-                document.getElementById('loading-message').textContent = 'Lade gesamten Zeitraum...';
-                loadData(parseInt(hours));
+            if (hours) {
+                // currentHours immer aktualisieren (C2), Daten aber nur beim ersten
+                // Klick tatsächlich nachladen (bereits geladene Daten bleiben im Cache)
+                currentHours = parseInt(hours);
+                if (!allDataLoaded) {
+                    allDataLoaded = true;
+                    document.getElementById('loading-message').textContent = 'Lade gesamten Zeitraum...';
+                    loadData(currentHours);
+                }
             }
 
             // Charts neu zeichnen
@@ -62,6 +67,7 @@ function setupTabs() {
 // Daten vom Server laden
 function loadData(hours) {
     hours = hours || 168; // Default: 7 Tage
+    currentHours = hours; // C2: für Auto-Refresh merken, welcher Zeitraum zuletzt geladen wurde
     document.getElementById('loading-message').textContent = 'Lade Daten...';
 
     return fetch('/api/stats?hours=' + hours)
@@ -822,221 +828,4 @@ function generateSummary(stats) {
     `;
     
     summaryElement.innerHTML = summary.replace(/\s+/g, ' ').trim();
-}
-
-// Close the data modal
-function closeDataModal() {
-    const modal = document.getElementById('data-table-modal');
-    if (modal) {
-        document.body.removeChild(modal);
-    }
-}
-
-// Toggle data table filter
-function toggleModalFilter(checked) {
-    isFilterEnabled = checked;
-    document.getElementById('filter-stale-data').checked = checked;
-    processData(null, true);
-    renderDataTable();
-}
-
-// Render the data table with filteredData
-function renderDataTable() {
-    const tableBody = document.getElementById('data-table-body');
-    if (!tableBody) return;
-    
-    // Sort data in reverse chronological order (newest first)
-    const displayData = [...filteredData].sort((a, b) => b.timestamp - a.timestamp);
-    
-    if (displayData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" class="center">Keine Daten gefunden</td></tr>';
-        return;
-    }
-    
-    let tableRows = '';
-    displayData.forEach(item => {
-        const dateStr = formatTimestamp(item.timestamp);
-        const valueClass = item.value > 0 ? 'positive' : (item.value < 0 ? 'negative' : 'neutral');
-        
-        tableRows += `
-            <tr>
-                <td>${dateStr}</td>
-                <td class="${valueClass}">${item.value.toFixed(2)}</td>
-                <td>${item.category}</td>
-                <td>${item.isStale ? '<span class="badge badge-warning">Stale</span>' : '<span class="badge badge-success">Aktuell</span>'}</td>
-                <td>
-                    <button class="btn btn-sm btn-danger" onclick="deleteDataPoint(${item.original_index})">Löschen</button>
-                </td>
-            </tr>
-        `;
-    });
-    
-    tableBody.innerHTML = tableRows;
-}
-
-// Improved data point management functions for mood.js
-
-// Show data table with options to delete individual points
-function showDataTable() {
-    // Create modal container
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'block';
-    modal.id = 'data-table-modal';
-    
-    let modalContent = `
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeDataModal()">&times;</span>
-            <h2>Datenpunkte Verwaltung</h2>
-            <div class="alert alert-info">Hier können Sie einzelne Datenpunkte löschen oder alle zurücksetzen.</div>
-            
-            <div class="data-filters">
-                <label>
-                    <input type="checkbox" id="filter-modal-stale-data" ${isFilterEnabled ? 'checked' : ''} onchange="toggleModalFilter(this.checked)">
-                    Nur aktualisierte Datenpunkte anzeigen
-                </label>
-            </div>
-            
-            <div class="data-table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Zeitpunkt</th>
-                            <th>Wert</th>
-                            <th>Kategorie</th>
-                            <th>Status</th>
-                            <th>Aktion</th>
-                        </tr>
-                    </thead>
-                    <tbody id="data-table-body">
-                        <tr>
-                            <td colspan="5" class="center">Lade Daten...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="buttons" style="margin-top: 20px;">
-                <button class="btn btn-danger" onclick="resetAllData()">Alle Daten zurücksetzen</button>
-            </div>
-        </div>
-    `;
-    
-    modal.innerHTML = modalContent;
-    document.body.appendChild(modal);
-    
-    // Display the modal
-    modal.style.display = 'block';
-    
-    // Populate the table
-    renderDataTable();
-}
-
-// Close the data modal
-function closeDataModal() {
-    const modal = document.getElementById('data-table-modal');
-    if (modal) {
-        document.body.removeChild(modal);
-    }
-}
-
-// Toggle data table filter
-function toggleModalFilter(checked) {
-    isFilterEnabled = checked;
-    document.getElementById('filter-stale-data').checked = checked;
-    processData(null, true);
-    renderDataTable();
-}
-
-// Format timestamp for display
-function formatTimestamp(timestamp) {
-    return moment(timestamp).format('DD.MM.YYYY HH:mm:ss');
-}
-
-// Render the data table with filteredData
-function renderDataTable() {
-    const tableBody = document.getElementById('data-table-body');
-    if (!tableBody) return;
-    
-    // Sort data in reverse chronological order (newest first)
-    const displayData = [...filteredData].sort((a, b) => b.timestamp - a.timestamp);
-    
-    if (displayData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" class="center">Keine Daten gefunden</td></tr>';
-        return;
-    }
-    
-    let tableRows = '';
-    displayData.forEach(item => {
-        const dateStr = formatTimestamp(item.timestamp);
-        const valueClass = item.value > 0 ? 'positive' : (item.value < 0 ? 'negative' : 'neutral');
-        
-        tableRows += `
-            <tr>
-                <td>${dateStr}</td>
-                <td class="${valueClass}">${item.value.toFixed(2)}</td>
-                <td>${item.category}</td>
-                <td>${item.isStale ? '<span class="badge badge-warning">Stale</span>' : '<span class="badge badge-success">Aktuell</span>'}</td>
-                <td>
-                    <button class="btn btn-sm btn-danger" onclick="deleteDataPoint(${item.original_index})">Löschen</button>
-                </td>
-            </tr>
-        `;
-    });
-    
-    tableBody.innerHTML = tableRows;
-}
-
-// v9.0: Delete and Reset removed - data managed in backend
-// Data management is now handled by the backend server
-function deleteDataPoint(timestamp) {
-    alert('Datenverwaltung erfolgt jetzt im Backend. Bitte wenden Sie sich an den Server-Administrator.');
-}
-
-function resetAllData() {
-    alert('Datenverwaltung erfolgt jetzt im Backend. Bitte wenden Sie sich an den Server-Administrator.');
-}
-
-// v9.0: Storage und Archiv-Verwaltung entfernt - Daten im Backend
-// Storage info is no longer relevant as data is managed in backend
-
-function formatFileSize(bytes) {
-    if (bytes < 1024) {
-        return bytes + ' B';
-    } else if (bytes < 1024 * 1024) {
-        return (bytes / 1024).toFixed(1) + ' KB';
-    } else {
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-}
-
-function loadStorageInfo() {
-    // v9.0: Storage info removed - data managed in backend
-    console.log('Storage info is no longer tracked locally - data managed in backend');
-}
-
-// v9.0: Archive functions removed - data managed in backend
-function loadArchivesList() {
-    console.log('Archive management removed - data managed in backend');
-}
-
-// v9.0: All archive functions removed - data managed in backend
-function viewArchive(archiveName) {
-    alert('Archivverwaltung erfolgt jetzt im Backend.');
-}
-
-function deleteArchive(archiveName) {
-    alert('Archivverwaltung erfolgt jetzt im Backend.');
-}
-
-function runArchiveProcess() {
-    alert('Archivierung erfolgt jetzt automatisch im Backend.');
-}
-
-function toggleArchivesView() {
-    alert('Archivansicht nicht mehr verfügbar - Daten werden im Backend verwaltet.');
-}
-
-function repairStatsCSV() {
-    alert('CSV-Reparatur nicht mehr erforderlich - Daten werden im Backend verwaltet.');
 }

@@ -22,10 +22,12 @@ This is an ESP32-based smart moodlight project called "AuraOS" that analyzes wor
 ## Architecture and Key Components
 
 ### Core Structure
-- **Main application**: `src/moodlight.cpp` - Central application logic with sentiment analysis and LED control
-- **Utilities library**: `src/MoodlightUtils.h/.cpp` - Comprehensive utility classes for system management
-- **Configuration**: `src/config.h` - Hardware pins, default values, and version info
-- **Web interface**: `data/` directory contains HTML/CSS/JS for device configuration
+The firmware is modular — `firmware/src/moodlight.cpp` is only the orchestrator (setup()/loop()), business logic lives in dedicated modules:
+- **Orchestrierung**: `firmware/src/moodlight.cpp` - setup()/loop(), wires all modules together
+- **Module**: `mqtt_handler` (Home Assistant/MQTT), `web_server` (HTTP-Routen, Datei-Handler, JSON-Buffer-Pool), `wifi_manager` (WLAN/AP/Captive Portal), `sensor_manager` (DHT, Sentiment-Abruf), `settings_manager` (Laden/Speichern der Konfiguration), `led_controller` (NeoPixel-Steuerung), `app_state.h` (globaler Zustand), `debug` (Log-Ringpuffer)
+- **Utilities library**: `firmware/src/MoodlightUtils.h/.cpp` - Watchdog, Memory-Monitoring, sichere Dateioperationen, Netzwerk-Diagnostik, System-Health-Check
+- **Configuration**: `firmware/src/config.h` - Hardware pins, default values, and version info
+- **Web interface**: `firmware/data/` directory contains HTML/CSS/JS for device configuration
 
 ### Key Classes and Systems
 
@@ -33,20 +35,17 @@ This is an ESP32-based smart moodlight project called "AuraOS" that analyzes wor
 - `WatchdogManager` - ESP32 watchdog management and task monitoring
 - `MemoryMonitor` - Heap memory tracking and leak detection
 - `SafeFileOps` - Robust file operations with backup and retry logic
-- `CSVBuffer` - Buffered CSV data logging for sentiment history
 - `NetworkDiagnostics` - WiFi signal analysis and network health checks
 - `SystemHealthCheck` - Overall system status monitoring
-- `TaskManager` - FreeRTOS task creation and management
 
 **Main Application Features:**
-- Sentiment analysis from external news API (`analyse.godsapp.de`)
+- Sentiment analysis via centralized backend (`analyse.godsapp.de`, cached `/api/moodlight/current` endpoint)
 - NeoPixel LED strip control with color transitions
 - Home Assistant MQTT integration using ArduinoHA library
 - DHT sensor for temperature/humidity monitoring
 - Captive portal setup mode for initial WiFi configuration
 - Web-based configuration interface with dark/light theme
-- Firmware update via web interface using ESP32-targz
-- CSV data export and import functionality
+- Firmware + UI update via web interface (Update-Tab in setup.html) using ESP32-targz
 
 ### Hardware Configuration
 - **Target**: ESP32 development board
@@ -57,9 +56,8 @@ This is an ESP32-based smart moodlight project called "AuraOS" that analyzes wor
 
 ### Web Interface Structure
 - `index.html` - Main dashboard with system status and controls
-- `setup.html` - Configuration interface for WiFi, MQTT, and hardware settings
+- `setup.html` - Configuration interface for WiFi, MQTT, hardware settings and firmware/UI updates (Update-Tab, kein separates diagnostics.html mehr)
 - `mood.html` - Sentiment statistics and historical data visualization
-- `diagnostics.html` - System health monitoring and troubleshooting
 - CSS and JavaScript files in respective subdirectories
 
 ### Development Notes
@@ -74,21 +72,20 @@ This is an ESP32-based smart moodlight project called "AuraOS" that analyzes wor
 The sentiment analysis backend is located in `sentiment-api/` directory:
 
 **Production Deployment:**
-- Server: `ssh root@server.godsapp.de`
-- Location: `/opt/auraos-moodlight/sentiment-api/`
 - URL: `http://analyse.godsapp.de`
+- Container: `moodlight-analyzer` (Docker, managed via Portainer)
+- Das Verzeichnis `/opt/auraos-moodlight/sentiment-api/` existiert auf dem Server NICHT mehr — es gibt keinen SSH-Pull-Workflow mehr.
 
 **Deployment Workflow:**
 1. Make changes locally in `sentiment-api/` directory
-2. Commit and push to GitHub: `git add . && git commit -m "message" && git push`
-3. SSH to server: `ssh root@server.godsapp.de`
-4. Navigate to project: `cd /opt/auraos-moodlight/sentiment-api/`
-5. Pull changes: `git pull`
-6. Rebuild and restart: `docker-compose build && docker-compose up -d`
-7. Check logs: `docker-compose logs -f news-analyzer`
+2. Commit and push to GitHub: `git add . && git commit -m "message" && git push` (push zu `main`)
+3. GitHub Actions baut das Docker-Image automatisch und pusht es zu GHCR (`.github/workflows/build-sentiment-api.yml`)
+4. Ein Portainer-Webhook triggert nach erfolgreichem Build automatisch das Redeployment des `moodlight-analyzer`-Containers
+5. Logs prüfen: über Portainer-UI oder `docker logs moodlight-analyzer` (falls SSH-Zugriff auf den Server besteht)
 
 **Backend Stack:**
-- Flask API with OpenAI GPT-4o-mini for sentiment analysis
+- Flask API mit gunicorn (`gunicorn -w 1 --threads 4 ...`, siehe Dockerfile) — kein `python app.py` in Produktion
+- Anthropic Claude Haiku (`claude-haiku-4-5-20251001`) für Sentiment-Analyse
 - PostgreSQL for persistent storage
 - Redis for caching (5 min TTL)
 - Docker Compose orchestration
@@ -104,7 +101,7 @@ The sentiment analysis backend is located in `sentiment-api/` directory:
 
 **AuraOS Moodlight**
 
-Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanalyse visualisiert. Ein Backend (Flask + PostgreSQL + Redis) analysiert deutsche RSS-Feeds mit GPT-4o-mini und berechnet einen Sentiment-Score (-1.0 bis +1.0). Der ESP32 pollt den Score alle 30 Minuten und stellt ihn als LED-Farbe dar (Rot = sehr negativ bis Violett = sehr positiv). Integration in Home Assistant via MQTT, Web-Interface zur Konfiguration. Privates Projekt, ein Gerät im Wohnzimmer.
+Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanalyse visualisiert. Ein Backend (Flask + PostgreSQL + Redis) analysiert deutsche RSS-Feeds mit Anthropic Claude Haiku und berechnet einen Sentiment-Score (-1.0 bis +1.0). Der ESP32 pollt den Score alle 30 Minuten und stellt ihn als LED-Farbe dar (Rot = sehr negativ bis Violett = sehr positiv). Integration in Home Assistant via MQTT, Web-Interface zur Konfiguration. Privates Projekt, ein Gerät im Wohnzimmer.
 
 **Core Value:** Die Firmware ist modular aufgebaut — jedes Modul hat eine klare Verantwortung, ist einzeln lesbar und änderbar, ohne den Rest des Systems zu verstehen.
 
@@ -130,7 +127,7 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - Arduino framework on ESP-IDF/FreeRTOS
 - LittleFS filesystem for config and web files
 - Python 3.12-slim (Docker container)
-- Flask WSGI server (direct `python app.py`, no gunicorn)
+- gunicorn WSGI server (`-w 1 --threads 4`, ein Worker-Prozess damit der Background Worker genau einmal läuft)
 - Background worker thread for periodic sentiment updates
 ## Build Tools
 - PlatformIO - Build, upload, filesystem upload, serial monitor
@@ -156,10 +153,11 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 ## Backend Dependencies
 - `Flask==3.1.0` - HTTP API framework
 - `feedparser==6.0.11` - RSS feed parsing
-- `requests==2.32.2` - HTTP client (unused directly, likely legacy)
-- `openai==1.70.0` - OpenAI API client (GPT-4o-mini)
+- `requests==2.32.2` - HTTP client
+- `anthropic==0.86.0` - Anthropic API client (Claude Haiku)
 - `psycopg2-binary==2.9.9` - PostgreSQL driver
 - `redis==5.0.1` - Redis client
+- `gunicorn==25.2.0` - WSGI-Server für Produktionsbetrieb
 - `postgres:16-alpine` - PostgreSQL 16 database
 - `redis:7-alpine` - Redis 7 cache (256MB, LRU eviction, AOF persistence)
 ## Configuration
@@ -167,7 +165,7 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - Runtime config stored in ESP32 NVS (Preferences library)
 - Web interface files served from LittleFS (`firmware/data/`)
 - `.env` file in `sentiment-api/` (see `.env.example` for template)
-- Required env vars: `OPENAI_API_KEY`, `POSTGRES_PASSWORD`
+- Required env vars: `ANTHROPIC_API_KEY`, `POSTGRES_PASSWORD`
 - Optional: `DEFAULT_HEADLINES_PER_SOURCE`, `REDIS_MAX_MEMORY`
 - Database URL constructed in docker-compose: `postgresql://moodlight:{POSTGRES_PASSWORD}@postgres:5432/moodlight`
 - Redis URL: `redis://redis:6379/0`
@@ -176,16 +174,15 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - USB connection to ESP32 dev board
 - ESP32 with 4MB flash (min_spiffs partition)
 - Docker and Docker Compose
-- OpenAI API key with GPT-4o-mini access
-- Server: `server.godsapp.de` at `/opt/auraos-moodlight/sentiment-api/`
+- Anthropic API key mit Zugriff auf Claude Haiku
+- Server: `server.godsapp.de`, Deployment via Portainer (kein direktes Projektverzeichnis mehr auf dem Server)
 - Host volumes: `/opt/stacks/auraos-moodlight/data/postgres` and `/opt/stacks/auraos-moodlight/data/redis`
 - Port: 6237 (Flask API)
 - GitHub Actions builds Docker image to GHCR on push to `main`
 - Portainer webhook triggers auto-deploy after successful build
 ## Version Info
-- Firmware version: `9.0` (defined as `MOODLIGHT_VERSION` in `firmware/src/config.h`)
+- Firmware version: `9.11` (defined as `MOODLIGHT_VERSION` in `firmware/src/config.h`)
 - Product name: `AuraOS`
-- API version label: `v9.1` (per recent commit history)
 <!-- GSD:stack-end -->
 
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
@@ -204,12 +201,12 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - PascalCase for library files: `MoodlightUtils.h`, `MoodlightUtils.cpp`
 - camelCase for main application: `moodlight.cpp`
 - ALL_CAPS for config: `config.h`
-- PascalCase: `WatchdogManager`, `MemoryMonitor`, `SafeFileOps`, `CSVBuffer`, `NetworkDiagnostics`, `SystemHealthCheck`, `TaskManager`
+- PascalCase: `WatchdogManager`, `MemoryMonitor`, `SafeFileOps`, `NetworkDiagnostics`, `SystemHealthCheck`
 - Underscore-prefixed private members: `_lastFeedTime`, `_isEnabled`, `_monitoredTask`
 - camelCase public methods: `begin()`, `feed()`, `autoFeed()`, `analyzeStack()`
 - camelCase: `lastMoodUpdate`, `wifiConfigured`, `mqttEnabled`, `ledPin`
 - ALL_CAPS for constants/defines: `DEFAULT_LED_PIN`, `JSON_BUFFER_SIZE`, `MAX_RECONNECT_DELAY`
-- camelCase: `saveSettings()`, `loadSettings()`, `startAPMode()`, `handleStaticFile()`
+- camelCase: `saveSettings()`, `loadSettings()`, `startAPModeWithServer()`, `handleStaticFile()`
 - Prefix `handle` for HTTP handlers: `handleUiUpload()`, `handleStaticFile()`
 - Prefix `setup` for initialization: `setupHA()`, `setupWebServer()`
 - Prefix `update` for periodic operations: `updateLEDs()`, `updateStatusLED()`
@@ -218,7 +215,7 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 ### Python (Backend API)
 - snake_case: `background_worker.py`, `moodlight_extensions.py`, `database.py`
 - PascalCase: `Database`, `RedisCache`, `SentimentUpdateWorker`
-- snake_case: `get_database()`, `analyze_sentiment_openai()`, `get_headlines_per_source()`
+- snake_case: `get_database()`, `analyze_sentiment_claude()`, `get_headlines_per_source()`
 - Underscore-prefixed private: `_ensure_connection()`, `_perform_update()`, `_worker_loop()`
 - ALL_CAPS: `MAX_RECONNECT_ATTEMPTS`, `RECONNECT_DELAY_SECONDS`, `DEFAULT_HEADLINES_PER_SOURCE_MAIN`
 ### JavaScript (Web Interface)
@@ -253,7 +250,7 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - `dhtPin`, `dhtEnabled`, `ledPin`, `numLeds`, `mqttEnabled`
 - `color0` through `color4`
 ### Backend Configuration
-- `OPENAI_API_KEY` - OpenAI API key
+- `ANTHROPIC_API_KEY` - Anthropic API key
 - `DATABASE_URL` - PostgreSQL connection string
 - `REDIS_URL` - Redis connection string
 - `FLASK_ENV` - development/production
@@ -289,13 +286,13 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 
 ## Pattern Overview
 - ESP32 devices are thin clients that poll a centralized backend for pre-computed sentiment scores
-- Backend performs all heavy lifting: RSS feed fetching, OpenAI GPT-4o-mini sentiment analysis, data persistence
+- Backend performs all heavy lifting: RSS feed fetching, Anthropic Claude Haiku sentiment analysis, data persistence
 - Communication is HTTP-only from device to backend (no WebSocket, no push)
 - Home Assistant integration via MQTT runs independently on the ESP32
 - Redis caching layer (5 min TTL) protects the backend from high device request volume
 ## System Components
 ### Backend: Sentiment Analysis API
-- `sentiment-api/app.py` - Flask application, RSS feed fetching, OpenAI sentiment analysis, route definitions
+- `sentiment-api/app.py` - Flask application, RSS feed fetching, Anthropic Claude Haiku sentiment analysis, route definitions
 - `sentiment-api/moodlight_extensions.py` - Optimized device-facing API endpoints (`/api/moodlight/*`) with Redis caching
 - `sentiment-api/database.py` - PostgreSQL wrapper (`Database` class) + Redis cache wrapper (`RedisCache` class), both singletons
 - `sentiment-api/background_worker.py` - Threaded background worker that runs sentiment analysis every 30 minutes
@@ -305,8 +302,8 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - `redis` - Redis 7 Alpine with 256MB max, LRU eviction, AOF persistence (internal network only)
 - All connected via `moodlight-net` bridge network
 ### Firmware: ESP32 Moodlight Device
-- `firmware/src/moodlight.cpp` - All device logic: WiFi, web server, MQTT, LED control, sentiment fetching
-- `firmware/src/MoodlightUtils.h` / `.cpp` - Utility classes: WatchdogManager, MemoryMonitor, SafeFileOps, CSVBuffer, NetworkDiagnostics, SystemHealthCheck, TaskManager
+- `firmware/src/moodlight.cpp` - Orchestrierung (setup()/loop()); die eigentliche Logik liegt in den Modulen `mqtt_handler`, `web_server`, `wifi_manager`, `sensor_manager`, `settings_manager`, `led_controller`
+- `firmware/src/MoodlightUtils.h` / `.cpp` - Utility classes: WatchdogManager, MemoryMonitor, SafeFileOps, NetworkDiagnostics, SystemHealthCheck
 - `firmware/src/config.h` - Hardware pin definitions, default values, API endpoint URLs, version string
 - `firmware/data/` - Web interface files served from LittleFS filesystem
 ## Data Flow
@@ -327,9 +324,9 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - Serves static files from LittleFS (`firmware/data/`)
 - REST API endpoints for configuration, status, firmware updates
 - Captive portal mode for initial WiFi setup (AP at 192.168.4.1)
-- Flask app -> PostgreSQL: psycopg2 with ThreadedConnectionPool (1-5 connections), auto-reconnect
+- Flask app -> PostgreSQL: psycopg2 with ThreadedConnectionPool (1-5 connections); jeder DB-Zugriff holt/gibt seine eigene Pool-Connection zurück (kein geteilter Connection-State zwischen Threads)
 - Flask app -> Redis: redis-py with 5 min TTL for current sentiment cache
-- Background worker -> Flask app: shares `analyze_headlines_openai_batch` function reference
+- Background worker -> Flask app: shares `analyze_headlines_batch` function reference
 ## Layers (Firmware)
 - Purpose: Hardware defaults and compile-time constants
 - Location: `firmware/src/config.h`
@@ -346,8 +343,8 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - Purpose: HTTP endpoints for devices and admin
 - Location: `sentiment-api/app.py` (legacy + RSS analysis), `sentiment-api/moodlight_extensions.py` (optimized device endpoints)
 - Key routes: `/api/moodlight/current`, `/api/moodlight/history`, `/api/moodlight/trend`, `/api/moodlight/stats`, `/api/moodlight/devices`
-- Purpose: RSS feed fetching and OpenAI sentiment analysis
-- Location: `sentiment-api/app.py` (functions `analyze_sentiment_openai`, `analyze_headlines_openai_batch`)
+- Purpose: RSS feed fetching and Anthropic Claude Haiku sentiment analysis
+- Location: `sentiment-api/app.py` (functions `analyze_sentiment_claude`, `analyze_headlines_batch`)
 - Called by: Background worker and legacy `/api/news` endpoint
 - Purpose: Database and cache operations
 - Location: `sentiment-api/database.py`
@@ -358,7 +355,7 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - Class: `SentimentUpdateWorker` (daemon thread, 30 min interval)
 ## Key Abstractions
 - Float value from -1.0 to +1.0
-- Computed as `tanh(raw_average * 2.0)` where raw_average is mean of per-headline GPT-4o-mini scores
+- Computed as `tanh(raw_average * 2.0)` where raw_average is mean of per-headline Claude Haiku scores
 - Stored in PostgreSQL with category, headline count, metadata
 - Categories: "sehr negativ", "negativ", "neutral", "positiv", "sehr positiv"
 - Integer 0-4 mapped from sentiment score via `mapSentimentToLED()`
@@ -370,9 +367,9 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - Auto Mode: LED color driven by sentiment score from backend
 - Manual Mode: LED color/brightness controlled via HA or web UI
 ## Entry Points
-- Location: `sentiment-api/app.py` (line 559: `if __name__ == '__main__':`)
+- Location: `sentiment-api/app.py` (`if __name__ == '__main__':`, nur für lokale Entwicklung relevant)
 - Starts Flask app on port 6237, launches background worker
-- Docker CMD: `python app.py`
+- Docker CMD (Produktion): `gunicorn -w 1 --threads 4 -b 0.0.0.0:6237 --timeout 120 app:app`
 - Location: `firmware/src/moodlight.cpp` (line 4019: `void setup()`)
 - Arduino setup/loop pattern
 - Setup sequence: Serial -> Watchdog -> BT disable -> WiFi config -> LittleFS -> Utils init -> Load settings -> Web server -> WiFi connect -> NTP -> MQTT -> HA
@@ -389,14 +386,14 @@ Ein ESP32-basiertes Smart-Moodlight, das die Weltstimmung durch Nachrichtenanaly
 - Safe file operations with backup and retry (SafeFileOps)
 - Status LED indicates error state (red blink = API error, blue blink = WiFi connecting)
 ## Deployment Architecture
-- Server: `server.godsapp.de` at `/opt/auraos-moodlight/sentiment-api/`
+- Server: `server.godsapp.de` — kein Projektverzeichnis mehr auf dem Server (kein SSH-Pull-Workflow), Deployment ausschließlich über GHCR + Portainer
 - CI: GitHub Actions builds Docker image on push to `main` (path filter: `sentiment-api/**`)
 - Image pushed to GHCR (`ghcr.io/{repo}/sentiment-api`)
-- Portainer webhook triggers deployment
+- Portainer webhook triggert automatisches Redeployment des Containers `moodlight-analyzer` nach erfolgreichem Build
 - Persistent volumes: PostgreSQL at `/opt/stacks/auraos-moodlight/data/postgres`, Redis at `/opt/stacks/auraos-moodlight/data/redis`
 - Build: `pio run` in `firmware/` directory
 - Release: `./build-release.sh` creates versioned firmware binary + UI .tgz in `releases/vX.X/`
-- OTA: Upload firmware .bin and UI .tgz via `http://<device-ip>/diagnostics.html`
+- OTA: Upload firmware .bin and UI .tgz über den Update-Tab in `setup.html` (kein separates diagnostics.html mehr)
 - USB: `pio run -t upload` + `pio run -t uploadfs`
 ## Cross-Cutting Concerns
 ## Open Questions
