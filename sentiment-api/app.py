@@ -11,6 +11,8 @@ from collections import Counter
 import os
 import re
 import math
+import time
+import threading
 import anthropic
 from anthropic import Anthropic, APIConnectionError, RateLimitError, APIStatusError
 from shared_config import get_sentiment_category
@@ -18,8 +20,17 @@ from shared_config import get_sentiment_category
 app = Flask(__name__)
 
 # --- Session-Konfiguration ---
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-schluessel-aendern')
+# B-KRITISCH-1: Kein unsicherer Fallback mehr — SECRET_KEY MUSS gesetzt sein,
+# sonst waeren Sessions mit einem oeffentlich bekannten Default-Key signiert
+# (Session-Faelschung moeglich). Fail-fast statt stillschweigend unsicher starten.
+_secret_key = os.environ.get('SECRET_KEY', '').strip()
+if not _secret_key:
+    raise RuntimeError("SECRET_KEY muss gesetzt sein")
+app.secret_key = _secret_key
 app.permanent_session_lifetime = timedelta(hours=24)
+# SameSite=Lax mindert CSRF via Cross-Site-Requests. Kein SESSION_COOKIE_SECURE,
+# da die Seite ueber http laeuft — das wuerde den Login brechen.
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # Logging-Konfiguration
 logging.basicConfig(
@@ -367,8 +378,14 @@ def get_headlines_per_source(route_default: int) -> int:
         # Versuche, den Parameter aus der URL zu lesen und in eine Zahl umzuwandeln
         headlines_param = request.args.get('headlines_per_source', type=int)
         if headlines_param is not None and headlines_param > 0:
-            logging.debug(f"Verwende 'headlines_per_source={headlines_param}' aus URL-Parameter.")
-            return headlines_param
+            # B-HOCH-3: Kostenvektor deckeln — ohne Limit koennte ein Request
+            # beliebig viele Headlines pro Quelle anfordern und die Anthropic-
+            # API-Kosten unbegrenzt in die Hoehe treiben (kein Auth-Zwang, nur Cap)
+            capped = min(headlines_param, 10)
+            if capped != headlines_param:
+                logging.warning(f"headlines_per_source={headlines_param} auf Maximum {capped} gedeckelt.")
+            logging.debug(f"Verwende 'headlines_per_source={capped}' aus URL-Parameter.")
+            return capped
         elif headlines_param is not None: # Parameter da, aber <= 0
              logging.warning(f"Ungültiger Wert '{request.args.get('headlines_per_source')}' für URL-Parameter 'headlines_per_source'. Ignoriere.")
     except (ValueError, TypeError):
@@ -429,6 +446,51 @@ def health_check():
   status_code = 200 if health["status"] == "healthy" else 503 if health["status"] == "unhealthy" else 200
   return jsonify(health), status_code
 
+def _fetch_single_feed_for_news(source: str, url: str, num_headlines_per_source: int) -> tuple:
+    """
+    Holt Headlines von einem einzelnen Feed (B-PERF: fuer Parallelisierung via
+    ThreadPoolExecutor ausgelagert, Pendant zu SentimentUpdateWorker._fetch_single_feed).
+
+    Returns:
+        (source, entries, skip_reason, error) — entries ist eine Liste von
+        (headline_text, link) Tupeln in Feed-Reihenfolge. skip_reason/error sind
+        None bei Erfolg.
+    """
+    entries = []
+    try:
+        try:
+            response = requests.get(url, timeout=10, headers={'User-Agent': 'WorldMoodAnalyzer/1.0'})
+            response.raise_for_status()
+            feed = feedparser.parse(response.content)
+        except requests.exceptions.Timeout:
+            logging.warning(f"Überspringe Feed von {source} wegen Timeout (10s).")
+            return (source, entries, "Timeout", None)
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"Fehler beim Abrufen von {source}: {e}")
+            return (source, entries, "Abruffehler", None)
+
+        if feed.bozo and isinstance(feed.bozo_exception, Exception):
+            logging.warning(f"Überspringe fehlerhaften Feed (bozo) von {source}: {feed.bozo_exception}")
+            return (source, entries, "Formatfehler", None)
+
+        count = 0
+        if feed.entries:
+            for entry in feed.entries:
+                if count >= num_headlines_per_source:
+                    break
+                link = getattr(entry, 'link', None)
+                title = getattr(entry, 'title', None)
+                if title and title.strip():
+                    entries.append((title.strip(), link))
+                    count += 1
+
+        return (source, entries, None, None)
+
+    except Exception as e:
+        logging.error(f"Fehler beim Abrufen/Parsen des Feeds von {source}: {e}", exc_info=True)
+        return (source, entries, None, f"Fehler bei {source}")
+
+
 # --- Flask Routen (angepasst für Konfiguration und neuen Score) ---
 @app.route('/api/news', methods=['GET'])
 def get_news():
@@ -436,6 +498,7 @@ def get_news():
 
     # RSS-Feeds dynamisch aus DB laden (FEED-01)
     from database import get_database
+    from concurrent.futures import ThreadPoolExecutor
     rss_feeds = {f['name']: f['url'] for f in get_database().get_active_feeds()}
 
     # Dynamische Anzahl der Headlines pro Quelle ermitteln
@@ -446,51 +509,32 @@ def get_news():
     logging.info(f"Starte Feed-Abruf für /api/news (max. {num_headlines_per_source} Headlines/Quelle)...")
     total_headlines_found_before_filtering = 0
 
-    for source, url in rss_feeds.items():
-        logging.debug(f"--- Verarbeite Quelle: {source} ({url}) ---")
-        try:
-            try:
-                response = requests.get(url, timeout=15, headers={'User-Agent': 'WorldMoodAnalyzer/1.0'})
-                response.raise_for_status()
-                feed = feedparser.parse(response.content)
-            except requests.exceptions.Timeout:
-                logging.warning(f"Überspringe Feed von {source} wegen Timeout (15s).")
-                skipped_feeds.append(f"{source} (Timeout)")
-                continue
-            except requests.exceptions.RequestException as e:
-                logging.warning(f"Fehler beim Abrufen von {source}: {e}")
-                skipped_feeds.append(f"{source} (Abruffehler)")
-                continue
+    # B-PERF: Feed-Fetching parallelisiert (max 6 Worker, 10s Timeout pro Feed) —
+    # executor.map() erhaelt die Eingabereihenfolge stabil in der Ausgabe
+    feed_items = list(rss_feeds.items())
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        results = executor.map(
+            lambda item: _fetch_single_feed_for_news(item[0], item[1], num_headlines_per_source),
+            feed_items
+        )
 
-            if feed.bozo and isinstance(feed.bozo_exception, Exception):
-                logging.warning(f"Überspringe fehlerhaften Feed (bozo) von {source}: {feed.bozo_exception}")
-                skipped_feeds.append(f"{source} (Formatfehler)")
+        for source, entries, skip_reason, error in results:
+            if error:
+                errors.append(error)
+                continue
+            if skip_reason:
+                skipped_feeds.append(f"{source} ({skip_reason})")
                 continue
 
             headlines_from_source = 0
-            if feed.entries:
-                logging.debug(f"  Quelle {source}: {len(feed.entries)} Einträge gefunden.")
-                for entry in feed.entries:
-                    # HIER wird die dynamische Anzahl verwendet
-                    if headlines_from_source >= num_headlines_per_source: break
-                    link = getattr(entry, 'link', None)
-                    title = getattr(entry, 'title', None)
-
-                    if title and title.strip():
-                        headline_text = title.strip()
-                        unique_key = link if link else headline_text
-                        if unique_key not in processed_links:
-                            headlines.append({ "headline": headline_text, "source": source, "link": link })
-                            total_headlines_found_before_filtering += 1
-                            processed_links.add(unique_key)
-                            headlines_from_source += 1
-                logging.debug(f"  Quelle {source}: {headlines_from_source} Headlines übernommen.")
-            # else: logging.info(f"Keine Einträge im Feed von {source} gefunden.")
-
-        except Exception as e:
-            logging.error(f"Fehler beim Abrufen/Parsen des Feeds von {source}: {e}", exc_info=True)
-            errors.append(f"Fehler bei {source}")
-
+            for headline_text, link in entries:
+                unique_key = link if link else headline_text
+                if unique_key not in processed_links:
+                    headlines.append({ "headline": headline_text, "source": source, "link": link })
+                    total_headlines_found_before_filtering += 1
+                    processed_links.add(unique_key)
+                    headlines_from_source += 1
+            logging.debug(f"  Quelle {source}: {headlines_from_source} Headlines übernommen.")
 
     # --- Analyse und Rückgabe ---
     if not headlines:
@@ -577,20 +621,80 @@ from background_worker import start_background_worker
 # Neue Endpunkte registrieren
 register_moodlight_endpoints(app)
 
+# ===== LOGIN RATE-LIMITING (B-HOCH-4) =====
+# In-Memory-Rate-Limit ohne neue Dependency: {ip: (fail_count, locked_until_timestamp)}.
+# Nach 5 Fehlversuchen 60s Sperre (HTTP 429), Reset bei Erfolg. Thread-safe per Lock.
+# Speicher begrenzt auf max. ~1000 IPs (aelteste zuerst raus), um unbegrenztes
+# Wachstum durch verteilte Brute-Force-Versuche von vielen IPs zu verhindern.
+_login_attempts_lock = threading.Lock()
+_login_attempts = {}  # ip -> (fail_count, locked_until_epoch)
+_LOGIN_MAX_ATTEMPTS = 5
+_LOGIN_LOCKOUT_SECONDS = 60
+_LOGIN_MAX_TRACKED_IPS = 1000
+
+
+def _login_rate_limit_check(ip: str):
+    """Gibt (allowed: bool, retry_after_seconds: int) zurück."""
+    now = time.time()
+    with _login_attempts_lock:
+        entry = _login_attempts.get(ip)
+        if entry:
+            fail_count, locked_until = entry
+            if locked_until and now < locked_until:
+                return False, int(locked_until - now)
+        return True, 0
+
+
+def _login_rate_limit_record_failure(ip: str):
+    now = time.time()
+    with _login_attempts_lock:
+        fail_count, locked_until = _login_attempts.get(ip, (0, 0))
+        fail_count += 1
+        if fail_count >= _LOGIN_MAX_ATTEMPTS:
+            locked_until = now + _LOGIN_LOCKOUT_SECONDS
+        _login_attempts[ip] = (fail_count, locked_until)
+
+        # Speicher begrenzen — aelteste Eintraege entfernen wenn Limit ueberschritten
+        if len(_login_attempts) > _LOGIN_MAX_TRACKED_IPS:
+            oldest_ip = next(iter(_login_attempts))
+            _login_attempts.pop(oldest_ip, None)
+
+
+def _login_rate_limit_reset(ip: str):
+    with _login_attempts_lock:
+        _login_attempts.pop(ip, None)
+
+
 # ===== LOGIN / LOGOUT =====
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     """Login-Seite für das Backend-Interface."""
     error = None
     if request.method == 'POST':
+        client_ip = request.remote_addr or 'unknown'
+        allowed, retry_after = _login_rate_limit_check(client_ip)
+        if not allowed:
+            logging.warning(f"Login-Versuch von {client_ip} waehrend aktiver Sperre abgelehnt.")
+            error = f'Zu viele Fehlversuche. Bitte in {retry_after}s erneut versuchen.'
+            return render_template('login.html', error=error), 429
+
         password = request.form.get('password', '')
         if _admin_password_hash and check_password_hash(_admin_password_hash, password):
+            _login_rate_limit_reset(client_ip)
             session['authenticated'] = True
             session.permanent = True
-            next_url = request.args.get('next') or url_for('dashboard')
+            # Open-Redirect-Guard (B-MITTEL): next nur akzeptieren wenn es ein
+            # relativer Pfad ist (beginnt mit "/" aber nicht mit "//" — "//evil.com"
+            # wird von Browsern als protokollrelative externe URL interpretiert)
+            next_param = request.args.get('next')
+            if next_param and next_param.startswith('/') and not next_param.startswith('//'):
+                next_url = next_param
+            else:
+                next_url = url_for('dashboard')
             logging.info("Admin-Login erfolgreich.")
             return redirect(next_url)
         else:
+            _login_rate_limit_record_failure(client_ip)
             error = 'Falsches Passwort.'
             logging.warning("Fehlgeschlagener Login-Versuch.")
             return render_template('login.html', error=error), 401

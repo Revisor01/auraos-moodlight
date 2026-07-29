@@ -4,6 +4,27 @@
 -- Datenbank-Einstellungen
 SET TIME ZONE 'Europe/Berlin';
 
+-- ===== HELPER FUNCTIONS =====
+-- B-KRITISCH-2: VOR alle Tabellen verschoben — die settings-Tabelle weiter unten
+-- referenziert die Funktion unten in ihrem Update-Trigger. Auf einer frischen DB
+-- schlaegt der CREATE TRIGGER-Aufruf fehl, wenn die Funktion an dieser Stelle
+-- noch nicht existiert (vorher stand dieser Block ganz am Dateiende, nach der
+-- settings-Tabelle).
+
+-- Funktion: Updated_at Timestamp automatisch aktualisieren
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Hinweis: get_sentiment_category()-Funktion und der set_sentiment_category()-Trigger
+-- wurden entfernt (siehe migrations/002_drop_category_trigger.sql) — Python
+-- (shared_config.get_sentiment_category) ist jetzt die einzige Quelle der Kategorie-
+-- Zuordnung, ein DB-seitiger Trigger fuehrte zu Duplikat-Logik mit Drift-Risiko.
+
 -- ===== SENTIMENT HISTORY TABLE =====
 -- Speichert alle Sentiment-Analysen zentral
 CREATE TABLE IF NOT EXISTS sentiment_history (
@@ -157,47 +178,7 @@ INSERT INTO feeds (name, url) VALUES
     ('Deutschlandfunk', 'https://www.deutschlandfunk.de/nachrichten-100.rss')
 ON CONFLICT (url) DO NOTHING;
 
--- ===== HELPER FUNCTIONS =====
-
--- Funktion: Kategorie aus Sentiment-Score bestimmen
-CREATE OR REPLACE FUNCTION get_sentiment_category(score FLOAT)
-RETURNS VARCHAR(20) AS $$
-BEGIN
-    IF score >= 0.30 THEN RETURN 'sehr positiv';
-    ELSIF score >= 0.10 THEN RETURN 'positiv';
-    ELSIF score >= -0.20 THEN RETURN 'neutral';
-    ELSIF score >= -0.50 THEN RETURN 'negativ';
-    ELSE RETURN 'sehr negativ';
-    END IF;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
-
--- Funktion: Automatische Kategorie beim Insert/Update
-CREATE OR REPLACE FUNCTION set_sentiment_category()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.category := get_sentiment_category(NEW.sentiment_score);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger: Automatische Kategorie-Zuweisung
-DROP TRIGGER IF EXISTS trigger_set_category ON sentiment_history;
-CREATE TRIGGER trigger_set_category
-    BEFORE INSERT OR UPDATE ON sentiment_history
-    FOR EACH ROW
-    EXECUTE FUNCTION set_sentiment_category();
-
--- Funktion: Updated_at Timestamp automatisch aktualisieren
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger: Auto-Update updated_at
+-- Trigger: Auto-Update updated_at (Funktion ist am Dateianfang definiert, B-KRITISCH-2)
 DROP TRIGGER IF EXISTS trigger_update_device_stats ON device_statistics;
 CREATE TRIGGER trigger_update_device_stats
     BEFORE UPDATE ON device_statistics
