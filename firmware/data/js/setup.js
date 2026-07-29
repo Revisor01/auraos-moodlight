@@ -27,12 +27,17 @@ function pageInit() {
             } else if (tabId === 'colors') {
                 loadColorSettings();
             } else if (tabId === 'about') {
+                // C-MITTEL: loadStorageInfo2() vom Hardware- zum Info-Tab verschoben —
+                // die Speicherinfo-Anzeige (#storage-progress-bar etc.) liegt im Info-Tab,
+                // nicht im Hardware-Tab
                 loadSystemInfo();
+                loadStorageInfo2();
             } else if (tabId === 'mqtt') {
                 loadMqttSettings();
             } else if (tabId === 'hardware') {
                 loadHardwareSettings();
-                loadStorageInfo2();
+            } else if (tabId === 'wifi') {
+                loadWifiStatusInfo();
             }
         });
     });
@@ -43,12 +48,36 @@ function pageInit() {
         const tabId = activeTab.getAttribute('data-tab');
         if (tabId === 'about') {
             loadSystemInfo();
+            loadStorageInfo2();
+        } else if (tabId === 'wifi') {
+            loadWifiStatusInfo();
         }
     }
     // v9.0: initImportForms() removed - import/export managed in backend
     // C8: tote UI-/Firmware-Upload-Formular-Handler (ui-upload-form, firmware-upload-form)
     // entfernt — die entsprechenden Formulare existieren nicht mehr in setup.html.
     // Der Update-Tab nutzt stattdessen startFullUpdate()/doUpload() (siehe setup.html).
+}
+
+// C-NIEDRIG: #wifi-status-info mit aktueller SSID befuellen (war zuvor leeres Element)
+function loadWifiStatusInfo() {
+    const el = document.getElementById('wifi-status-info');
+    if (!el) return;
+
+    fetch('/api/settings/all')
+        .then(r => r.json())
+        .then(data => {
+            if (data.wifiConfigured && data.wifiSSID) {
+                el.textContent = 'Aktuell verbunden mit: ' + data.wifiSSID;
+                el.className = 'alert alert-info';
+            } else {
+                el.textContent = 'Kein WLAN konfiguriert';
+                el.className = 'alert alert-warning';
+            }
+        })
+        .catch(err => {
+            console.error('Fehler beim Laden des WLAN-Status:', err);
+        });
 }
 
 
@@ -190,44 +219,68 @@ function showAllSettings() {
     .then(r => r.json())
     .then(data => {
         console.log('Alle Einstellungen:', data);
-        
-        // Erstelle eine Tabelle für die Anzeige
-        let html = '<div class="settings-display">';
-        html += '<h3>Gespeicherte Einstellungen</h3>';
-        html += '<table>';
-        html += '<tr><th>Einstellung</th><th>Wert</th></tr>';
-        
-        // Durchlaufe alle Eigenschaften
+
+        // C-HOCH-1: Tabelle per DOM-API statt innerHTML-Template-String erstellen —
+        // key/value koennen aus der Geraetekonfiguration (z.B. WiFi-SSID) stammen
+        // und muessen nicht escaped werden, wenn sie via textContent gesetzt werden
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'close-btn';
+        closeBtn.textContent = '×';
+        modalContent.appendChild(closeBtn);
+
+        const settingsDisplay = document.createElement('div');
+        settingsDisplay.className = 'settings-display';
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'Gespeicherte Einstellungen';
+        settingsDisplay.appendChild(heading);
+
+        const table = document.createElement('table');
+        const headerRow = document.createElement('tr');
+        const th1 = document.createElement('th');
+        th1.textContent = 'Einstellung';
+        const th2 = document.createElement('th');
+        th2.textContent = 'Wert';
+        headerRow.appendChild(th1);
+        headerRow.appendChild(th2);
+        table.appendChild(headerRow);
+
         for (const [key, value] of Object.entries(data)) {
-            // Arrays und Objekte speziell behandeln
+            const row = document.createElement('tr');
+            const tdKey = document.createElement('td');
+            tdKey.textContent = key;
+            const tdValue = document.createElement('td');
+
             if (Array.isArray(value)) {
-                html += `<tr><td>${key}</td><td>[Array mit ${value.length} Einträgen]</td></tr>`;
+                tdValue.textContent = `[Array mit ${value.length} Einträgen]`;
             } else if (typeof value === 'object' && value !== null) {
-                html += `<tr><td>${key}</td><td>[Objekt]</td></tr>`;
+                tdValue.textContent = '[Objekt]';
             } else {
-                html += `<tr><td>${key}</td><td>${value}</td></tr>`;
+                tdValue.textContent = value;
             }
+
+            row.appendChild(tdKey);
+            row.appendChild(tdValue);
+            table.appendChild(row);
         }
-        
-        html += '</table></div>';
-        
-        // Anzeige als Modal
+
+        settingsDisplay.appendChild(table);
+        modalContent.appendChild(settingsDisplay);
+
         const modal = document.createElement('div');
         modal.className = 'modal';
-        modal.innerHTML = `
-                <div class="modal-content">
-                    <span class="close-btn">&times;</span>
-                    ${html}
-                </div>
-            `;
-        
+        modal.appendChild(modalContent);
+
         document.body.appendChild(modal);
-        
+
         // Schließen-Button
-        modal.querySelector('.close-btn').onclick = function() {
+        closeBtn.onclick = function() {
             document.body.removeChild(modal);
         };
-        
+
         // Klick außerhalb schließt das Modal
         modal.onclick = function(event) {
             if (event.target === modal) {
@@ -577,26 +630,39 @@ function scanWifi() {
                 item.className = 'wifi-item';
                 item.onclick = function() {
                     document.getElementById('wifi-ssid').value = network.ssid;
-                    
+
                     // Remove selected class from all items
                     document.querySelectorAll('.wifi-item').forEach(el => {
                         el.classList.remove('wifi-selected');
                     });
-                    
+
                     // Add selected class to this item
                     this.classList.add('wifi-selected');
                 };
-                
+
                 const rssiStrength = network.rssi > -60 ? 'Stark' : (network.rssi > -80 ? 'Mittel' : 'Schwach');
-                
-                item.innerHTML = `
-                        <div class="wifi-name">${network.ssid}</div>
-                        <div class="wifi-signal">
-                            ${rssiStrength} (${network.rssi} dBm)
-                            ${network.secure ? '<span class="wifi-secure">🔒</span>' : ''}
-                        </div>
-                    `;
-                
+
+                // C-HOCH-1: SSIDs per DOM-API/textContent rendern statt innerHTML-
+                // Template-String — verhindert XSS ueber eine boesartig benannte
+                // SSID in Funkreichweite
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'wifi-name';
+                nameDiv.textContent = network.ssid;
+
+                const signalDiv = document.createElement('div');
+                signalDiv.className = 'wifi-signal';
+                signalDiv.textContent = `${rssiStrength} (${network.rssi} dBm)`;
+                if (network.secure) {
+                    const lockSpan = document.createElement('span');
+                    lockSpan.className = 'wifi-secure';
+                    lockSpan.textContent = '🔒';
+                    signalDiv.appendChild(document.createTextNode(' '));
+                    signalDiv.appendChild(lockSpan);
+                }
+
+                item.appendChild(nameDiv);
+                item.appendChild(signalDiv);
+
                 wifiList.appendChild(item);
             });
         } else {
@@ -648,8 +714,16 @@ function loadMqttSettings() {
         if (data.user) {
             document.getElementById('mqtt-user').value = data.user;
         }
-        if (data.pass) {
-            document.getElementById('mqtt-pass').value = data.pass;
+        // A-HOCH-2/C-MITTEL: Passwortfeld LEER lassen statt die Maske "****"
+        // einzutragen — sonst wuerde ein Speichern ohne Passwort-Aenderung das
+        // echte Passwort durch die Maske ueberschreiben (Firmware-Gegenstueck
+        // prueft "pass != '****' && pass.length() > 0" in /savemqtt)
+        const passField = document.getElementById('mqtt-pass');
+        if (passField) {
+            passField.value = '';
+            if (data.pass) {
+                passField.placeholder = '(unverändert)';
+            }
         }
     })
     .catch(err => {

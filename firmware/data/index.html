@@ -10,6 +10,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body>
+    <script>if(localStorage.getItem('darkMode')==='true')document.body.classList.add('dark');</script>
     <div class="header">
         <div class="title">AuraOS Moodlight<span class="version" id="version">Lädt...</span></div>
         <div class="header-controls">
@@ -84,7 +85,7 @@
 
             <div class="buttons">
                 <button class="btn" onclick="refreshSentiment()" aria-label="Weltlage-Analyse aktualisieren">
-                    <i class="fas fa-sync-alt" aria-hidden="true"></i> Aktualisieren
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i> <span id="refresh-btn-label">Aktualisieren</span>
                 </button>
             </div>
         </div>
@@ -98,20 +99,35 @@
             <div class="flex">
                 <span>Licht</span>
                 <label class="switch">
-                    <input type="checkbox" id="light-switch" onchange="toggleLight()" checked aria-label="Licht ein/ausschalten">
+                    <!-- C-MITTEL: kein "checked" mehr fest im HTML — der tatsaechliche
+                         Zustand kommt erst mit dem ersten updateSwitches()-Aufruf vom
+                         Geraet. "disabled" verhindert Klicks bevor der echte Zustand
+                         bekannt ist (sonst kann ein Klick vor dem ersten Status-Poll
+                         den Zustand invertieren). script.js::updateSwitches() entfernt
+                         "disabled" nach dem ersten erfolgreichen Laden. -->
+                    <input type="checkbox" id="light-switch" onchange="toggleLight()" disabled aria-label="Licht ein/ausschalten">
                     <span class="slider"></span>
                 </label>
             </div>
             <div class="flex">
                 <span>Auto-Modus</span>
                 <label class="switch">
-                    <input type="checkbox" id="mode-switch" onchange="toggleMode()" checked aria-label="Zwischen Auto-Modus und manuellem Modus wechseln">
+                    <input type="checkbox" id="mode-switch" onchange="toggleMode()" disabled aria-label="Zwischen Auto-Modus und manuellem Modus wechseln">
                     <span class="slider"></span>
                 </label>
             </div>
             <div class="section">
                 <label for="brightness">Helligkeit</label>
-                <input type="range" class="range" id="brightness" min="10" max="255" value="255" onchange="setBrightness(this.value)" aria-valuemin="10" aria-valuemax="255" aria-valuenow="255">
+                <!-- C-NIEDRIG: oninput aktualisiert das Label sofort waehrend des Ziehens
+                     (onchange feuert erst beim Loslassen); pointerdown/pointerup setzen
+                     ein Flag, das script.js::updateSwitches() nutzt, um den Wert
+                     waehrend des Ziehens nicht durch einen Status-Poll zu ueberschreiben -->
+                <input type="range" class="range" id="brightness" min="10" max="255" value="255"
+                    oninput="document.getElementById('brightness-val').textContent=this.value"
+                    onchange="setBrightness(this.value)"
+                    onpointerdown="window.brightnessSliderActive=true"
+                    onpointerup="window.brightnessSliderActive=false"
+                    aria-valuemin="10" aria-valuemax="255" aria-valuenow="255">
                 <div class="control-label">Wert: <span id="brightness-val">255</span></div>
             </div>
             <div class="section">

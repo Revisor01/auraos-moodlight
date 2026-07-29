@@ -8,8 +8,9 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/mood.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
+    <!-- C-PERF: externe Zeit-Bibliothek + Chart.js-Zeit-Adapter entfernt — alle
+         Charts nutzen category-Achsen (kein Zeit-Adapter noetig), Datumsformatierung
+         erfolgt jetzt ueber native Date-Helfer in mood.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
@@ -43,6 +44,7 @@
     </style>
 </head>
 <body>
+    <script>if(localStorage.getItem('darkMode')==='true')document.body.classList.add('dark');</script>
     <div class="header">
         <div class="title">Moodlight Statistik<span class="version" id="version">Lädt...</span></div>
         <div class="header-controls">
@@ -63,25 +65,25 @@
                     <div class="chart-subtitle" id="trend-indicator" aria-live="polite"></div>
                 </div>
                 <ul class="nav-tabs" id="main-chart-tabs" role="tablist">
-                    <li data-tab="all" data-hours="720" role="tab" aria-selected="false" aria-controls="all-tab">Gesamter Zeitraum</li>
-                    <li class="active" data-tab="week" role="tab" aria-selected="true" aria-controls="week-tab">Letzte Woche</li>
-                    <li data-tab="day" role="tab" aria-selected="false" aria-controls="day-tab">Letzter Tag</li>
+                    <li id="all-tab-link" data-tab="all" data-hours="720" role="tab" aria-selected="false" aria-controls="all-tab">Gesamter Zeitraum</li>
+                    <li id="week-tab-link" class="active" data-tab="week" data-hours="168" role="tab" aria-selected="true" aria-controls="week-tab">Letzte Woche</li>
+                    <li id="day-tab-link" data-tab="day" data-hours="24" role="tab" aria-selected="false" aria-controls="day-tab">Letzter Tag</li>
                 </ul>
             </div>
 
             <!-- v9.0: Data management removed - data managed in backend -->
 
-            <div class="tab-content" id="all-tab" role="tabpanel" aria-labelledby="all-tab">
+            <div class="tab-content" id="all-tab" role="tabpanel" aria-labelledby="all-tab-link">
                 <div class="chart-container">
                     <canvas id="all-chart" aria-label="Stimmungsverlauf über gesamten Zeitraum" role="img"></canvas>
                 </div>
             </div>
-            <div class="tab-content active" id="week-tab" role="tabpanel" aria-labelledby="week-tab">
+            <div class="tab-content active" id="week-tab" role="tabpanel" aria-labelledby="week-tab-link">
                 <div class="chart-container">
                     <canvas id="week-chart" aria-label="Stimmungsverlauf der letzten Woche" role="img"></canvas>
                 </div>
             </div>
-            <div class="tab-content" id="day-tab" role="tabpanel" aria-labelledby="day-tab">
+            <div class="tab-content" id="day-tab" role="tabpanel" aria-labelledby="day-tab-link">
                 <div class="chart-container">
                     <canvas id="day-chart" aria-label="Stimmungsverlauf der letzten 24 Stunden" role="img"></canvas>
                 </div>
@@ -96,7 +98,7 @@
         <h2><i class="fas fa-chart-line" aria-hidden="true"></i> Einordnung des Scores</h2>
         <p class="scale-subtitle" id="scaleExplain">
             Die LED-Farbe basiert nicht auf dem absoluten Score, sondern auf dem <strong>Vergleich mit den letzten 7 Tagen</strong>.
-            Ein negativer Score kann trotzdem eine "bessere" Farbe zeigen, wenn die Woche insgesamt noch negativer war.
+            Ein negativer Score kann trotzdem eine „bessere" Farbe zeigen, wenn die Woche insgesamt noch negativer war.
         </p>
 
         <!-- Perzentil-Badge -->
@@ -367,7 +369,7 @@
                 var dot = document.getElementById('ledDot');
                 dot.style.background = 'rgb(' + led.r + ',' + led.g + ',' + led.b + ')';
                 document.getElementById('ledText').innerHTML =
-                    'Dein Moodlight zeigt <strong>' + led.name + '</strong> (LED-Index ' + ledIdx + ' = „' + led.label + '"). ' +
+                    'Dein Moodlight zeigt <strong>' + led.name + '</strong> (LED-Index ' + ledIdx + ' = „' + led.label + '“). ' +
                     'Das bedeutet: der aktuelle Score ist relativ zur letzten Woche im <strong>' + pct + '. Perzentil</strong> — ' +
                     (pct >= 60 ? 'besser als die meisten Tage.' :
                      pct >= 40 ? 'im Mittelfeld der Woche.' :

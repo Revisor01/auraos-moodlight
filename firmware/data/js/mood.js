@@ -6,6 +6,64 @@ let weekdayAverages = [];
 let dailyAverages = [];
 let charts = {};
 
+// ===== Native Datums-Helfer (C-PERF: ersetzt die frueher genutzte externe
+// Zeit-Bibliothek samt Chart.js-Zeit-Adapter) =====
+// Alle Charts nutzen category-Achsen (keine "time"-Skalen) — daher wird kein
+// Chart.js-Zeit-Adapter benoetigt, nur Formatierung von Label-Strings.
+
+// YYYY-MM-DD (lokale Zeit, kein UTC-Shift)
+function formatDateISO(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+// DD.MM
+function formatDayMonth(date) {
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    return `${d}.${m}`;
+}
+
+// DD.MM.YYYY
+function formatDayMonthYear(date) {
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}.${m}.${y}`;
+}
+
+// HH:mm
+function formatTimeHM(date) {
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+}
+
+// DD.MM HH:mm
+function formatDayMonthTime(date) {
+    return `${formatDayMonth(date)} ${formatTimeHM(date)}`;
+}
+
+// N Tage zurück, auf Tagesbeginn (00:00:00) gesetzt
+function daysAgoStartOfDay(days) {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+// N Stunden zurück (exakte Differenz, kein Tagesbeginn)
+function hoursAgo(hours) {
+    return new Date(Date.now() - hours * 3600000);
+}
+
+// Vergleicht zwei Date-Objekte: ist a zeitlich gleich oder nach b?
+function isSameOrAfter(a, b) {
+    return a.getTime() >= b.getTime();
+}
+
 // C2: aktuell gewählter Zeitraum (Stunden) — Auto-Refresh nutzt diesen Wert statt
 // immer den 168h-Default zu laden und damit z.B. die "Gesamter Zeitraum"-Ansicht
 // (720h) beim nächsten automatischen Reload zu überschreiben
@@ -16,15 +74,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tabs einrichten
     setupTabs();
 
-    // Daten laden
-    loadData();
+    // Daten laden (initialer Default-Zeitraum, entspricht dem aktiven "week"-Tab)
+    loadData(currentHours).then(function(result) {
+        if (result) {
+            loadedHoursSet.add(currentHours);
+        }
+    });
 
     // Automatisches Neuladen alle 5 Minuten — nutzt den zuletzt gewählten Zeitraum (C2)
     setInterval(function() { loadData(currentHours); }, 300000);
 });
 
 // Tabs initialisieren
-let allDataLoaded = false; // Gesamtzeitraum noch nicht geladen
+// C-MITTEL: Tracking pro Zeitraum statt einem einzelnen Bool — jetzt haben ALLE
+// Tabs (all/week/day) ein data-hours-Attribut, daher muss bei JEDEM Zeitraumwechsel
+// neu geladen werden, wenn dieser konkrete Zeitraum noch nicht im Cache ist.
+let loadedHoursSet = new Set();
 
 function setupTabs() {
     document.querySelectorAll('.nav-tabs li').forEach(tab => {
@@ -41,16 +106,22 @@ function setupTabs() {
             const tabId = this.getAttribute('data-tab');
             document.getElementById(`${tabId}-tab`).classList.add('active');
 
-            // On-demand: Gesamtzeitraum erst bei Klick nachladen
+            // On-demand: pro Zeitraum nur einmal laden, danach aus dem Cache
             const hours = this.getAttribute('data-hours');
             if (hours) {
-                // currentHours immer aktualisieren (C2), Daten aber nur beim ersten
-                // Klick tatsächlich nachladen (bereits geladene Daten bleiben im Cache)
-                currentHours = parseInt(hours);
-                if (!allDataLoaded) {
-                    allDataLoaded = true;
-                    document.getElementById('loading-message').textContent = 'Lade gesamten Zeitraum...';
-                    loadData(currentHours);
+                const hoursInt = parseInt(hours);
+                currentHours = hoursInt; // C2: fuer Auto-Refresh merken
+
+                if (!loadedHoursSet.has(hoursInt)) {
+                    document.getElementById('loading-message').textContent = 'Lade Daten...';
+                    // allDataLoaded/loadedHoursSet erst im ERFOLGS-Fall markieren —
+                    // bei einem Fehlschlag soll der naechste Tab-Klick einen neuen
+                    // Ladeversuch ausloesen statt den Cache-Status faelschlich zu setzen
+                    loadData(hoursInt).then(function(result) {
+                        if (result) {
+                            loadedHoursSet.add(hoursInt);
+                        }
+                    });
                 }
             }
 
@@ -64,12 +135,34 @@ function setupTabs() {
     });
 }
 
-// Daten vom Server laden
+// Backend-Endpunkt fuer direkten History-Zugriff (A-HOCH-3/C-MITTEL) — CORS
+// live verifiziert, mood.html nutzt denselben Origin bereits fuer current/headlines
+const BACKEND_HISTORY_URL = 'https://analyse.godsapp.de/api/moodlight/history';
+
+// Daten vom Server laden — primaer DIREKT vom Backend (weniger Last auf dem
+// ESP32-Webserver, kein doppeltes JSON-Puffern), Fallback auf das geraeteseitige
+// /api/stats (geclampte, langsamere Backend-Proxy-Route) bei Fetch-Fehler
 function loadData(hours) {
     hours = hours || 168; // Default: 7 Tage
     currentHours = hours; // C2: für Auto-Refresh merken, welcher Zeitraum zuletzt geladen wurde
     document.getElementById('loading-message').textContent = 'Lade Daten...';
 
+    return fetch(BACKEND_HISTORY_URL + '?hours=' + hours)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => handleLoadDataResult(result))
+    .catch(error => {
+        console.warn('Backend-Direktzugriff fehlgeschlagen, Fallback auf Geräte-API:', error);
+        return loadDataFromDeviceFallback(hours);
+    });
+}
+
+// Fallback: /api/stats des Geräts (geclampt auf 720h, langsamer da Proxy ueber ESP32)
+function loadDataFromDeviceFallback(hours) {
     return fetch('/api/stats?hours=' + hours)
     .then(response => {
         if (!response.ok) {
@@ -79,52 +172,53 @@ function loadData(hours) {
     })
     .then(text => {
         try {
-            // Versuche, den Text als JSON zu parsen
             const result = JSON.parse(text);
-
-            if (result.error) {
-                // Server-Fehlermeldung anzeigen
-                document.getElementById('loading-message').textContent =
-                `Server-Fehler: ${result.error}`;
-                console.error('Server-Fehler:', result.error);
-                return null;
-            }
-
-            if (result && result.data && Array.isArray(result.data)) {
-                processRawData(result.data);
-
-                // Informativere Nachricht mit Begrenzungsinfo, wenn vorhanden
-                let message = `Daten geladen: ${result.data.length} Datenpunkte`;
-                if (result.count && result.count > result.data.length) {
-                    message += ` (von insgesamt ${result.count})`;
-                }
-
-                document.getElementById('loading-message').textContent = message;
-                return result;
-            } else {
-                document.getElementById('loading-message').textContent =
-                'Keine Daten verfügbar oder falsches Format';
-                return null;
-            }
+            return handleLoadDataResult(result);
         } catch (e) {
             console.error('JSON Parse Error:', e);
-            
-            // Detaillierte Fehlerdiagnose
+
             if (text.length > 2000) {
                 console.error('Problem um Position 2048:', text.substring(2040, 2060));
             }
-            
-            document.getElementById('loading-message').textContent = 
+
+            document.getElementById('loading-message').textContent =
             'Fehler beim Parsen der JSON-Daten: ' + e.message;
             throw e;
         }
     })
     .catch(error => {
-        console.error('Fehler beim Laden der Daten:', error);
-        document.getElementById('loading-message').textContent = 
+        console.error('Fehler beim Laden der Daten (auch Fallback fehlgeschlagen):', error);
+        document.getElementById('loading-message').textContent =
         'Fehler beim Laden der Daten: ' + error.message;
         return null;
     });
+}
+
+// Gemeinsame Verarbeitung des Ergebnis-JSON (Backend und Geräte-Fallback liefern
+// dasselbe {count, data:[...]}-Format, moodlight_extensions.py::get_moodlight_history)
+function handleLoadDataResult(result) {
+    if (result.error) {
+        document.getElementById('loading-message').textContent =
+        `Server-Fehler: ${result.error}`;
+        console.error('Server-Fehler:', result.error);
+        return null;
+    }
+
+    if (result && result.data && Array.isArray(result.data)) {
+        processRawData(result.data);
+
+        let message = `Daten geladen: ${result.data.length} Datenpunkte`;
+        if (result.count && result.count > result.data.length) {
+            message += ` (von insgesamt ${result.count})`;
+        }
+
+        document.getElementById('loading-message').textContent = message;
+        return result;
+    } else {
+        document.getElementById('loading-message').textContent =
+        'Keine Daten verfügbar oder falsches Format';
+        return null;
+    }
 }
 
 // Verarbeite die Rohdaten vom Server
@@ -150,26 +244,26 @@ function processRawData(data) {
     }).sort((a, b) => a.timestamp - b.timestamp);
 
     // Daten verarbeiten
-    processData(null, false);
+    processData();
 }
 
 // Verarbeite die Daten und aktualisiere die Anzeigen
-function processData(results, reprocess = false) {
-    if (!reprocess && (!allData || allData.length === 0)) {
+// C-PERF: der tote reprocess=true-Zweig wurde entfernt — processData() wird im
+// gesamten Code ausschliesslich mit reprocess=false aufgerufen (processRawData()
+// ist der einzige Aufrufer). updateChart() selbst bleibt erhalten, da es
+// weiterhin von den sieben updateXChart()-Wrappern referenziert wird (siehe
+// createOrUpdateChart/updateChart weiter unten).
+function processData() {
+    if (!allData || allData.length === 0) {
         console.error("processData: Keine Daten zum Verarbeiten");
         return;
     }
 
     filteredData = [...allData];
 
-    // Berechne Statistiken und erstelle/aktualisiere Charts
+    // Berechne Statistiken und erstelle Charts
     calculateStatistics();
-
-    if (!reprocess) {
-        createAllCharts();
-    } else {
-        updateAllCharts();
-    }
+    createAllCharts();
 }
 
 // Berechne statistische Kennzahlen
@@ -230,18 +324,18 @@ function calculateStatistics() {
     // Tägliche Durchschnitte
     const dailyData = {};
     data.forEach(item => {
-        const day = moment(item.timestamp).format('YYYY-MM-DD');
+        const day = formatDateISO(item.timestamp);
         if (!dailyData[day]) {
             dailyData[day] = { sum: 0, count: 0, date: item.timestamp };
         }
         dailyData[day].sum += item.value;
         dailyData[day].count += 1;
     });
-    
+
     dailyAverages = Object.keys(dailyData).map(day => ({
         date: dailyData[day].date,
         day: day,
-        displayDay: moment(day).format('DD.MM'),
+        displayDay: formatDayMonth(dailyData[day].date),
         value: dailyData[day].sum / dailyData[day].count
     })).sort((a, b) => a.date - b.date);
     
@@ -395,15 +489,6 @@ function createAllCharts() {
     createTrendChart();
 }
 
-function updateAllCharts() {
-    updateAllTimeChart();
-    updateWeekChart();
-    updateDayChart();
-    updateHourlyChart();
-    updateWeekdayChart();
-    updateDistributionChart();
-    updateTrendChart();
-}
 
 // Hilfsfunktion für Chart-Erstellung oder Update
 function createOrUpdateChart(chartKey, canvasId, chartType, dataProvider, options) {
@@ -493,9 +578,16 @@ function updateAllTimeChart() {
 }
 
 function getAllTimeData() {
-    const chartData = filteredData.slice(-500);
+    // C-PERF: Schrittfilter-Dezimierung statt slice(-500) — behaelt die
+    // Verteilung ueber den GESAMTEN Zeitraum bei (wie im Day-Chart), statt nur
+    // die letzten 500 Punkte zu zeigen und aeltere Daten komplett abzuschneiden
+    let chartData = filteredData;
+    if (chartData.length > 500) {
+        const step = Math.ceil(chartData.length / 500);
+        chartData = chartData.filter((_, i) => i % step === 0);
+    }
     return {
-        labels: chartData.map(d => moment(d.timestamp).format('DD.MM HH:mm')),
+        labels: chartData.map(d => formatDayMonthTime(d.timestamp)),
         datasets: [{
             label: 'Stimmungswert',
             data: chartData.map(d => d.value),
@@ -519,8 +611,8 @@ function updateWeekChart() {
 }
 
 function getWeekData() {
-    const sevenDaysAgo = moment().subtract(7, 'days').startOf('day');
-    const weekData = dailyAverages.filter(d => moment(d.day).isSameOrAfter(sevenDaysAgo));
+    const sevenDaysAgo = daysAgoStartOfDay(7);
+    const weekData = dailyAverages.filter(d => isSameOrAfter(d.date, sevenDaysAgo));
     
     return {
         labels: weekData.map(d => d.displayDay),
@@ -544,8 +636,8 @@ function updateDayChart() {
 }
 
 function getDayData() {
-    const oneDayAgo = moment().subtract(1, 'day');
-    const dayDataPoints = filteredData.filter(d => moment(d.timestamp).isSameOrAfter(oneDayAgo));
+    const oneDayAgo = hoursAgo(24);
+    const dayDataPoints = filteredData.filter(d => isSameOrAfter(d.timestamp, oneDayAgo));
     
     let lastDayDisplayData = dayDataPoints;
     
@@ -555,7 +647,7 @@ function getDayData() {
     }
     
     return {
-        labels: lastDayDisplayData.map(d => moment(d.timestamp).format('HH:mm')),
+        labels: lastDayDisplayData.map(d => formatTimeHM(d.timestamp)),
         datasets: [{
             label: 'Stündlicher Wert (letzter Tag)',
             data: lastDayDisplayData.map(d => d.value),
@@ -817,8 +909,8 @@ function generateSummary(stats) {
     else if (vol > 0.1) volatility = "mäßig schwankend";
     else volatility = "relativ stabil";
     
-    const startDateStr = moment(stats.startDate).format('DD.MM.YYYY');
-    const endDateStr = moment(stats.endDate).format('DD.MM.YYYY');
+    const startDateStr = formatDayMonthYear(stats.startDate);
+    const endDateStr = formatDayMonthYear(stats.endDate);
     
     const summary = `
         Basierend auf ${stats.count} Messungen im Zeitraum vom ${startDateStr} bis ${endDateStr}
