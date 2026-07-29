@@ -11,6 +11,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body>
+    <script>if(localStorage.getItem('darkMode')==='true')document.body.classList.add('dark');</script>
     <div class="header">
         <div class="title">Moodlight Einstellungen<span class="version" id="version">Lädt...</span></div>
         <div class="header-controls">
@@ -380,7 +381,7 @@
             if (url === '/update' && uploadReached100) { callback(true, 'OK'); }
             else { callback(false, 'Timeout' + (url === '/update' && !uploadReached100 ? ' (Upload nicht vollständig)' : '')); }
         });
-        xhr.timeout = 120000;
+        xhr.timeout = 300000;
         xhr.open('POST', url);
         xhr.send(fd);
     }

@@ -20,7 +20,11 @@ function refreshLog() {
     .then(data => {
       const log = document.getElementById('logContent');
       if (log) {
-        log.innerHTML = data;
+        // C-HOCH-1: textContent statt innerHTML (XSS-sicher, Log-Zeilen koennen
+        // beliebige Zeichen enthalten). .logs { white-space: pre-wrap; } in
+        // style.css sorgt dafuer, dass Zeilenumbrueche weiterhin sichtbar sind
+        // (behebt die Regression, dass das Log seit dem text/plain-Umbau einzeilig war)
+        log.textContent = data;
         log.scrollTop = log.scrollHeight;
       }
     })
@@ -59,31 +63,46 @@ function refreshStatus() {
 // Sentiment aktualisieren
 function refreshSentiment() {
   const btn = document.querySelector('button[onclick="refreshSentiment()"]');
+  // C-NIEDRIG: Label ueber einen separaten Span setzen statt btn.textContent —
+  // btn.textContent wuerde das <i class="fas fa-sync-alt">-Icon-Element loeschen
+  const label = document.getElementById('refresh-btn-label');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "Aktualisiere...";
   }
-  
+  if (label) {
+    label.textContent = "Aktualisiere...";
+  }
+
+  function resetButton() {
+    if (btn) btn.disabled = false;
+    if (label) label.textContent = "Aktualisieren";
+  }
+
   fetch('/refresh')
     .then(response => {
       if (!response.ok) throw new Error('Network response was not ok');
       return response.text();
     })
     .then(() => {
-      setTimeout(() => {
+      // C-NIEDRIG: 3x im 3s-Abstand nachpollen statt einmal nach 2s — der
+      // Sentiment-Abruf auf dem Geraet dauert variabel lang (HTTP-Request an
+      // das Backend), ein einzelner Poll nach 2s zeigte oft noch den alten Wert
+      let pollCount = 0;
+      const maxPolls = 3;
+      const poll = () => {
+        pollCount++;
         refreshStatus();
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = "Aktualisieren";
+        if (pollCount < maxPolls) {
+          setTimeout(poll, 3000);
+        } else {
+          resetButton();
         }
-      }, 2000);
+      };
+      setTimeout(poll, 3000);
     })
     .catch(err => {
       console.error('Refresh error:', err);
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = "Aktualisieren";
-      }
+      resetButton();
     });
 }
 
@@ -173,35 +192,64 @@ function updateLEDs(data) {
   }
 }
 
+// Kategorie-Text (Backend/Firmware-Klartext) -> CSS-Klassenname
+const MOOD_CATEGORY_CLASS_MAP = {
+  'sehr positiv': 'mood-very-positive',
+  'positiv': 'mood-positive',
+  'neutral': 'mood-neutral',
+  'negativ': 'mood-negative',
+  'sehr negativ': 'mood-very-negative'
+};
+
 // Mood-Updates
 function updateMood(data) {
   if (!data || !data.sentiment) return;
-  
+
   const value = parseFloat(data.sentiment.split(' ')[0]);
   const text = document.getElementById('mood-value');
   const cls = document.getElementById('mood-class');
   const gauge = document.getElementById('mood-gauge');
-  
+
   if (text) text.textContent = data.sentiment;
-  
+
   if (gauge) {
     gauge.style.width = ((value + 1) / 2 * 100) + '%';
     gauge.style.backgroundColor = getMoodColor(value);
   }
-  
+
   if (cls) {
-    cls.textContent = getMoodClass(value);
-    cls.className = 'mood ' + getMoodClassName(value);
+    // C-MITTEL: Kategorie aus der Backend-Kategorie ableiten statt eigener
+    // JS-Schwellenberechnung — data.sentiment hat das Format "0.23 (positiv)",
+    // die Kategorie in Klammern kommt direkt vom Backend/Firmware
+    // (appState.sentimentCategory) und ist die "single source of truth".
+    // Fallback auf ledIndex-basierte Ableitung falls das Format unerwartet ist.
+    const categoryMatch = data.sentiment.match(/\(([^)]+)\)/);
+    const categoryText = categoryMatch ? categoryMatch[1].trim().toLowerCase() : null;
+    const displayName = categoryText ? capitalizeFirst(categoryText) : getMoodClass(value);
+    const className = (categoryText && MOOD_CATEGORY_CLASS_MAP[categoryText])
+      ? MOOD_CATEGORY_CLASS_MAP[categoryText]
+      : getMoodClassName(value);
+
+    cls.textContent = displayName;
+    cls.className = 'mood ' + className;
   }
 }
 
+function capitalizeFirst(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function getMoodColor(value) {
-  return value >= 0.30 ? '#20c997' :
+  // C-NIEDRIG: "Sehr positiv" bekommt eine eigene Farbe (#12b886) statt mit
+  // "Positiv" (#20c997) zu verschmelzen — beide Stufen waren zuvor visuell
+  // ununterscheidbar
+  return value >= 0.30 ? '#12b886' :
          value >= 0.10 ? '#20c997' :
          value >= -0.20 ? '#6c757d' :
          value >= -0.50 ? '#f58220' : '#e83e3e';
 }
 
+// Fallback-Ableitung falls das Backend keine Kategorie im erwarteten Format liefert
 function getMoodClass(value) {
   return value >= 0.30 ? 'Sehr positiv' :
          value >= 0.10 ? 'Positiv' :
@@ -314,11 +362,23 @@ function updateSwitches(data) {
   const brightness = document.getElementById('brightness');
   const brightnessVal = document.getElementById('brightness-val');
 
-  if (lightSwitch) lightSwitch.checked = data.lightOn;
-  if (modeSwitch) modeSwitch.checked = data.mode === 'Auto';
+  if (lightSwitch) {
+    lightSwitch.checked = data.lightOn;
+    lightSwitch.disabled = false; // C-MITTEL: erst nach echtem Zustand vom Gerät aktivieren
+  }
+  if (modeSwitch) {
+    modeSwitch.checked = data.mode === 'Auto';
+    modeSwitch.disabled = false;
+  }
   if (modeText) modeText.textContent = data.mode;
-  if (brightness) brightness.value = data.brightness || 255;
-  if (brightnessVal) brightnessVal.textContent = data.brightness || 255;
+  // C-NIEDRIG: Waehrend der Nutzer den Slider zieht (Flag von index.html
+  // pointerdown/pointerup gesetzt) den Wert NICHT vom Poll ueberschreiben lassen —
+  // sonst springt der Slider waehrend des Ziehens auf den zuletzt vom Geraet
+  // gemeldeten Wert zurueck
+  if (!window.brightnessSliderActive) {
+    if (brightness) brightness.value = data.brightness || 255;
+    if (brightnessVal) brightnessVal.textContent = data.brightness || 255;
+  }
 }
 
 // Control functions
@@ -372,8 +432,9 @@ window.onload = function() {
     if (themeBtn) themeBtn.innerHTML = '☀️';
   }
   
-  // Initial data load
-  refreshLog();
+  // C-PERF: /logs-Polling nur starten, wenn #logContent tatsächlich existiert —
+  // mood.html/setup.html pollen sonst ins Leere (kein logContent-Element vorhanden)
+  const hasLogContent = document.getElementById('logContent') !== null;
 
   // Status-Polling nur starten, wenn die Dashboard-Elemente tatsächlich existieren
   // (C3) — script.js wird auch von mood.html mitgeladen, das kein #leds-Element hat
@@ -388,7 +449,10 @@ window.onload = function() {
     // Intervall von 2000ms auf 5000ms erhöht (C3) — reduziert Serverlast
     refreshStatusInterval = setInterval(refreshStatus, 5000);
   }
-  refreshLogInterval = setInterval(refreshLog, 5000);
+  if (hasLogContent) {
+    refreshLog();
+    refreshLogInterval = setInterval(refreshLog, 5000);
+  }
   
   // Setup color grid
   const colors = ['#ffffff', '#e9ecef', '#adb5bd', '#495057', '#20c997', '#0dcaf0', '#6610f2', '#e83e3e'];
