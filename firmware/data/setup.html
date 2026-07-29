@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Add favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body>
     <div class="header">
@@ -355,24 +355,30 @@
         var fd = new FormData();
         fd.append(fieldName, file, file.name);
 
+        // C5: nur als Erfolg werten, wenn der Upload tatsächlich 100% erreicht hatte,
+        // BEVOR die Verbindung abbrach — sonst wird ein Abbruch mitten im Upload
+        // (WLAN-Aussetzer, Gerät nicht erreichbar) fälschlich als Erfolg gemeldet
+        var uploadReached100 = false;
         xhr.upload.addEventListener('progress', function(e) {
             if (e.lengthComputable) {
                 var pct = Math.round((e.loaded / e.total) * 100);
                 barEl.style.width = pct + '%';
                 barEl.textContent = pct + '%';
+                if (pct >= 100) { uploadReached100 = true; }
             }
         });
         xhr.addEventListener('load', function() {
             callback(xhr.status === 200, xhr.responseText);
         });
         xhr.addEventListener('error', function() {
-            // Firmware-Flash: Connection bricht ab weil ESP neustartet = Erfolg
-            if (url === '/update') { callback(true, 'OK'); }
-            else { callback(false, 'Verbindung fehlgeschlagen'); }
+            // Firmware-Flash: Connection bricht ab weil ESP neustartet = Erfolg,
+            // ABER nur wenn der Upload wirklich vollständig war (C5)
+            if (url === '/update' && uploadReached100) { callback(true, 'OK'); }
+            else { callback(false, 'Verbindung fehlgeschlagen' + (url === '/update' && !uploadReached100 ? ' (Upload nicht vollständig)' : '')); }
         });
         xhr.addEventListener('timeout', function() {
-            if (url === '/update') { callback(true, 'OK'); }
-            else { callback(false, 'Timeout'); }
+            if (url === '/update' && uploadReached100) { callback(true, 'OK'); }
+            else { callback(false, 'Timeout' + (url === '/update' && !uploadReached100 ? ' (Upload nicht vollständig)' : '')); }
         });
         xhr.timeout = 120000;
         xhr.open('POST', url);

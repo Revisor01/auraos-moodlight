@@ -27,8 +27,16 @@ function refreshLog() {
     .catch(err => console.error('Log error:', err));
 }
 
+// In-Flight-Guard gegen überlappende Requests (C3) — verhindert, dass ein
+// langsamer Request von einem später gestarteten überholt wird und die UI
+// mit veralteten Daten überschreibt
+let refreshStatusInFlight = false;
+
 // Status aktualisieren
 function refreshStatus() {
+  if (refreshStatusInFlight) return;
+  refreshStatusInFlight = true;
+
   fetch('/api/status')
     .then(r => r.json())
     .then(data => {
@@ -37,14 +45,15 @@ function refreshStatus() {
       updateMood(data);
       updatePercentile(data);
       updateSwitches(data);
-      
+
       // Version aktualisieren
       const versionEl = document.getElementById('version');
       if (versionEl && data.version) {
         versionEl.textContent = 'v' + data.version;
       }
     })
-    .catch(err => console.error('Status error:', err));
+    .catch(err => console.error('Status error:', err))
+    .finally(() => { refreshStatusInFlight = false; });
 }
 
 // Sentiment aktualisieren
@@ -313,26 +322,45 @@ function updateSwitches(data) {
 }
 
 // Control functions
+// Alle vier Steuerfunktionen: .catch() ergänzt (C4) — bei Netzwerkfehlern wird
+// refreshStatus() trotzdem aufgerufen, damit die UI den tatsächlichen Geräte-
+// Zustand zeigt statt eines optimistisch angenommenen (Rollback bei Fehlschlag).
 function toggleLight() {
   fetch('/toggle-light')
-    .then(() => setTimeout(refreshStatus, 300));
+    .then(() => setTimeout(refreshStatus, 300))
+    .catch(err => {
+      console.error('toggleLight error:', err);
+      setTimeout(refreshStatus, 300);
+    });
 }
 
 function toggleMode() {
   fetch('/toggle-mode')
-    .then(() => setTimeout(refreshStatus, 300));
+    .then(() => setTimeout(refreshStatus, 300))
+    .catch(err => {
+      console.error('toggleMode error:', err);
+      setTimeout(refreshStatus, 300);
+    });
 }
 
 function setColor(color) {
   const hexColor = color.replace('#', '');
   fetch(`/set-color?hex=${hexColor}`)
-    .then(() => setTimeout(refreshStatus, 300));
+    .then(() => setTimeout(refreshStatus, 300))
+    .catch(err => {
+      console.error('setColor error:', err);
+      setTimeout(refreshStatus, 300);
+    });
 }
 
 function setBrightness(value) {
   document.getElementById('brightness-val').textContent = value;
   fetch(`/set-brightness?value=${value}`)
-    .then(() => setTimeout(refreshStatus, 300));
+    .then(() => setTimeout(refreshStatus, 300))
+    .catch(err => {
+      console.error('setBrightness error:', err);
+      setTimeout(refreshStatus, 300);
+    });
 }
 
 // Initialization
@@ -346,12 +374,20 @@ window.onload = function() {
   
   // Initial data load
   refreshLog();
-  refreshStatus();
-  
-  // Setup periodic updates
+
+  // Status-Polling nur starten, wenn die Dashboard-Elemente tatsächlich existieren
+  // (C3) — script.js wird auch von mood.html mitgeladen, das kein #leds-Element hat
+  // und daher nicht unnötig alle 2s /api/status pollen soll
+  const isDashboard = document.getElementById('leds') !== null;
+
   clearInterval(refreshStatusInterval);
   clearInterval(refreshLogInterval);
-  refreshStatusInterval = setInterval(refreshStatus, 2000);
+
+  if (isDashboard) {
+    refreshStatus();
+    // Intervall von 2000ms auf 5000ms erhöht (C3) — reduziert Serverlast
+    refreshStatusInterval = setInterval(refreshStatus, 5000);
+  }
   refreshLogInterval = setInterval(refreshLog, 5000);
   
   // Setup color grid

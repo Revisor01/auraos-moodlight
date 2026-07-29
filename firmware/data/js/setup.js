@@ -10,19 +10,13 @@ function pageInit() {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const tabId = this.getAttribute('data-tab');
-            
+
             // Aktiviert den ausgewählten Tab und deaktiviert alle anderen
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabId + '-tab').classList.add('active');
             document.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
             this.classList.add('active');
-            
-            // Check UI version when UI update tab is opened
-            if (tabId === 'ui-update') {
-                loadUiVersion();
-                loadFirmwareVersion(); 
-            }
-            
+
             // Lädt tab-spezifische Daten
             // REMOVED v9.0: RSS feeds tab
             // if (tabId === 'feeds') {
@@ -42,282 +36,33 @@ function pageInit() {
             }
         });
     });
-    
-    // UI upload form handling - sollte nur einmal beim Initialisieren gesetzt werden
-    const uploadForm = document.getElementById('ui-upload-form');
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('ui-zip');
-            if (!fileInput.files.length) {
-                e.preventDefault();
-                alert('Bitte wählen Sie eine ZIP-Datei aus.');
-                return;
-            }
-            
-            const fileName = fileInput.files[0].name;
-            if (!fileName.endsWith('.zip')) {
-                e.preventDefault();
-                alert('Die ausgewählte Datei ist keine ZIP-Datei.');
-                return;
-            }
-            
-            if (!fileName.startsWith('UI-') || fileName.indexOf('-AuraOS') === -1) {
-                if (!confirm('Die Datei folgt nicht dem empfohlenen Namensformat (UI-X.X-AuraOS.zip). Trotzdem fortfahren?')) {
-                    e.preventDefault();
-                    return;
-                }
-            }
-            
-            // Show progress container
-            document.getElementById('upload-progress-container').style.display = 'block';
-            
-            // Disable button
-            document.getElementById('ui-upload-btn').disabled = true;
-            document.getElementById('ui-upload-btn').innerHTML = 'Uploading...';
-            
-            // Set up progress tracking
-            const xhr = new XMLHttpRequest();
-            const formData = new FormData(this);
-            
-            // Track upload progress
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentage = Math.round((e.loaded * 100) / e.total);
-                    document.getElementById('upload-progress-bar').style.width = percentage + '%';
-                    document.getElementById('upload-progress-bar').textContent = percentage + '%';
-                    
-                    // Update status message
-                    if (percentage < 100) {
-                        document.getElementById('upload-status').textContent = 'Uploading: ' + formatFileSize(e.loaded) + ' / ' + formatFileSize(e.total);
-                    } else {
-                        document.getElementById('upload-status').textContent = 'Upload complete. Processing ZIP file...';
-                    }
-                }
-            });
-            
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 200) {
-                    document.getElementById('upload-status').textContent = 'Update successful! Redirecting...';
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 3000);
-                } else {
-                    document.getElementById('upload-status').textContent = 'Error occurred during update.';
-                    document.getElementById('ui-upload-btn').disabled = false;
-                    document.getElementById('ui-upload-btn').innerHTML = 'Upload & Installieren';
-                }
-            });
-            
-            xhr.addEventListener('error', function() {
-                document.getElementById('upload-status').textContent = 'Connection error occurred.';
-                document.getElementById('ui-upload-btn').disabled = false;
-                document.getElementById('ui-upload-btn').innerHTML = 'Upload & Installieren';
-            });
-            
-            // Send the form data using XHR
-            xhr.open('POST', this.action, true);
-            xhr.send(formData);
-            
-            // Prevent the default form submission
-            e.preventDefault();
-        });
-    }
-    
-    // Firmware upload form handling
-    const firmwareForm = document.getElementById('firmware-upload-form');
-    if (firmwareForm) {
-        firmwareForm.addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('firmware');
-            if (!fileInput.files.length) {
-                e.preventDefault();
-                alert('Bitte wählen Sie eine Firmware-Datei aus.');
-                return;
-            }
-            
-            const fileName = fileInput.files[0].name;
-            if (!fileName.endsWith('.bin')) {
-                e.preventDefault();
-                alert('Die ausgewählte Datei ist keine .bin Firmware-Datei.');
-                return;
-            }
-            
-            // Add naming convention check
-            if (!fileName.startsWith('Firmware-') || fileName.indexOf('-AuraOS') === -1) {
-                if (!confirm('Die Datei folgt nicht dem empfohlenen Namensformat (Firmware-X.X-AuraOS.bin). Trotzdem fortfahren?')) {
-                    e.preventDefault();
-                    return;
-                }
-            }
-            
-            // Show progress container
-            document.getElementById('firmware-progress-container').style.display = 'block';
-            
-            // Disable button
-            document.getElementById('firmware-upload-btn').disabled = true;
-            document.getElementById('firmware-upload-btn').innerHTML = 'Uploading...';
-            
-            // Set up progress tracking
-            const xhr = new XMLHttpRequest();
-            const formData = new FormData(this);
-            
-            // Track upload progress
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentage = Math.round((e.loaded * 100) / e.total);
-                    document.getElementById('firmware-progress-bar').style.width = percentage + '%';
-                    document.getElementById('firmware-progress-bar').textContent = percentage + '%';
-                    
-                    // Update status message
-                    if (percentage < 100) {
-                        document.getElementById('firmware-status').textContent = 'Uploading: ' + formatFileSize(e.loaded) + ' / ' + formatFileSize(e.total);
-                    } else {
-                        document.getElementById('firmware-status').textContent = 'Upload complete. Installing firmware...';
-                    }
-                }
-            });
-            
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 200) {
-                    document.getElementById('firmware-status').textContent = 'Firmware Update erfolgreich! Gerät startet neu...';
-                    // Don't reload immediately, let user see success message
-                } else {
-                    document.getElementById('firmware-status').textContent = 'Fehler beim Firmware-Update.';
-                    document.getElementById('firmware-upload-btn').disabled = false;
-                    document.getElementById('firmware-upload-btn').innerHTML = 'Firmware aktualisieren';
-                }
-            });
-            
-            xhr.addEventListener('error', function() {
-                document.getElementById('firmware-status').textContent = 'Verbindungsfehler während des Updates.';
-                document.getElementById('firmware-upload-btn').disabled = false;
-                document.getElementById('firmware-upload-btn').innerHTML = 'Firmware aktualisieren';
-            });
-            
-            // Send the form data using XHR
-            xhr.open('POST', this.action, true);
-            xhr.send(formData);
-            
-            // Prevent the default form submission
-            e.preventDefault();
-        });
-        
-        // Hide progress container initially
-        const progressContainer = document.getElementById('firmware-progress-container');
-        if (progressContainer) {
-            progressContainer.style.display = 'none';
-        }
-    }
-    
+
     // Initialen Tab laden (falls benötigt)
     const activeTab = document.querySelector('.tab-link.active');
     if (activeTab) {
         const tabId = activeTab.getAttribute('data-tab');
-        if (tabId === 'ui-update') {
-            loadUiVersion();
-            loadFirmwareVersion(); // Add this line to load firmware version 
-        } else if (tabId === 'about') {
+        if (tabId === 'about') {
             loadSystemInfo();
         }
     }
     // v9.0: initImportForms() removed - import/export managed in backend
+    // C8: tote UI-/Firmware-Upload-Formular-Handler (ui-upload-form, firmware-upload-form)
+    // entfernt — die entsprechenden Formulare existieren nicht mehr in setup.html.
+    // Der Update-Tab nutzt stattdessen startFullUpdate()/doUpload() (siehe setup.html).
 }
 
 
 // MQTT-Toggle-Event-Handler
 document.addEventListener('DOMContentLoaded', function() {
-    // Original event listeners
     const mqttToggle = document.getElementById('mqtt-enabled');
     if (mqttToggle) {
         mqttToggle.addEventListener('change', function() {
             toggleMqttSettings(this.checked);
         });
     }
-    
-    // UI upload form handling - should be added here to ensure it's only set once
-    const uploadForm = document.getElementById('ui-upload-form');
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('ui-file');
-            if (!fileInput.files.length) {
-                e.preventDefault();
-                alert('Bitte wählen Sie eine TAR-Datei aus.');
-                return;
-            }
-            
-            const fileName = fileInput.files[0].name;
-            if (!fileName.endsWith('.tgz')) {
-                e.preventDefault();
-                alert('Die ausgewählte Datei ist keine TAR-Datei. Bitte wählen Sie eine .tgz Datei.');
-                return;
-            }
-            
-            if (!fileName.startsWith('UI-') || fileName.indexOf('-AuraOS') === -1) {
-                if (!confirm('Die Datei folgt nicht dem empfohlenen Namensformat (UI-X.X-AuraOS.tgz). Trotzdem fortfahren?')) {
-                    e.preventDefault();
-                    return;
-                }
-            }
-            
-            // Show progress container
-            document.getElementById('upload-progress-container').style.display = 'block';
-            
-            // Disable button
-            document.getElementById('ui-upload-btn').disabled = true;
-            document.getElementById('ui-upload-btn').innerHTML = 'Uploading...';
-            
-            // Set up progress tracking
-            const xhr = new XMLHttpRequest();
-            const formData = new FormData(this);
-            
-            // Track upload progress
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentage = Math.round((e.loaded * 100) / e.total);
-                    document.getElementById('upload-progress-bar').style.width = percentage + '%';
-                    document.getElementById('upload-progress-bar').textContent = percentage + '%';
-                    
-                    // Update status message
-                    if (percentage < 100) {
-                        document.getElementById('upload-status').textContent = 'Uploading: ' + formatFileSize(e.loaded) + ' / ' + formatFileSize(e.total);
-                    } else {
-                        document.getElementById('upload-status').textContent = 'Upload complete. Processing TAR file...';
-                    }
-                }
-            });
-            
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 200) {
-                    document.getElementById('upload-status').textContent = 'Update successful! Redirecting...';
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 3000);
-                } else {
-                    document.getElementById('upload-status').textContent = 'Error occurred during update.';
-                    document.getElementById('ui-upload-btn').disabled = false;
-                    document.getElementById('ui-upload-btn').innerHTML = 'Upload & Installieren';
-                }
-            });
-            
-            xhr.addEventListener('error', function() {
-                document.getElementById('upload-status').textContent = 'Connection error occurred.';
-                document.getElementById('ui-upload-btn').disabled = false;
-                document.getElementById('ui-upload-btn').innerHTML = 'Upload & Installieren';
-            });
-            
-            // Send the form data using XHR
-            xhr.open('POST', this.action, true);
-            xhr.send(formData);
-            
-            // Prevent the default form submission
-            e.preventDefault();
-        });
-        
-        // Hide progress container initially
-        const progressContainer = document.getElementById('upload-progress-container');
-        if (progressContainer) {
-            progressContainer.style.display = 'none';
-        }
-    }
+    // C8: tote (doppelte) UI-Upload-Formular-Handler entfernt — Formular
+    // 'ui-upload-form' existiert nicht mehr, Update-Tab nutzt startFullUpdate()
+    // in setup.html.
 });
 
 function formatFileSize(bytes) {
@@ -440,19 +185,6 @@ function loadStorageInfo2() {
     });
 }
 
-function loadUiVersion() {
-    fetch('/api/ui-version')
-    .then(r => r.json())
-    .then(data => {
-        if (data.version) {
-            document.getElementById('current-ui-version').textContent = data.version + ' - AuraOS';
-        }
-    })
-    .catch(err => {
-        console.error('Error loading UI version:', err);
-    });
-}
-
 function showAllSettings() {
     fetch('/api/settings/all')
     .then(r => r.json())
@@ -529,22 +261,6 @@ function loadHardwareSettings() {
     });
 }
 
-function loadFirmwareVersion() {
-    fetch('/api/firmware-version')
-    .then(r => r.json())
-    .then(data => {
-        if (data.version) {
-            const versionElem = document.getElementById('current-firmware-version');
-            if (versionElem) {
-                versionElem.textContent = data.version + ' - AuraOS';
-            }
-        }
-    })
-    .catch(err => {
-        console.error('Error loading firmware version:', err);
-    });
-}
-
 // Save WiFi Settings
 function saveWiFiSettings() {
     const ssid = document.getElementById('wifi-ssid').value.trim();
@@ -578,6 +294,29 @@ function saveWiFiSettings() {
     .catch(error => {
         console.error('Error saving WiFi settings:', error);
         alert('Fehler beim Speichern: ' + error.message);
+    });
+}
+
+// WLAN-Einstellungen zurücksetzen (C1) — Button in setup.html war bisher ohne Implementierung
+function resetWiFi() {
+    if (!confirm('WLAN-Einstellungen wirklich zurücksetzen? Das Gerät startet danach im Access-Point-Modus neu.')) {
+        return;
+    }
+
+    fetch('/resetwifi', {
+        method: 'POST'
+    })
+    .then(response => response.text())
+    .then(result => {
+        if (result === 'OK') {
+            alert('WLAN-Einstellungen zurückgesetzt. Gerät wird neu gestartet...');
+        } else {
+            alert('Fehler beim Zurücksetzen der WLAN-Einstellungen: ' + result);
+        }
+    })
+    .catch(error => {
+        console.error('Error resetting WiFi settings:', error);
+        alert('Fehler beim Zurücksetzen: ' + error.message);
     });
 }
 
@@ -924,363 +663,3 @@ function toggleMqttSettings(enabled) {
         mqttSettings.classList.toggle('hidden', !enabled);
     }
 }
-
-// ===== REMOVED IN v9.0: RSS Feed Functions =====
-// RSS feeds are now managed entirely in the backend (app.py)
-// The following functions have been disabled:
-// - loadFeeds()
-// - renderFeeds()
-// - addFeed()
-// - toggleFeed()
-// - deleteFeed()
-// - saveFeeds()
-//
-// If you need to re-enable RSS configuration, switch back to v8.6
-
-/*
-function loadFeeds() {
-    fetch('/api/feeds')
-    .then(r => r.json())
-    .then(data => {
-        if (data.feeds) {
-            feeds = data.feeds;
-            renderFeeds();
-        }
-    })
-    .catch(err => {
-        console.error('Error loading feeds:', err);
-    });
-}
-
-function renderFeeds() {
-    const feedsList = document.getElementById('feeds-list');
-    if (!feedsList) return;
-    
-    feedsList.innerHTML = '';
-    
-    feeds.forEach((feed, index) => {
-        const item = document.createElement('div');
-        item.className = 'feed-item';
-        
-        const enabled = feed.enabled !== false;
-        
-        item.innerHTML = `
-            <div class="feed-header">
-                <div class="feed-name">${feed.name}</div>
-                <div class="feed-controls">
-                    <label class="switch">
-                        <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleFeed(${index})">
-                        <span class="slider"></span>
-                    </label>
-                    <button class="btn btn-sm" onclick="deleteFeed(${index})">🗑️</button>
-                </div>
-            </div>
-            <div class="feed-url">${feed.url}</div>
-        `;
-        
-        feedsList.appendChild(item);
-    });
-}
-
-function addFeed() {
-    const name = document.getElementById('feed-name').value.trim();
-    const url = document.getElementById('feed-url').value.trim();
-    
-    if (!name || !url) {
-        alert('Bitte Name und URL eingeben');
-        return;
-    }
-    
-    feeds.push({
-        name: name,
-        url: url,
-        enabled: true
-    });
-    
-    document.getElementById('feed-name').value = '';
-    document.getElementById('feed-url').value = '';
-    
-    renderFeeds();
-}
-
-function toggleFeed(index) {
-    if (index >= 0 && index < feeds.length) {
-        feeds[index].enabled = !feeds[index].enabled;
-        renderFeeds();
-    }
-}
-
-function deleteFeed(index) {
-    if (index >= 0 && index < feeds.length) {
-        if (confirm(`Feed "${feeds[index].name}" wirklich löschen?`)) {
-            feeds.splice(index, 1);
-            renderFeeds();
-        }
-    }
-}
-
-function saveFeeds() {
-    fetch('/api/feeds', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ feeds: feeds })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            alert('RSS-Feeds erfolgreich gespeichert');
-        } else {
-            alert('Fehler beim Speichern: ' + (data.error || 'Unbekannter Fehler'));
-        }
-    })
-    .catch(err => {
-        console.error('Error saving feeds:', err);
-        alert('Verbindungsfehler beim Speichern');
-    });
-}
-*/
-// ===== END OF REMOVED RSS FUNCTIONS =====
-
-// ===== REMOVED v9.0: Import/Export Functions - data managed in backend =====
-/*
-function exportStatistics() {
-    // Ladeindikator anzeigen
-    const exportBtn = document.getElementById('export-stats-btn');
-    if (exportBtn) {
-        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportiere...';
-        exportBtn.disabled = true;
-    }
-    
-    fetch('/api/export/stats')
-    .then(response => response.blob())
-    .then(blob => {
-        // Download-Link erstellen
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'moodlight_stats.csv';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        
-        // Button zurücksetzen
-        if (exportBtn) {
-            exportBtn.innerHTML = '<i class="fas fa-file-csv" aria-hidden="true"></i> Statistikdaten exportieren';
-            exportBtn.disabled = false;
-        }
-        
-        // Erfolgsmeldung anzeigen
-        const resultDiv = document.getElementById('export-result');
-        if (resultDiv) {
-            resultDiv.innerHTML = '<div class="alert alert-success">Statistikdaten erfolgreich exportiert</div>';
-            setTimeout(() => {
-                resultDiv.innerHTML = '';
-            }, 3000);
-        }
-    })
-    .catch(error => {
-        console.error('Fehler beim Exportieren der Statistiken:', error);
-        
-        // Button zurücksetzen
-        if (exportBtn) {
-            exportBtn.innerHTML = '<i class="fas fa-file-csv" aria-hidden="true"></i> Statistikdaten exportieren';
-            exportBtn.disabled = false;
-        }
-        
-        // Fehlermeldung anzeigen
-        const resultDiv = document.getElementById('export-result');
-        if (resultDiv) {
-            resultDiv.innerHTML = `<div class="alert alert-danger">Fehler beim Exportieren: ${error.message}</div>`;
-        }
-    });
-}
-
-// Export Einstellungen
-function exportSettings() {
-    // Ladeindikator anzeigen
-    const exportBtn = document.getElementById('export-settings-btn');
-    if (exportBtn) {
-        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportiere...';
-        exportBtn.disabled = true;
-    }
-    
-    fetch('/api/export/settings')
-    .then(response => response.blob())
-    .then(blob => {
-        // Download-Link erstellen
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'moodlight_settings.json';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        
-        // Button zurücksetzen
-        if (exportBtn) {
-            exportBtn.innerHTML = '<i class="fas fa-file-code" aria-hidden="true"></i> Einstellungen exportieren';
-            exportBtn.disabled = false;
-        }
-        
-        // Erfolgsmeldung anzeigen
-        const resultDiv = document.getElementById('export-result');
-        if (resultDiv) {
-            resultDiv.innerHTML = '<div class="alert alert-success">Einstellungen erfolgreich exportiert</div>';
-            setTimeout(() => {
-                resultDiv.innerHTML = '';
-            }, 3000);
-        }
-    })
-    .catch(error => {
-        console.error('Fehler beim Exportieren der Einstellungen:', error);
-        
-        // Button zurücksetzen
-        if (exportBtn) {
-            exportBtn.innerHTML = '<i class="fas fa-file-code" aria-hidden="true"></i> Einstellungen exportieren';
-            exportBtn.disabled = false;
-        }
-        
-        // Fehlermeldung anzeigen
-        const resultDiv = document.getElementById('export-result');
-        if (resultDiv) {
-            resultDiv.innerHTML = `<div class="alert alert-danger">Fehler beim Exportieren: ${error.message}</div>`;
-        }
-    });
-}
-
-// Initialisiere Import-Formulare
-function initImportForms() {
-    // Statistik-Import-Formular
-    const statsForm = document.getElementById('stats-upload-form');
-    if (statsForm) {
-        statsForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const fileInput = document.getElementById('stats-file');
-            if (!fileInput.files.length) {
-                alert('Bitte wählen Sie eine CSV-Datei aus.');
-                return;
-            }
-            
-            // Ladezustand anzeigen
-            const submitBtn = statsForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importiere...';
-            
-            // FormData erstellen
-            const formData = new FormData(statsForm);
-            
-            // Fetch verwenden, um Formulardaten zu senden
-            fetch('/api/import/stats', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    // Erfolgsmeldung anzeigen
-                    const resultDiv = document.getElementById('import-result');
-                    if (resultDiv) {
-                        resultDiv.innerHTML = '<div class="alert alert-success">Statistikdaten erfolgreich importiert</div>';
-                        setTimeout(() => {
-                            resultDiv.innerHTML = '';
-                        }, 5000);
-                    }
-                } else {
-                    throw new Error('Import fehlgeschlagen');
-                }
-            })
-            .catch(error => {
-                console.error('Fehler beim Importieren der Statistiken:', error);
-                
-                // Fehlermeldung anzeigen
-                const resultDiv = document.getElementById('import-result');
-                if (resultDiv) {
-                    resultDiv.innerHTML = `<div class="alert alert-danger">Fehler beim Importieren: ${error.message}</div>`;
-                }
-            })
-            .finally(() => {
-                // Formular zurücksetzen
-                statsForm.reset();
-                document.getElementById('stats-file-label').textContent = 'Statistikdatei wählen';
-                
-                // Button zurücksetzen
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-file-import" aria-hidden="true"></i> Statistikdaten importieren';
-            });
-        });
-    }
-    
-    // Einstellungen-Import-Formular
-    const settingsForm = document.getElementById('settings-upload-form');
-    if (settingsForm) {
-        settingsForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const fileInput = document.getElementById('settings-file');
-            if (!fileInput.files.length) {
-                alert('Bitte wählen Sie eine JSON-Datei aus.');
-                return;
-            }
-            
-            // Ladezustand anzeigen
-            const submitBtn = settingsForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importiere...';
-            
-            // FormData erstellen
-            const formData = new FormData(settingsForm);
-            
-            // Fetch verwenden, um Formulardaten zu senden
-            fetch('/api/import/settings', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    // Erfolgsmeldung anzeigen
-                    const resultDiv = document.getElementById('import-result');
-                    if (resultDiv) {
-                        resultDiv.innerHTML = '<div class="alert alert-success">Einstellungen erfolgreich importiert. Das Gerät wird neu gestartet...</div>';
-                    }
-                    
-                    // Nach 3 Sekunden neu laden (da der Server neu startet)
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 5000);
-                } else {
-                    throw new Error('Import fehlgeschlagen');
-                }
-            })
-            .catch(error => {
-                console.error('Fehler beim Importieren der Einstellungen:', error);
-                
-                // Fehlermeldung anzeigen
-                const resultDiv = document.getElementById('import-result');
-                if (resultDiv) {
-                    resultDiv.innerHTML = `<div class="alert alert-danger">Fehler beim Importieren: ${error.message}</div>`;
-                }
-                
-                // Button zurücksetzen
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-file-import" aria-hidden="true"></i> Einstellungen importieren';
-            });
-        });
-    }
-    
-    // Datei-Input-Label-Updater
-    document.getElementById('stats-file')?.addEventListener('change', function() {
-        const label = document.getElementById('stats-file-label');
-        label.textContent = this.files.length ? this.files[0].name : 'Statistikdatei wählen';
-    });
-    
-    document.getElementById('settings-file')?.addEventListener('change', function() {
-        const label = document.getElementById('settings-file-label');
-        label.textContent = this.files.length ? this.files[0].name : 'Einstellungsdatei wählen';
-    });
-}
-*/
-// ===== END OF REMOVED IMPORT/EXPORT FUNCTIONS =====
