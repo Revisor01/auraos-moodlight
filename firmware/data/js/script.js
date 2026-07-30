@@ -123,13 +123,15 @@ function updateStats(data) {
   const dhtEl = document.getElementById('dht');
   
   if (dhtRow) {
+    // visibility statt display: Kachel behaelt ihren Platz im Grid, wodurch
+    // kein Reflow der .stat-tiles-Spaltenaufteilung ausgeloest wird
     if (data.dhtEnabled) {
-      dhtRow.style.display = 'flex';
+      dhtRow.style.visibility = 'visible';
       if (dhtEl && data.dht !== undefined) {
         dhtEl.textContent = data.dht;
       }
     } else {
-      dhtRow.style.display = 'none';
+      dhtRow.style.visibility = 'hidden';
     }
   } else if (dhtEl) {
     if (data.dhtEnabled && data.dht !== undefined) {
