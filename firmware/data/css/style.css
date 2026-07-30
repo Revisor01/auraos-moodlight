@@ -39,7 +39,18 @@
     /* Layout */
     --radius: 8px;
     --radius-sm: 4px;
+    --radius-lg: 16px;
     --transition: 0.15s;
+
+    /* Font-Stacks: Webfont zuerst, System-Stack als Fallback (Captive Portal /
+       kein Internet bleibt die UI dadurch sofort mit System-Font nutzbar) */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', Courier, monospace;
+
+    /* Karten im mood.html-Look (Form uebernommen, Farbpalette bleibt eigenstaendig) */
+    --card-gradient: linear-gradient(135deg, #fff 0%, #f9f9f9 100%);
+    --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.05), 0 6px 6px rgba(0, 0, 0, 0.07);
+    --card-shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.08);
 
     /* Legacy-Aliase für Rückwärtskompatibilität */
     --primary-color: var(--primary);
@@ -54,7 +65,7 @@
     --warning-color-dark: var(--warning-dark);
     --border-radius: var(--radius);
     --border-radius-sm: var(--radius);
-    --transition-speed: var(--transition);
+    --transition-speed: 0.3s;
 }
 
 /* ===== DARK MODE VARIABLEN ===== */
@@ -65,6 +76,11 @@
     --text-muted: #8d95a0;
     --border: #3a3f4a;
     --shadow: rgba(0, 0, 0, 0.35);
+
+    /* Karten-Verlauf/Schatten an die Dark-Mode-Oberflaechenfarbe angeglichen */
+    --card-gradient: linear-gradient(135deg, #2b2f38 0%, #252830 100%);
+    --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.25), 0 6px 6px rgba(0, 0, 0, 0.2);
+    --card-shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.35), 0 10px 10px rgba(0, 0, 0, 0.25);
 }
 
 /* ===== FONT AWESOME (Icons nicht überschreiben) ===== */
@@ -77,7 +93,7 @@ i[class^="fa"] {
 
 /* ===== BASIS ===== */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-sans);
     background: var(--bg);
     color: var(--text);
     padding: 15px;
@@ -88,13 +104,73 @@ body {
 
 /* ===== KARTEN ===== */
 .card {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 20px;
+    background: var(--card-gradient);
+    border-radius: var(--radius-lg);
+    padding: 24px;
     margin-bottom: 16px;
     border: 1px solid var(--border);
-    box-shadow: 0 2px 8px var(--shadow);
-    transition: background-color 0.3s, border-color 0.3s;
+    box-shadow: var(--card-shadow);
+    transition: background-color var(--transition-speed), border-color var(--transition-speed),
+        box-shadow var(--transition-speed), transform var(--transition-speed);
+}
+
+.card:hover {
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-2px);
+}
+
+/* Icon-Kreis vor Karten-Ueberschriften (mood.html-Stat-Icon-Look) */
+.card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    border-radius: 50%;
+    background: rgba(138, 43, 226, 0.1);
+    color: var(--primary);
+}
+
+.card-icon i {
+    padding-right: 0 !important;
+}
+
+/* Karten-Kopfzeile (Markup existiert bereits in setup.html) */
+.card-header {
+    margin-bottom: 16px;
+}
+
+/* Kachel-Grid fuer Statuswerte (System-Status, Info-Tab) */
+.stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.stat-tile {
+    text-align: center;
+    padding: 12px 8px;
+}
+
+.stat-tile .stat-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.stat-tile .stat-value {
+    display: block;
+    font-size: 1.3rem;
+}
+
+/* Abgesetzte Gruppe fuer Toggle-Zeilen (Licht/Auto-Modus) */
+.control-group {
+    padding: 4px 0 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.control-group .flex:last-child {
+    margin-bottom: 0;
 }
 
 /* ===== HEADER ===== */
@@ -175,6 +251,9 @@ h2 {
 .stat-label {
     color: var(--text-muted);
     font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
 }
 
 /* ===== SCORE-FARB-KLASSEN (5 Stufen, identisch Dashboard) ===== */
@@ -521,12 +600,13 @@ input[type="color"] {
     margin-top: 5px;
 }
 
-/* ===== TABS ===== */
+/* ===== TABS (Pill-Optik im mood.html-Look) ===== */
 .nav-tabs {
     display: flex;
-    border-bottom: 2px solid var(--border);
+    background: rgba(189, 195, 199, 0.1);
+    border-radius: 10px;
     margin-bottom: 16px;
-    padding: 0;
+    padding: 5px;
     list-style: none;
     flex-wrap: wrap;
     gap: 2px;
@@ -534,9 +614,12 @@ input[type="color"] {
 
 .nav-tabs li,
 .nav-tabs a {
-    margin-right: 4px;
-    margin-bottom: -2px;
     white-space: nowrap;
+}
+
+.nav-tabs li {
+    border-radius: 8px;
+    transition: all var(--transition-speed);
 }
 
 .nav-tabs a {
@@ -544,13 +627,11 @@ input[type="color"] {
     padding: 8px 14px;
     text-decoration: none;
     color: var(--text-muted);
-    border: 1px solid transparent;
-    border-bottom: 3px solid transparent;
-    border-top-left-radius: var(--radius-sm);
-    border-top-right-radius: var(--radius-sm);
+    border: none;
+    border-radius: 8px;
     font-weight: 500;
     font-size: 0.9rem;
-    transition: color var(--transition), border-color var(--transition);
+    transition: color var(--transition-speed), background var(--transition-speed);
 }
 
 .nav-tabs a:hover {
@@ -559,9 +640,8 @@ input[type="color"] {
 
 .nav-tabs a.active,
 .nav-tabs li.active a {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    background: var(--surface);
+    color: #fff;
+    background: var(--primary);
     font-weight: 600;
 }
 
@@ -615,7 +695,7 @@ input[type="color"] {
     color: var(--text);
     border-radius: var(--radius-sm);
     padding: 12px;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: var(--font-mono);
     height: 180px;
     overflow: auto;
     font-size: 0.82rem;
@@ -941,7 +1021,11 @@ input[type="color"] {
     }
 
     .card {
-        padding: 15px;
+        padding: 20px;
+    }
+
+    .stat-tiles {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .btn,
@@ -1008,7 +1092,11 @@ input[type="color"] {
 
 @media (max-width: 479px) {
     .card {
-        padding: 12px;
+        padding: 16px;
+    }
+
+    .stat-tiles {
+        grid-template-columns: 1fr;
     }
 
     .nav-tabs a {
