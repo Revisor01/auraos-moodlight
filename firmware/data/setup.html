@@ -494,8 +494,18 @@
                 </button>
             </div>
         </div>
+
+        <div class="card">
+            <h2><span class="card-icon"><i class="fas fa-terminal" aria-hidden="true"></i></span> System Log</h2>
+            <div class="logs" id="logContent" aria-live="polite">Lade Logs...</div>
+            <div class="buttons">
+                <button class="btn" onclick="refreshLog()" aria-label="Logdaten aktualisieren">
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i> Log aktualisieren
+                </button>
+            </div>
+        </div>
     </div>
-    
+
     <script src="/js/script.js"></script>
     <script src="/js/setup.js"></script>
 </body>

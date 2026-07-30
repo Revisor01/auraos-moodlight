@@ -123,13 +123,15 @@ function updateStats(data) {
   const dhtEl = document.getElementById('dht');
   
   if (dhtRow) {
+    // visibility statt display: Kachel behaelt ihren Platz im Grid, wodurch
+    // kein Reflow der .stat-tiles-Spaltenaufteilung ausgeloest wird
     if (data.dhtEnabled) {
-      dhtRow.style.display = 'flex';
+      dhtRow.style.visibility = 'visible';
       if (dhtEl && data.dht !== undefined) {
         dhtEl.textContent = data.dht;
       }
     } else {
-      dhtRow.style.display = 'none';
+      dhtRow.style.visibility = 'hidden';
     }
   } else if (dhtEl) {
     if (data.dhtEnabled && data.dht !== undefined) {
@@ -432,16 +434,16 @@ window.onload = function() {
     if (themeBtn) themeBtn.innerHTML = '☀️';
   }
   
-  // C-PERF: /logs-Polling nur starten, wenn #logContent tatsächlich existiert —
-  // mood.html/setup.html pollen sonst ins Leere (kein logContent-Element vorhanden)
-  const hasLogContent = document.getElementById('logContent') !== null;
-
   // Status-Polling nur starten, wenn die Dashboard-Elemente tatsächlich existieren
   // (C3) — script.js wird auch von mood.html mitgeladen, das kein #leds-Element hat
   // und daher nicht unnötig alle 2s /api/status pollen soll
   const isDashboard = document.getElementById('leds') !== null;
 
   clearInterval(refreshStatusInterval);
+  // Log-Polling wird nicht mehr hier gestartet — #logContent liegt seit dem
+  // Umzug in setup.html/Info-Tab und wird dort tab-gebunden von setup.js
+  // (startLogPolling()/stopLogPolling()) gesteuert, damit /logs nicht dauerhaft
+  // im Hintergrund gepollt wird, waehrend ein anderer Tab aktiv ist
   clearInterval(refreshLogInterval);
 
   if (isDashboard) {
@@ -449,11 +451,7 @@ window.onload = function() {
     // Intervall von 2000ms auf 5000ms erhöht (C3) — reduziert Serverlast
     refreshStatusInterval = setInterval(refreshStatus, 5000);
   }
-  if (hasLogContent) {
-    refreshLog();
-    refreshLogInterval = setInterval(refreshLog, 5000);
-  }
-  
+
   // Setup color grid
   const colors = ['#ffffff', '#e9ecef', '#adb5bd', '#495057', '#20c997', '#0dcaf0', '#6610f2', '#e83e3e'];
   const grid = document.getElementById('color-grid');
