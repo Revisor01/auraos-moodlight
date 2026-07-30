@@ -55,9 +55,10 @@ None.
 |---|-------------|------|--------|-----------|
 | 260729-h73 | Code-Review-Fixes: MQTT-Doppel-Send, Firmware-Validierung, Backend-Fehlerbehandlung, Web-UI-Bugs, CLAUDE.md | 2026-07-29 | 25c9856 | [260729-h73-code-review-fixes-mqtt-doppel-send-firmw](./quick/260729-h73-code-review-fixes-mqtt-doppel-send-firmw/) |
 | 260730-02i | Review-Runde 2: NeoPixel-Use-after-free (Root Cause LED-Pulsieren/Reboots), MQTT-Passwort-Roundtrip, Backend-Härtung (SECRET_KEY, Rate-Limit, Worker-Lebensdauer, SSRF-Guard, Redis-Caching), UI-XSS-Reste, moment.js-Entfernung, build-release.sh | 2026-07-30 | e690ec0, 6e7f74b, d9e5101, 4c57fa9 | [260730-02i-review-runde-2-neopixel-uaf-mqtt-passwor](./quick/260730-02i-review-runde-2-neopixel-uaf-mqtt-passwor/) |
+| 260730-r7v | UI-Redesign index.html (Steuerung/Status/Logs) + setup.html im mood.html-Stil, Fonts (Inter/JetBrains Mono), Bugfix Lädt-Anzeige setup-Header | 2026-07-30 | 567bcd1, dc81d1a | [260730-r7v-ui-redesign-index-html-steuerung-status-](./quick/260730-r7v-ui-redesign-index-html-steuerung-status-/) |
 
 ## Session Continuity
 
 Last session: 2026-07-30
-Stopped at: Review-Runde 2 complete, ready for orchestrator (DB-Migration-Anwendung auf Prod, Deployment)
+Stopped at: Quick 260730-r7v (UI-Redesign) code complete — offen: OTA-UI-Deploy + Human-Verify am Gerät
 Resume file: None
