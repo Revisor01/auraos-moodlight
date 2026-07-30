@@ -13,6 +13,7 @@ extern AppState appState;
 extern HAMqtt mqtt;
 extern HASensor haSentimentScore;
 extern HASensor haSentimentCategory;
+extern HASensor haSentimentPercentile;
 extern HASensor haTemperature;
 extern HASensor haHumidity;
 extern WatchdogManager watchdog;
@@ -315,7 +316,15 @@ void getSentiment()
         handleSentiment(receivedSentiment, apiCategory);
 
         // Perzentil-Daten für Dashboard-Visualisierung speichern
-        if (doc["percentile"].is<float>()) appState.percentile = doc["percentile"].as<float>();
+        if (doc["percentile"].is<float>())
+        {
+            appState.percentile = doc["percentile"].as<float>();
+            // Perzentil an HA publizieren (Umrechnung auf 0-100%)
+            if (appState.mqttEnabled && mqtt.isConnected())
+            {
+                haSentimentPercentile.setValue(floatToString(appState.percentile * 100.0, 0).c_str());
+            }
+        }
         if (doc["headlines_analyzed"].is<int>()) appState.headlinesAnalyzed = doc["headlines_analyzed"].as<int>();
         if (doc["thresholds"].is<JsonObject>()) {
             if (doc["thresholds"]["p20"].is<float>()) appState.thresholdP20 = doc["thresholds"]["p20"].as<float>();
@@ -387,6 +396,7 @@ void getSentiment()
         {
             haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
             haSentimentCategory.setValue(appState.sentimentCategory.c_str());
+            haSentimentPercentile.setValue(floatToString(appState.percentile * 100.0, 0).c_str());
         }
     }
 
