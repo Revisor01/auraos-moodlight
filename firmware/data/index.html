@@ -6,6 +6,10 @@
     <meta name="description" content="AuraOS Moodlight — KI-gestütztes Stimmungslicht basierend auf Weltlage-Analyse">
     <title>AuraOS Moodlight</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap"></noscript>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
@@ -25,7 +29,7 @@
     </div>
 
     <div class="grid">
-        <div class="card" id="weltlage-card" style="padding:28px;">
+        <div class="card" id="weltlage-card">
             <h2><i class="fas fa-globe-europe" aria-hidden="true"></i> Aktuelle Weltlage</h2>
 
             <!-- Score + Gauge -->
@@ -92,29 +96,32 @@
 
         <div class="card">
             <h2>
-                <i class="fas fa-sliders-h" aria-hidden="true"></i> Steuerung
+                <span class="card-icon"><i class="fas fa-sliders-h" aria-hidden="true"></i></span>
+                Steuerung
                 <span class="version" id="mode-text">Auto</span>
             </h2>
             <div class="led-row" id="leds" aria-label="LED-Vorschau"></div>
-            <div class="flex">
-                <span>Licht</span>
-                <label class="switch">
-                    <!-- C-MITTEL: kein "checked" mehr fest im HTML — der tatsaechliche
-                         Zustand kommt erst mit dem ersten updateSwitches()-Aufruf vom
-                         Geraet. "disabled" verhindert Klicks bevor der echte Zustand
-                         bekannt ist (sonst kann ein Klick vor dem ersten Status-Poll
-                         den Zustand invertieren). script.js::updateSwitches() entfernt
-                         "disabled" nach dem ersten erfolgreichen Laden. -->
-                    <input type="checkbox" id="light-switch" onchange="toggleLight()" disabled aria-label="Licht ein/ausschalten">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="flex">
-                <span>Auto-Modus</span>
-                <label class="switch">
-                    <input type="checkbox" id="mode-switch" onchange="toggleMode()" disabled aria-label="Zwischen Auto-Modus und manuellem Modus wechseln">
-                    <span class="slider"></span>
-                </label>
+            <div class="control-group">
+                <div class="flex">
+                    <span>Licht</span>
+                    <label class="switch">
+                        <!-- C-MITTEL: kein "checked" mehr fest im HTML — der tatsaechliche
+                             Zustand kommt erst mit dem ersten updateSwitches()-Aufruf vom
+                             Geraet. "disabled" verhindert Klicks bevor der echte Zustand
+                             bekannt ist (sonst kann ein Klick vor dem ersten Status-Poll
+                             den Zustand invertieren). script.js::updateSwitches() entfernt
+                             "disabled" nach dem ersten erfolgreichen Laden. -->
+                        <input type="checkbox" id="light-switch" onchange="toggleLight()" disabled aria-label="Licht ein/ausschalten">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="flex">
+                    <span>Auto-Modus</span>
+                    <label class="switch">
+                        <input type="checkbox" id="mode-switch" onchange="toggleMode()" disabled aria-label="Zwischen Auto-Modus und manuellem Modus wechseln">
+                        <span class="slider"></span>
+                    </label>
+                </div>
             </div>
             <div class="section">
                 <label for="brightness">Helligkeit</label>
@@ -137,36 +144,38 @@
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-heartbeat" aria-hidden="true"></i> System Status</h2>
-            <div class="stat">
-                <span class="stat-label">WLAN</span>
-                <span class="stat-value">
-                    <span id="wifi-status">--</span>
-                    <span id="wifi-ind" class="badge">--</span>
-                </span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">MQTT</span>
-                <span class="stat-value">
-                    <span id="mqtt-status">--</span>
-                    <span id="mqtt-ind" class="badge">--</span>
-                </span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Uptime</span>
-                <span class="stat-value" id="uptime">--</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">WiFi Signal</span>
-                <span class="stat-value" id="rssi">--</span>
-            </div>
-            <div class="stat" id="dht-row">
-                <span class="stat-label">Temp / Luftfeuchte</span>
-                <span class="stat-value" id="dht">--</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">Speicher</span>
-                <span class="stat-value" id="heap">--</span>
+            <h2><span class="card-icon"><i class="fas fa-heartbeat" aria-hidden="true"></i></span> System Status</h2>
+            <div class="stat-tiles">
+                <div class="stat-tile">
+                    <span class="stat-label">WLAN</span>
+                    <span class="stat-value">
+                        <span id="wifi-status">--</span>
+                        <span id="wifi-ind" class="badge">--</span>
+                    </span>
+                </div>
+                <div class="stat-tile">
+                    <span class="stat-label">MQTT</span>
+                    <span class="stat-value">
+                        <span id="mqtt-status">--</span>
+                        <span id="mqtt-ind" class="badge">--</span>
+                    </span>
+                </div>
+                <div class="stat-tile">
+                    <span class="stat-label">Uptime</span>
+                    <span class="stat-value" id="uptime">--</span>
+                </div>
+                <div class="stat-tile">
+                    <span class="stat-label">WiFi Signal</span>
+                    <span class="stat-value" id="rssi">--</span>
+                </div>
+                <div class="stat-tile" id="dht-row">
+                    <span class="stat-label">Temp / Luftfeuchte</span>
+                    <span class="stat-value" id="dht">--</span>
+                </div>
+                <div class="stat-tile">
+                    <span class="stat-label">Speicher</span>
+                    <span class="stat-value" id="heap">--</span>
+                </div>
             </div>
             <div class="buttons">
                 <button class="btn btn-danger" onclick="if(confirm('Gerät neustarten?')) window.location.href='/restart'" aria-label="Gerät neustarten">
@@ -176,7 +185,7 @@
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-terminal" aria-hidden="true"></i> System Log</h2>
+            <h2><span class="card-icon"><i class="fas fa-terminal" aria-hidden="true"></i></span> System Log</h2>
             <div class="logs" id="logContent" aria-live="polite">Lade Logs...</div>
             <div class="buttons">
                 <button class="btn" onclick="refreshLog()" aria-label="Logdaten aktualisieren">

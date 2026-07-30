@@ -6,6 +6,10 @@
     <meta name="description" content="Moodlight Einstellungen - Konfiguriere dein Stimmungslicht für die Weltlage-Analyse">
     <title>Moodlight Einstellungen</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap"></noscript>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Add favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -55,7 +59,7 @@
     <div id="wifi-tab" class="tab-content active" role="tabpanel" aria-labelledby="wifi-tab">
         <div class="card">
             <div class="card-header">
-                <h2>WLAN Konfiguration</h2>
+                <h2><span class="card-icon"><i class="fas fa-wifi" aria-hidden="true"></i></span> WLAN Konfiguration</h2>
             </div>
             <div class="alert alert-info">
                 <p>Hier kannst du dein Moodlight mit deinem WLAN-Netzwerk verbinden. Nach der Speicherung wird das Gerät neu gestartet und versucht, sich mit dem angegebenen Netzwerk zu verbinden.</p>
@@ -98,7 +102,7 @@
     <div id="mqtt-tab" class="tab-content" role="tabpanel" aria-labelledby="mqtt-tab">
         <div class="card">
             <div class="card-header">
-                <h2>MQTT Konfiguration</h2>
+                <h2><span class="card-icon"><i class="fas fa-server" aria-hidden="true"></i></span> MQTT Konfiguration</h2>
             </div>
             <div class="alert alert-info">
                 <p>Die MQTT-Integration verbindet dein Moodlight mit Home Assistant oder anderen MQTT-fähigen Smart-Home-Systemen.</p>
@@ -151,7 +155,7 @@
     <div id="api-tab" class="tab-content" role="tabpanel" aria-labelledby="api-tab">
         <div class="card">
             <div class="card-header">
-                <h2>API Konfiguration</h2>
+                <h2><span class="card-icon"><i class="fas fa-cogs" aria-hidden="true"></i></span> API Konfiguration</h2>
             </div>
             <div class="alert alert-info">
                 <p>Hier kannst du die URL deiner Sentiment API einstellen und die Häufigkeit der Abfragen und die Anzahl der Headlines pro Feed festlegen.</p>
@@ -175,7 +179,7 @@
             </div>
             
             <div class="card-header">
-                <h2>DHT Konfiguration</h2>
+                <h2><span class="card-icon"><i class="fas fa-thermometer-half" aria-hidden="true"></i></span> DHT Konfiguration</h2>
             </div>
             <div class="alert alert-info">
                 <p>Wenn du einen DHT Temperatur- und Feuchtigkeitssensor verwendest, kannst du ihn hier aktivieren und das Update-Intervall festlegen.</p>
@@ -211,7 +215,7 @@
     <div id="colors-tab" class="tab-content" role="tabpanel" aria-labelledby="colors-tab">
         <div class="card">
             <div class="card-header">
-                <h2>Stimmungsfarben konfigurieren</h2>
+                <h2><span class="card-icon"><i class="fas fa-palette" aria-hidden="true"></i></span> Stimmungsfarben konfigurieren</h2>
             </div>
             <div class="alert alert-info">
                 <p>Hier kannst du die Farben für die verschiedenen Stimmungsniveaus anpassen. Die Farben repräsentieren die unterschiedlichen Stimmungslagen der Weltlage-Analyse.</p>
@@ -239,7 +243,7 @@
     <div id="ui-update-tab" class="tab-content" role="tabpanel" aria-labelledby="ui-update-tab">
         <div class="card">
             <div class="card-header">
-                <h2>AuraOS Update</h2>
+                <h2><span class="card-icon"><i class="fas fa-rocket" aria-hidden="true"></i></span> AuraOS Update</h2>
             </div>
             <div class="alert alert-info">
                 <p>Aktuelle Version: <strong id="current-version">—</strong></p>
@@ -398,7 +402,7 @@
     <div id="hardware-tab" class="tab-content" role="tabpanel" aria-labelledby="hardware-tab">
         <div class="card">
             <div class="card-header">
-                <h2>Hardware Konfiguration</h2>
+                <h2><span class="card-icon"><i class="fas fa-microchip" aria-hidden="true"></i></span> Hardware Konfiguration</h2>
             </div>
             <div class="alert alert-warning">
                 <p>Änderungen an diesen Einstellungen erfordern einen Neustart!</p>
@@ -437,29 +441,28 @@
     <div id="about-tab" class="tab-content" role="tabpanel" aria-labelledby="about-tab">
         <div class="card">
             <div class="card-header">
-                <h2>Über Moodlight</h2>
+                <h2><span class="card-icon"><i class="fas fa-info-circle" aria-hidden="true"></i></span> Über Moodlight</h2>
             </div>
             <div class="alert alert-info">
                 <p>Moodlight ist ein KI-gestütztes Stimmungslicht, das die aktuelle Weltlage anhand von Nachrichtenüberschriftenanalysen visualisiert. Das Licht ändert seine Farbe basierend auf dem Sentiment-Score der aktuellen Nachrichten.</p>
             </div>
-            <div class="form-group">
-                <label>UI Version</label>
-                <div id="software-version" class="stat-value">-</div>
-            </div>
-            
-            <div class="form-group">
-                <label>Firmware Version</label>
-                <div id="firmware-version" class="stat-value">-</div>
-            </div>
-            
-            <div class="form-group">
-                <label>ESP Chip</label>
-                <div id="esp-chip" class="stat-value">-</div>
-            </div>
-            
-            <div class="form-group">
-                <label>MAC-Adresse</label>
-                <div id="mac-address" class="stat-value">-</div>
+            <div class="stat-tiles">
+                <div class="stat-tile">
+                    <span class="stat-label">UI Version</span>
+                    <div id="software-version" class="stat-value">-</div>
+                </div>
+                <div class="stat-tile">
+                    <span class="stat-label">Firmware Version</span>
+                    <div id="firmware-version" class="stat-value">-</div>
+                </div>
+                <div class="stat-tile">
+                    <span class="stat-label">ESP Chip</span>
+                    <div id="esp-chip" class="stat-value">-</div>
+                </div>
+                <div class="stat-tile">
+                    <span class="stat-label">MAC-Adresse</span>
+                    <div id="mac-address" class="stat-value">-</div>
+                </div>
             </div>
             
             <div class="form-group">
