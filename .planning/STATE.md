@@ -56,9 +56,10 @@ None.
 | 260729-h73 | Code-Review-Fixes: MQTT-Doppel-Send, Firmware-Validierung, Backend-Fehlerbehandlung, Web-UI-Bugs, CLAUDE.md | 2026-07-29 | 25c9856 | [260729-h73-code-review-fixes-mqtt-doppel-send-firmw](./quick/260729-h73-code-review-fixes-mqtt-doppel-send-firmw/) |
 | 260730-02i | Review-Runde 2: NeoPixel-Use-after-free (Root Cause LED-Pulsieren/Reboots), MQTT-Passwort-Roundtrip, Backend-Härtung (SECRET_KEY, Rate-Limit, Worker-Lebensdauer, SSRF-Guard, Redis-Caching), UI-XSS-Reste, moment.js-Entfernung, build-release.sh | 2026-07-30 | e690ec0, 6e7f74b, d9e5101, 4c57fa9 | [260730-02i-review-runde-2-neopixel-uaf-mqtt-passwor](./quick/260730-02i-review-runde-2-neopixel-uaf-mqtt-passwor/) |
 | 260730-r7v | UI-Redesign index.html (Steuerung/Status/Logs) + setup.html im mood.html-Stil, Fonts (Inter/JetBrains Mono), Bugfix Lädt-Anzeige setup-Header | 2026-07-30 | 567bcd1, dc81d1a | [260730-r7v-ui-redesign-index-html-steuerung-status-](./quick/260730-r7v-ui-redesign-index-html-steuerung-status-/) |
+| 260730-rmf | Perzentil-Wert als HA-MQTT-Sensor (sensor.moodlight_weltlage_perzentil, %, 0-100), Release v9.13 + OTA-Deploy | 2026-07-30 | fd7ed9f, 54ee939, eb0f9ed | [260730-rmf-perzentil-wert-aus-api-moodlight-current](./quick/260730-rmf-perzentil-wert-aus-api-moodlight-current/) |
 
 ## Session Continuity
 
 Last session: 2026-07-30
-Stopped at: Quick 260730-r7v (UI-Redesign) code complete — offen: OTA-UI-Deploy + Human-Verify am Gerät
+Stopped at: v9.13 released + OTA deployed (UI-Redesign + Perzentil-Sensor). HA-Entität verifiziert (11% = Backend 0.11). Offen: Sicht-Check des neuen UI durch User, Restart-Counter-Beobachtung (nach Deploy auf 0 zurückgesetzt)
 Resume file: None
