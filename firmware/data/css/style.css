@@ -140,9 +140,12 @@ body {
 }
 
 /* Kachel-Grid fuer Statuswerte (System-Status, Info-Tab) */
+/* Feste Spaltenzahl (kein automatisches Anpassen an sichtbare Kacheln):
+   verhindert, dass Aus-/Einblenden einer Kachel (z. B. #dht-row) die
+   Spaltenaufteilung und damit das gesamte Karten-Layout neu berechnet */
 .stat-tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 16px;
 }
@@ -150,6 +153,10 @@ body {
 .stat-tile {
     text-align: center;
     padding: 12px 8px;
+    min-height: 76px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .stat-tile .stat-label {
@@ -159,7 +166,18 @@ body {
 
 .stat-tile .stat-value {
     display: block;
-    font-size: 1.3rem;
+    font-size: 1.15rem;
+    /* Tabellenziffern verhindern seitliches Wackeln beim Refresh, nowrap
+       verhindert Umbruch bei Werten wie "21.4°C / 48.0%" */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    white-space: nowrap;
+}
+
+.stat-tile .stat-value .badge {
+    min-width: 4.5em;
+    display: inline-block;
+    text-align: center;
 }
 
 /* Abgesetzte Gruppe fuer Toggle-Zeilen (Licht/Auto-Modus) */
