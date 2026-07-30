@@ -9,6 +9,7 @@
 extern HAMqtt mqtt;
 extern HASensor haSentimentScore;
 extern HASensor haSentimentCategory;
+extern HASensor haSentimentPercentile;
 extern HASensor haTemperature;
 extern HASensor haHumidity;
 extern HALight haLight;
