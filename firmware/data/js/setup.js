@@ -42,12 +42,16 @@ function pageInit() {
         });
     });
 
+    // BUG-01: loadSystemInfo() unabhaengig vom aktiven Tab beim Initialisieren
+    // aufrufen, damit die Version im Header sofort erscheint (Standard-Tab ist
+    // "wifi", nicht "about" — vorher wurde die Version nie geladen).
+    loadSystemInfo();
+
     // Initialen Tab laden (falls benötigt)
     const activeTab = document.querySelector('.tab-link.active');
     if (activeTab) {
         const tabId = activeTab.getAttribute('data-tab');
         if (tabId === 'about') {
-            loadSystemInfo();
             loadStorageInfo2();
         } else if (tabId === 'wifi') {
             loadWifiStatusInfo();
@@ -683,6 +687,14 @@ function loadSystemInfo() {
         console.log('Systeminformationen geladen:', data);
         if (data.version) {
             document.getElementById('software-version').textContent = data.version;
+            // Header-Version befuellen (BUG-01: blieb bisher dauerhaft auf "Laedt...",
+            // weil script.js::refreshStatus() das nur bei vorhandenem #leds tut,
+            // welches auf setup.html nicht existiert). Element defensiv holen,
+            // da der Header-Span nicht auf jeder Seite existiert, die setup.js laedt.
+            const headerVersion = document.getElementById('version');
+            if (headerVersion) {
+                headerVersion.textContent = 'v' + data.version;
+            }
         }
         if (data.firmwareVersion) {
             document.getElementById('firmware-version').textContent = data.firmwareVersion;
@@ -696,6 +708,12 @@ function loadSystemInfo() {
     })
     .catch(err => {
         console.error('Fehler beim Laden der Systeminformationen:', err);
+        // Neutralen Text setzen statt dauerhaft "Laedt..." stehen zu lassen,
+        // wenn das Geraet nicht erreichbar ist.
+        const headerVersion = document.getElementById('version');
+        if (headerVersion) {
+            headerVersion.textContent = '-';
+        }
     });
 }
 
