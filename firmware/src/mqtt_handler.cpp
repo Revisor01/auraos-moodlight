@@ -20,6 +20,7 @@ HAButton haRefreshSentiment("refresh_sentiment");
 HANumber haUpdateInterval("update_interval", HANumber::PrecisionP0);
 HANumber haDhtInterval("dht_interval", HANumber::PrecisionP0);
 HASensor haSentimentCategory("sentiment_category");
+HASensor haSentimentPercentile("sentiment_percentile", HASensor::PrecisionP0);
 // Heartbeat-Sensoren
 HASensor haUptime("uptime");
 HASensor haWifiSignal("wifi_signal");
@@ -270,6 +271,11 @@ void setupHA()
     haSentimentCategory.setIcon("mdi:tag-text-outline");
     // Keine Einheit für Text-Sensoren
 
+    // Sentiment Perzentil (Position im 7-Tage-Fenster, 0-100%)
+    haSentimentPercentile.setName("Weltlage Perzentil");
+    haSentimentPercentile.setIcon("mdi:chart-bell-curve-cumulative");
+    haSentimentPercentile.setUnitOfMeasurement("%");
+
     if (appState.dhtEnabled)
     {
         // Temperatur Sensor
@@ -383,6 +389,7 @@ void sendInitialStates()
     // Sentiment (letzter bekannter Wert)
     haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
     haSentimentCategory.setValue(appState.sentimentCategory.c_str());
+    haSentimentPercentile.setValue(floatToString(appState.percentile * 100.0, 0).c_str());
 
     // Initiale Heartbeat-Werte senden
     sendHeartbeat();
