@@ -4,6 +4,22 @@ const DEFAULT_NEWS_API_URL = 'http://analyse.godsapp.de/api/moodlight/current';
 // RSS-Feed Verwaltung (REMOVED in v9.0)
 let feeds = [];
 
+// Tab-gebundenes Log-Polling: #logContent lebt seit dem UI-Umzug im Info-Tab
+// und darf nur pollen, waehrend dieser Tab tatsaechlich sichtbar ist. Nutzt
+// die in script.js deklarierte globale refreshLogInterval und refreshLog() —
+// script.js wird vor setup.js geladen (setup.html), die Reihenfolge stimmt.
+function startLogPolling() {
+    if (!document.getElementById('logContent')) return;
+    clearInterval(refreshLogInterval);
+    refreshLog();
+    refreshLogInterval = setInterval(refreshLog, 5000);
+}
+
+function stopLogPolling() {
+    clearInterval(refreshLogInterval);
+    refreshLogInterval = null;
+}
+
 function pageInit() {
     // Fügt Event-Listener für alle Tab-Links hinzu
     document.querySelectorAll('.tab-link').forEach(link => {
@@ -16,6 +32,10 @@ function pageInit() {
             document.getElementById(tabId + '-tab').classList.add('active');
             document.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
             this.classList.add('active');
+
+            // Log-Polling bei jedem Tab-Wechsel stoppen, unabhaengig davon,
+            // welcher Tab vorher aktiv war — wird unten fuer 'about' wieder gestartet
+            stopLogPolling();
 
             // Lädt tab-spezifische Daten
             // REMOVED v9.0: RSS feeds tab
@@ -32,6 +52,7 @@ function pageInit() {
                 // nicht im Hardware-Tab
                 loadSystemInfo();
                 loadStorageInfo2();
+                startLogPolling();
             } else if (tabId === 'mqtt') {
                 loadMqttSettings();
             } else if (tabId === 'hardware') {
@@ -53,10 +74,25 @@ function pageInit() {
         const tabId = activeTab.getAttribute('data-tab');
         if (tabId === 'about') {
             loadStorageInfo2();
+            startLogPolling();
         } else if (tabId === 'wifi') {
             loadWifiStatusInfo();
         }
     }
+
+    // Browser-Tab in den Hintergrund: Log-Polling anhalten, damit nicht ins
+    // Leere gepollt wird, waehrend die Seite nicht sichtbar ist. Bei Rueckkehr
+    // nur dann fortsetzen, wenn der Info-Tab weiterhin aktiv ist.
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopLogPolling();
+        } else {
+            const currentTab = document.querySelector('.tab-link.active');
+            if (currentTab && currentTab.getAttribute('data-tab') === 'about') {
+                startLogPolling();
+            }
+        }
+    });
     // v9.0: initImportForms() removed - import/export managed in backend
     // C8: tote UI-/Firmware-Upload-Formular-Handler (ui-upload-form, firmware-upload-form)
     // entfernt — die entsprechenden Formulare existieren nicht mehr in setup.html.
