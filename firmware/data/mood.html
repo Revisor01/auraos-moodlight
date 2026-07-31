@@ -65,20 +65,20 @@
                     <div class="chart-subtitle" id="trend-indicator" aria-live="polite"></div>
                 </div>
                 <ul class="nav-tabs" id="main-chart-tabs" role="tablist">
-                    <li id="all-tab-link" data-tab="all" data-hours="720" role="tab" aria-selected="false" aria-controls="all-tab">Gesamter Zeitraum</li>
-                    <li id="week-tab-link" class="active" data-tab="week" data-hours="168" role="tab" aria-selected="true" aria-controls="week-tab">Letzte Woche</li>
+                    <li id="all-tab-link" class="active" data-tab="all" data-hours="720" role="tab" aria-selected="true" aria-controls="all-tab">Gesamter Zeitraum</li>
+                    <li id="week-tab-link" data-tab="week" data-hours="168" role="tab" aria-selected="false" aria-controls="week-tab">Letzte Woche</li>
                     <li id="day-tab-link" data-tab="day" data-hours="24" role="tab" aria-selected="false" aria-controls="day-tab">Letzter Tag</li>
                 </ul>
             </div>
 
             <!-- v9.0: Data management removed - data managed in backend -->
 
-            <div class="tab-content" id="all-tab" role="tabpanel" aria-labelledby="all-tab-link">
+            <div class="tab-content active" id="all-tab" role="tabpanel" aria-labelledby="all-tab-link">
                 <div class="chart-container">
                     <canvas id="all-chart" aria-label="Stimmungsverlauf über gesamten Zeitraum" role="img"></canvas>
                 </div>
             </div>
-            <div class="tab-content active" id="week-tab" role="tabpanel" aria-labelledby="week-tab-link">
+            <div class="tab-content" id="week-tab" role="tabpanel" aria-labelledby="week-tab-link">
                 <div class="chart-container">
                     <canvas id="week-chart" aria-label="Stimmungsverlauf der letzten Woche" role="img"></canvas>
                 </div>
