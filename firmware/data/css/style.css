@@ -180,6 +180,26 @@ body {
     text-align: center;
 }
 
+/* Breite Kachel (z.B. Speichernutzung im Info-Tab): fuellt zwei Spalten */
+.stat-tile--wide {
+    grid-column: span 2;
+    text-align: left;
+}
+
+.stat-tile--wide .upload-progress {
+    margin: 4px 0 6px;
+}
+
+.stat-tile--wide .storage-details {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 /* Abgesetzte Gruppe fuer Toggle-Zeilen (Licht/Auto-Modus) */
 .control-group {
     padding: 4px 0 8px;
@@ -1115,6 +1135,10 @@ input[type="color"] {
 
     .stat-tiles {
         grid-template-columns: 1fr;
+    }
+
+    .stat-tile--wide {
+        grid-column: auto;
     }
 
     .nav-tabs a {
