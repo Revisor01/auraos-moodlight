@@ -1,31 +1,21 @@
 /* mood.css - Dashboard styles for Moodlight */
 
-/* Theme variables (extend from style.css) */
+/* Theme variables — Legacy-Namen als Aliase auf die style.css-Tokens (Quelle
+   der Wahrheit), damit mood.css keine eigene Farbpalette mehr definiert und
+   Dark-Mode automatisch ueber die .dark-Overrides in style.css funktioniert. */
 :root {
-    --primary-color: #3498db;
-    --secondary-color: #2ecc71;
-    --warn-color: #e74c3c;
-    --neutral-color: #95a5a6;
-    --dark-color: #34495e;
-    --light-color: #ecf0f1;
-    --accent-color: #9b59b6;
-    --positive-color: #27ae60;
-    --negative-color: #c0392b;
-    --info-color: #3498db;
-    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-    --card-gradient: linear-gradient(135deg, #fff 0%, #f9f9f9 100%);
-    --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.05), 0 6px 6px rgba(0, 0, 0, 0.07);
-    --card-shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.08);
-    --border-radius: 16px;
+    --primary-color: var(--primary);
+    --secondary-color: var(--secondary);
+    --warn-color: var(--danger);
+    --neutral-color: var(--text-muted);
+    --dark-color: var(--text);
+    --light-color: var(--surface);
+    --accent-color: var(--secondary);
+    --positive-color: var(--success);
+    --negative-color: var(--danger);
+    --info-color: var(--primary);
+    --border-radius: var(--radius-lg);
     --transition-speed: 0.3s;
-}
-
-.dark {
-    --bg-gradient: linear-gradient(135deg, #292f36 0%, #1e252d 100%);
-    --card-gradient: linear-gradient(135deg, #3e4a57 0%, #364150 100%);
-    --light-color: #1e252d;
-    --dark-color: #ecf0f1;
-    --neutral-color: #bdc3c7;
 }
 
 /* Dashboard Layout */
@@ -44,7 +34,7 @@
     transition: all var(--transition-speed);
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
 }
 
 .dashboard-item:hover {
@@ -83,7 +73,7 @@
     transition: all var(--transition-speed);
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
 }
 
 .stat-card:hover {
@@ -94,11 +84,11 @@
 .stat-icon {
     font-size: 1.8rem;
     margin-bottom: 15px;
-    color: var(--primary-color);
+    color: var(--primary);
     display: inline-block;
     padding: 12px;
     border-radius: 50%;
-    background-color: rgba(52, 152, 219, 0.1);
+    background-color: rgba(138, 43, 226, 0.1);
 }
 
 .stat-value {
@@ -106,24 +96,26 @@
     font-weight: 700;
     margin: 10px 0;
     color: var(--dark-color);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
-    font-size: 0.95rem;
-    color: var(--neutral-color);
+    font-size: 0.78rem;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 1px;
     font-weight: 600;
 }
 
 .stat-card.positive .stat-icon {
-    color: var(--positive-color);
-    background-color: rgba(39, 174, 96, 0.1);
+    color: var(--success);
+    background-color: rgba(40, 167, 69, 0.1);
 }
 
 .stat-card.negative .stat-icon {
-    color: var(--negative-color);
-    background-color: rgba(192, 57, 43, 0.1);
+    color: var(--danger);
+    background-color: rgba(220, 53, 69, 0.1);
 }
 
 /* Chart headings and controls */
@@ -141,8 +133,8 @@
 }
 
 h2 {
-    font-size: 1.5rem;
-    color: var(--dark-color);
+    font-size: 1.1rem;
+    color: var(--text);
     margin: 0;
     font-weight: 600;
 }
@@ -200,9 +192,9 @@ h2 {
     gap: 10px;
     margin-top: 15px;
     padding: 15px;
-    background-color: rgba(189, 195, 199, 0.1);
+    background-color: var(--bg);
     border-radius: 10px;
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
 }
 
 .filter-label {
@@ -296,9 +288,9 @@ input:checked + .filter-slider:before {
     list-style: none;
     margin-bottom: 15px;
     padding: 5px;
-    background-color: rgba(189, 195, 199, 0.1);
+    background-color: var(--bg);
     border-radius: 10px;
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
 }
 
 .nav-tabs li {
@@ -374,7 +366,7 @@ input:checked + .filter-slider:before {
     border-radius: var(--border-radius);
     padding: 20px;
     box-shadow: var(--card-shadow);
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
     margin-top: 20px;
     display: flex;
     align-items: center;
@@ -383,7 +375,7 @@ input:checked + .filter-slider:before {
 
 .info-card-icon {
     font-size: 2rem;
-    color: var(--info-color);
+    color: var(--primary);
 }
 
 .info-card-content {
@@ -452,7 +444,7 @@ input:checked + .filter-slider:before {
     overflow-y: auto;
     margin-top: 20px;
     margin-bottom: 20px;
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
     border-radius: 10px;
 }
 
@@ -462,11 +454,11 @@ input:checked + .filter-slider:before {
     margin-bottom: 0;
 }
 
-.data-table th, 
+.data-table th,
 .data-table td {
     padding: 10px 12px;
     text-align: left;
-    border-bottom: 1px solid rgba(189, 195, 199, 0.2);
+    border-bottom: 1px solid var(--border);
 }
 
 .dark .data-table th,
@@ -475,7 +467,7 @@ input:checked + .filter-slider:before {
 }
 
 .data-table th {
-    background-color: rgba(189, 195, 199, 0.1);
+    background-color: var(--bg);
     color: var(--dark-color);
     font-weight: 600;
     position: sticky;
@@ -489,7 +481,7 @@ input:checked + .filter-slider:before {
 }
 
 .data-table tr:hover {
-    background-color: rgba(189, 195, 199, 0.1);
+    background-color: var(--bg);
 }
 
 .dark .data-table tr:hover {
@@ -498,10 +490,10 @@ input:checked + .filter-slider:before {
 
 .data-filters {
     margin-bottom: 20px;
-    background-color: rgba(189, 195, 199, 0.1);
+    background-color: var(--bg);
     padding: 15px;
     border-radius: 10px;
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
 }
 
 .dark .data-filters {
@@ -516,7 +508,7 @@ input:checked + .filter-slider:before {
 /* Progress bar for UI upload */
 .upload-progress {
     width: 100%;
-    background-color: rgba(189, 195, 199, 0.2);
+    background-color: var(--border);
     border-radius: 5px;
     margin: 15px 0;
     overflow: hidden;
@@ -541,9 +533,9 @@ input:checked + .filter-slider:before {
 .progress-container {
     margin: 20px 0;
     padding: 15px;
-    background-color: rgba(189, 195, 199, 0.1);
+    background-color: var(--bg);
     border-radius: 10px;
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
 }
 
 /* Badge styles */
@@ -591,7 +583,7 @@ input:checked + .filter-slider:before {
     padding: 16px;
     margin-top: 20px;
     box-shadow: var(--card-shadow);
-    border: 1px solid rgba(189, 195, 199, 0.2);
+    border: 1px solid var(--border);
 }
 
 .storage-info-title {
@@ -625,6 +617,8 @@ input:checked + .filter-slider:before {
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--dark-color);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
 }
 
 .dark .storage-stat-value {
@@ -722,7 +716,7 @@ input:checked + .filter-slider:before {
     }
     
     h2 {
-        font-size: 1.3rem;
+        font-size: 1.05rem;
     }
     
     .chart-subtitle {
@@ -828,7 +822,7 @@ input:checked + .filter-slider:before {
     }
     
     h2 {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
     
     .chart-subtitle {
