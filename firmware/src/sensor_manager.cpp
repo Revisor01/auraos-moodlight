@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <DHT.h>
 #include <ArduinoHA.h>
+#include <time.h>
 
 // Globals aus moodlight.cpp
 extern AppState appState;
@@ -226,17 +227,45 @@ bool safeHttpGet(const String &url, JsonDocument &doc)
     return success;
 }
 
+// Implementierungsdetails des servergeführten Poll-Delays (nicht in config.h, da modul-lokal)
+static const unsigned long POLL_BUFFER_MS = 90000UL;       // Puffer nach Server-Analyse-Zeitpunkt
+static const unsigned long POLL_MIN_DELAY_MS = 60000UL;    // Untergrenze gegen Poll-Schleifen
+
+// Portabler Ersatz für timegm() — auf der ESP32-Toolchain (newlib) nicht verfügbar.
+// Wandelt ein UTC struct tm in eine time_t um, unabhängig von der gesetzten TZ
+// (das Gerät läuft mit TZ=CET-1CEST, siehe wifi_manager.cpp).
+static time_t utcMkTime(struct tm *tmUtc)
+{
+    // mktime() interpretiert tmUtc als lokale Zeit (gemäß gesetzter TZ) und liefert UTC-time_t.
+    // Um dies zu kompensieren, wird die TZ temporär auf UTC gesetzt und danach zurückgesetzt.
+    char *oldTz = getenv("TZ");
+    String savedTz = oldTz ? String(oldTz) : String();
+    setenv("TZ", "UTC0", 1);
+    tzset();
+    time_t result = mktime(tmUtc);
+    if (!savedTz.isEmpty()) {
+        setenv("TZ", savedTz.c_str(), 1);
+    } else {
+        unsetenv("TZ");
+    }
+    tzset();
+    return result;
+}
+
 // === Rufe Sentiment vom Backend ab (-1 bis +1) ===
 void getSentiment()
 {
     static bool isUpdating = false;
     unsigned long currentMillis = millis();
 
+    // Wirksames Poll-Delay: servergeführter Wert falls vorhanden, sonst konfiguriertes Intervall
+    unsigned long effectiveDelay = appState.nextMoodPollDelay > 0 ? appState.nextMoodPollDelay : appState.moodUpdateInterval;
+
     // Debug output for Interval Status (reduced frequency)
     static unsigned long lastIntervalDebug = 0;
     if (currentMillis - lastIntervalDebug >= 300000)
     {
-        debug(String(F("Sentiment Interval Status: ")) + String(currentMillis - appState.lastMoodUpdate) + F("/") + String(appState.moodUpdateInterval) + F("ms"));
+        debug(String(F("Sentiment Interval Status: ")) + String(currentMillis - appState.lastMoodUpdate) + F("/") + String(effectiveDelay) + F("ms"));
         lastIntervalDebug = currentMillis;
     }
 
@@ -261,7 +290,7 @@ void getSentiment()
         return;
 
     // Check if it's time for an update
-    if (!(currentMillis - appState.lastMoodUpdate >= appState.moodUpdateInterval || !appState.initialAnalysisDone))
+    if (!(currentMillis - appState.lastMoodUpdate >= effectiveDelay || !appState.initialAnalysisDone))
         return;
 
     debug(F("Starte Sentiment-Abruf..."));
@@ -352,6 +381,58 @@ void getSentiment()
         appState.initialAnalysisDone = true;
         appState.lastSuccessfulSentimentUpdate = currentMillis;
 
+        // Servergeführtes Poll-Delay aus next_update_minutes + Analyse-Alter berechnen.
+        // next_update_minutes ist das konstante Worker-Intervall des Servers (kein Countdown),
+        // daher wird die tatsächliche Restzeit über das Analyse-Alter (timestamp) ermittelt.
+        appState.nextMoodPollDelay = 0; // Default: Fallback auf moodUpdateInterval
+        if (doc["next_update_minutes"].is<int>())
+        {
+            int intervalMinutes = doc["next_update_minutes"].as<int>();
+            if (intervalMinutes > 0 && intervalMinutes <= 1440)
+            {
+                long ageSeconds = 0;
+
+                // Analyse-Alter nur berechnen, wenn eine gültige lokale Uhrzeit vorliegt (NTP)
+                if (appState.timeInitialized && doc["timestamp"].is<const char*>())
+                {
+                    const char* timestampStr = doc["timestamp"].as<const char*>();
+                    struct tm analysisTm = {};
+                    // ISO-8601 Basisformat parsen, z.B. "2026-07-31T13:02:49"
+                    if (strptime(timestampStr, "%Y-%m-%dT%H:%M:%S", &analysisTm) != nullptr)
+                    {
+                        time_t analysisTime = utcMkTime(&analysisTm);
+                        time_t now = time(nullptr);
+                        ageSeconds = (long)(now - analysisTime);
+                    }
+                    else
+                    {
+                        debug(F("Konnte Analyse-Zeitstempel nicht parsen — Alter wird als 0 angenommen"));
+                    }
+                }
+
+                // Alter auf plausiblen Bereich begrenzen (Uhr-Drift / veraltete Werte abfangen)
+                long intervalSeconds = (long)intervalMinutes * 60L;
+                if (ageSeconds < 0) ageSeconds = 0;
+                if (ageSeconds > intervalSeconds) ageSeconds = intervalSeconds;
+
+                long remainingMs = (intervalSeconds * 1000L) - (ageSeconds * 1000L) + (long)POLL_BUFFER_MS;
+                if (remainingMs < (long)POLL_MIN_DELAY_MS) remainingMs = (long)POLL_MIN_DELAY_MS;
+                if ((unsigned long)remainingMs > appState.moodUpdateInterval) remainingMs = (long)appState.moodUpdateInterval;
+
+                appState.nextMoodPollDelay = (unsigned long)remainingMs;
+                debug(String(F("Servergeführtes Poll-Delay berechnet: ")) + String(appState.nextMoodPollDelay / 1000) +
+                      F(" Sekunden (Analyse-Alter: ") + String(ageSeconds) + F("s, Intervall: ") + String(intervalMinutes) + F("min)"));
+            }
+            else
+            {
+                debug(F("next_update_minutes ausserhalb des plausiblen Bereichs — Fallback auf moodUpdateInterval"));
+            }
+        }
+        else
+        {
+            debug(F("next_update_minutes fehlt in API-Response — Fallback auf moodUpdateInterval"));
+        }
+
         // Reset error tracking
         appState.consecutiveSentimentFailures = 0;
         appState.sentimentAPIAvailable = true;
@@ -368,6 +449,9 @@ void getSentiment()
     {
         debug(F("Sentiment Update fehlgeschlagen"));
         appState.consecutiveSentimentFailures++;
+
+        // Bei API-Ausfall garantiert auf konfiguriertes moodUpdateInterval zurückfallen
+        appState.nextMoodPollDelay = 0;
 
         // Error handling for consecutive failures
         if (appState.consecutiveSentimentFailures >= MAX_SENTIMENT_FAILURES && appState.sentimentAPIAvailable)
@@ -403,7 +487,8 @@ void getSentiment()
     // Always clean up
     isUpdating = false;
 
-    debug(String(F("Sentiment Update abgeschlossen. Nächstes Update in ")) + String(appState.moodUpdateInterval / 1000) + F(" Sekunden."));
+    unsigned long finalEffectiveDelay = appState.nextMoodPollDelay > 0 ? appState.nextMoodPollDelay : appState.moodUpdateInterval;
+    debug(String(F("Sentiment Update abgeschlossen. Nächstes Update in ")) + String(finalEffectiveDelay / 1000) + F(" Sekunden."));
 }
 
 // === Lese DHT Sensor und sende an HA ===

@@ -63,6 +63,7 @@ struct AppState {
     String sentimentCategory = "neutral";                    // Umbenannt von lastSentimentCategory
     unsigned long moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
     unsigned long lastMoodUpdate = 0;
+    unsigned long nextMoodPollDelay = 0;      // Servergeführtes Poll-Delay; 0 = kein Serverwert vorhanden — Fallback auf moodUpdateInterval
     bool initialAnalysisDone = false;
     unsigned long lastSuccessfulSentimentUpdate = 0;
     bool sentimentAPIAvailable = true;
