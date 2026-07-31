@@ -65,9 +65,9 @@ function isSameOrAfter(a, b) {
 }
 
 // C2: aktuell gewählter Zeitraum (Stunden) — Auto-Refresh nutzt diesen Wert statt
-// immer den 168h-Default zu laden und damit z.B. die "Gesamter Zeitraum"-Ansicht
-// (720h) beim nächsten automatischen Reload zu überschreiben
-let currentHours = 168;
+// immer den 720h-Default zu laden und damit z.B. die "Letzte Woche"-Ansicht
+// (168h) beim nächsten automatischen Reload zu überschreiben
+let currentHours = 720;
 
 // Dokumenten-Bereit-Handler
 document.addEventListener('DOMContentLoaded', function() {
@@ -143,7 +143,7 @@ const BACKEND_HISTORY_URL = 'https://analyse.godsapp.de/api/moodlight/history';
 // ESP32-Webserver, kein doppeltes JSON-Puffern), Fallback auf das geraeteseitige
 // /api/stats (geclampte, langsamere Backend-Proxy-Route) bei Fetch-Fehler
 function loadData(hours) {
-    hours = hours || 168; // Default: 7 Tage
+    hours = hours || 720; // Default: Gesamter Zeitraum (30 Tage)
     currentHours = hours; // C2: für Auto-Refresh merken, welcher Zeitraum zuletzt geladen wurde
     document.getElementById('loading-message').textContent = 'Lade Daten...';
 
