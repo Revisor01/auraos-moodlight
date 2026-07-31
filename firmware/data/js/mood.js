@@ -1,4 +1,27 @@
 // mood.js - Dashboard-Funktionalität für Moodlight
+
+// Score-Farbstufen des Dashboards (identisch zu den --score-*-Tokens in
+// style.css) — hart in JS hinterlegt, da Chart.js keine CSS-Variablen in
+// Canvas-Kontexten aufloest. Primary dient als Akzentfarbe fuer Linien-Charts.
+const SCORE_COLORS = {
+    sehrNegativ: '#e74c3c',
+    negativ: '#e67e22',
+    neutral: '#3498db',
+    positiv: '#6c3dbf',
+    sehrPositiv: '#8e44ad'
+};
+const PRIMARY_COLOR = '#8A2BE2';
+
+// Wandelt einen Hex-Farbwert mit gewuenschter Deckkraft in ein rgba()-String um
+function hexToRgba(hex, alpha) {
+    hex = (hex || '').replace('#', '');
+    const num = parseInt(hex, 16);
+    const r = (num >> 16) & 0xFF;
+    const g = (num >> 8) & 0xFF;
+    const b = num & 0xFF;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 let allData = [];
 let filteredData = [];
 let hourlyAverages = [];
@@ -440,50 +463,76 @@ function displayTrend(elementId, trend) {
     }
 }
 
-// Allgemeine Chart-Optionen
-const commonLineChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        title: { display: false },
-        legend: { display: false },
-        tooltip: { 
-            mode: 'index', 
-            intersect: false, 
-            callbacks: { 
-                label: context => `Wert: ${context.parsed.y.toFixed(2)}` 
-            } 
-        }
-    },
-    scales: {
-        x: {
-            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 },
-            grid: { display: false }
-        },
-        y: {
-            grid: { drawBorder: false },
-            suggestedMin: -1,
-            suggestedMax: 1
-        }
-    }
-};
+// Liest die aktuellen Theme-Farben zur Laufzeit aus (Hell-/Dunkelmodus),
+// damit Achsen-Ticks und Gitterlinien in beiden Themes lesbar bleiben.
+// Chart.js loest keine CSS-Variablen selbst auf, daher der Umweg ueber
+// getComputedStyle beim Erzeugen der Options.
+function getThemeChartColors() {
+    const styles = getComputedStyle(document.body);
+    return {
+        textMuted: styles.getPropertyValue('--text-muted').trim() || '#6c757d',
+        border: styles.getPropertyValue('--border').trim() || '#e9ecef'
+    };
+}
 
-const commonBarChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        title: { display: false },
-        legend: { display: false },
-        tooltip: { callbacks: { label: context => `Durchschnitt: ${context.parsed.y.toFixed(2)}` } }
-    },
-    scales: {
-        y: {
-            grid: { drawBorder: false },
-            suggestedMin: -1,
-            suggestedMax: 1
+// Allgemeine Chart-Optionen — als Funktionen, damit die Achsenfarben bei
+// jeder Chart-Neuerstellung (createOrUpdateChart) aktuell aus dem Theme
+// gelesen werden
+function getCommonLineChartOptions() {
+    const theme = getThemeChartColors();
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: { display: false },
+            legend: { display: false },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                    label: context => `Wert: ${context.parsed.y.toFixed(2)}`
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10, color: theme.textMuted },
+                grid: { display: false }
+            },
+            y: {
+                ticks: { color: theme.textMuted },
+                grid: { drawBorder: false, color: theme.border },
+                suggestedMin: -1,
+                suggestedMax: 1
+            }
         }
-    }
-};
+    };
+}
+
+function getCommonBarChartOptions() {
+    const theme = getThemeChartColors();
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: { display: false },
+            legend: { display: false },
+            tooltip: { callbacks: { label: context => `Durchschnitt: ${context.parsed.y.toFixed(2)}` } }
+        },
+        scales: {
+            x: {
+                ticks: { color: theme.textMuted },
+                grid: { display: false }
+            },
+            y: {
+                ticks: { color: theme.textMuted },
+                grid: { drawBorder: false, color: theme.border },
+                suggestedMin: -1,
+                suggestedMax: 1
+            }
+        }
+    };
+}
 
 // Wrapper-Funktionen für Chart-Erstellung
 function createAllCharts() {
@@ -577,7 +626,7 @@ function updateChart(chartKey, dataProvider) {
 
 // Individueller Chart-Code
 function createAllTimeChart() {
-    createOrUpdateChart('allTime', 'all-chart', 'line', getAllTimeData, commonLineChartOptions);
+    createOrUpdateChart('allTime', 'all-chart', 'line', getAllTimeData, getCommonLineChartOptions());
 }
 
 function updateAllTimeChart() {
@@ -598,8 +647,8 @@ function getAllTimeData() {
         datasets: [{
             label: 'Stimmungswert',
             data: chartData.map(d => d.value),
-            borderColor: '#3498db',
-            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            borderColor: PRIMARY_COLOR,
+            backgroundColor: hexToRgba(PRIMARY_COLOR, 0.10),
             borderWidth: 2,
             pointRadius: 1,
             pointHoverRadius: 6,
@@ -610,7 +659,7 @@ function getAllTimeData() {
 }
 
 function createWeekChart() {
-    createOrUpdateChart('week', 'week-chart', 'bar', getWeekData, commonBarChartOptions);
+    createOrUpdateChart('week', 'week-chart', 'bar', getWeekData, getCommonBarChartOptions());
 }
 
 function updateWeekChart() {
@@ -635,7 +684,7 @@ function getWeekData() {
 }
 
 function createDayChart() {
-    createOrUpdateChart('day', 'day-chart', 'line', getDayData, commonLineChartOptions);
+    createOrUpdateChart('day', 'day-chart', 'line', getDayData, getCommonLineChartOptions());
 }
 
 function updateDayChart() {
@@ -658,8 +707,8 @@ function getDayData() {
         datasets: [{
             label: 'Stündlicher Wert (letzter Tag)',
             data: lastDayDisplayData.map(d => d.value),
-            borderColor: '#9b59b6',
-            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+            borderColor: PRIMARY_COLOR,
+            backgroundColor: hexToRgba(PRIMARY_COLOR, 0.10),
             borderWidth: 2,
             pointRadius: 2,
             pointHoverRadius: 5,
@@ -670,7 +719,7 @@ function getDayData() {
 }
 
 function createHourlyChart() {
-    createOrUpdateChart('hourly', 'hourly-chart', 'bar', getHourlyData, commonBarChartOptions);
+    createOrUpdateChart('hourly', 'hourly-chart', 'bar', getHourlyData, getCommonBarChartOptions());
     createLegend('hourly-legend');
 }
 
@@ -695,7 +744,7 @@ function getHourlyData() {
 }
 
 function createWeekdayChart() {
-    createOrUpdateChart('weekday', 'weekday-chart', 'bar', getWeekdayData, commonBarChartOptions);
+    createOrUpdateChart('weekday', 'weekday-chart', 'bar', getWeekdayData, getCommonBarChartOptions());
     createLegend('weekday-legend');
 }
 
@@ -729,13 +778,13 @@ function updateDistributionChart() {
 
 function getDistributionData() {
     const buckets = [
-        { range: [-1, -0.7], label: 'Sehr negativ', color: 'rgba(192, 57, 43, 0.8)' },
-        { range: [-0.7, -0.4], label: 'Negativ', color: 'rgba(231, 76, 60, 0.8)' },
-        { range: [-0.4, -0.1], label: 'Leicht negativ', color: 'rgba(243, 156, 18, 0.8)' },
-        { range: [-0.1, 0.1], label: 'Neutral', color: 'rgba(149, 165, 166, 0.8)' },
-        { range: [0.1, 0.4], label: 'Leicht positiv', color: 'rgba(46, 204, 113, 0.7)' },
-        { range: [0.4, 0.7], label: 'Positiv', color: 'rgba(39, 174, 96, 0.8)' },
-        { range: [0.7, 1.1], label: 'Sehr positiv', color: 'rgba(33, 150, 83, 0.9)' }
+        { range: [-1, -0.7], label: 'Sehr negativ', color: hexToRgba(SCORE_COLORS.sehrNegativ, 0.9) },
+        { range: [-0.7, -0.4], label: 'Negativ', color: hexToRgba(SCORE_COLORS.sehrNegativ, 0.7) },
+        { range: [-0.4, -0.1], label: 'Leicht negativ', color: hexToRgba(SCORE_COLORS.negativ, 0.8) },
+        { range: [-0.1, 0.1], label: 'Neutral', color: hexToRgba(SCORE_COLORS.neutral, 0.8) },
+        { range: [0.1, 0.4], label: 'Leicht positiv', color: hexToRgba(SCORE_COLORS.positiv, 0.7) },
+        { range: [0.4, 0.7], label: 'Positiv', color: hexToRgba(SCORE_COLORS.sehrPositiv, 0.7) },
+        { range: [0.7, 1.1], label: 'Sehr positiv', color: hexToRgba(SCORE_COLORS.sehrPositiv, 0.9) }
     ];
     
     const bucketCounts = buckets.map(bucket => ({
@@ -756,6 +805,7 @@ function getDistributionData() {
 }
 
 function getDistributionOptions() {
+    const theme = getThemeChartColors();
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -770,13 +820,14 @@ function getDistributionOptions() {
             }
         },
         scales: {
-            x: { grid: { drawBorder: false } }
+            x: { ticks: { color: theme.textMuted }, grid: { drawBorder: false, color: theme.border } },
+            y: { ticks: { color: theme.textMuted }, grid: { drawBorder: false, color: theme.border } }
         }
     };
 }
 
 function createTrendChart() {
-    createOrUpdateChart('trend', 'trend-chart', 'line', getTrendData, commonLineChartOptions);
+    createOrUpdateChart('trend', 'trend-chart', 'line', getTrendData, getCommonLineChartOptions());
 }
 
 function updateTrendChart() {
@@ -792,8 +843,8 @@ function getTrendData() {
             {
                 label: 'Täglicher Durchschnitt',
                 data: dailyAverages.map(d => d.value),
-                borderColor: '#3498db',
-                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                borderColor: PRIMARY_COLOR,
+                backgroundColor: hexToRgba(PRIMARY_COLOR, 0.10),
                 borderWidth: 2,
                 pointRadius: 4,
                 pointHoverRadius: 6,
@@ -803,7 +854,7 @@ function getTrendData() {
             ...(trendLine.length > 0 ? [{
                 label: 'Trend',
                 data: trendLine,
-                borderColor: '#e74c3c',
+                borderColor: SCORE_COLORS.neutral,
                 borderWidth: 2,
                 borderDash: [5, 5],
                 pointRadius: 0,
@@ -835,14 +886,14 @@ function calculateTrendLine(data) {
     return xValues.map(x => slope * x + intercept);
 }
 
-// Farbgebung basierend auf Stimmungswert
+// Farbgebung basierend auf Stimmungswert — Schwellwerte identisch zu
+// scoreClass() im Dashboard (sentiment-api/templates/dashboard.html)
 function getColorBasedOnValue(value, alpha = 0.7) {
-    if (value > 0.5) return `rgba(39, 174, 96, ${alpha})`;     // Dark Green
-    if (value > 0.2) return `rgba(46, 204, 113, ${alpha})`;    // Green
-    if (value > 0) return `rgba(52, 152, 219, ${alpha})`;      // Blue
-    if (value > -0.3) return `rgba(243, 156, 18, ${alpha})`;   // Orange
-    if (value > -0.5) return `rgba(231, 76, 60, ${alpha})`;    // Red
-    return `rgba(192, 57, 43, ${alpha})`;                      // Dark Red
+    if (value >= 0.30) return hexToRgba(SCORE_COLORS.sehrPositiv, alpha);
+    if (value >= 0.10) return hexToRgba(SCORE_COLORS.positiv, alpha);
+    if (value >= -0.20) return hexToRgba(SCORE_COLORS.neutral, alpha);
+    if (value >= -0.50) return hexToRgba(SCORE_COLORS.negativ, alpha);
+    return hexToRgba(SCORE_COLORS.sehrNegativ, alpha);
 }
 
 // Legende erstellen
@@ -853,12 +904,11 @@ function createLegend(elementId) {
     legend.innerHTML = '';
     
     const categories = [
-        { label: 'Sehr positiv (>0.5)', color: getColorBasedOnValue(0.6) },
-        { label: 'Positiv (0.2-0.5)', color: getColorBasedOnValue(0.3) },
-        { label: 'Leicht positiv (0-0.2)', color: getColorBasedOnValue(0.1) },
-        { label: 'Leicht negativ (-0.3-0)', color: getColorBasedOnValue(-0.2) },
-        { label: 'Negativ (-0.5 bis -0.3)', color: getColorBasedOnValue(-0.4) },
-        { label: 'Sehr negativ (<-0.5)', color: getColorBasedOnValue(-0.6) }
+        { label: 'Sehr positiv (≥0.30)', color: getColorBasedOnValue(0.3) },
+        { label: 'Positiv (0.10-0.30)', color: getColorBasedOnValue(0.1) },
+        { label: 'Neutral (-0.20-0.10)', color: getColorBasedOnValue(0) },
+        { label: 'Negativ (-0.50 bis -0.20)', color: getColorBasedOnValue(-0.3) },
+        { label: 'Sehr negativ (<-0.50)', color: getColorBasedOnValue(-0.6) }
     ];
     
     categories.forEach(category => {
