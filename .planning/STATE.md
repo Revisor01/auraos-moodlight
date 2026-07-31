@@ -59,9 +59,10 @@ None.
 | 260730-rmf | Perzentil-Wert als HA-MQTT-Sensor (sensor.moodlight_weltlage_perzentil, %, 0-100), Release v9.13 + OTA-Deploy | 2026-07-30 | fd7ed9f, 54ee939, eb0f9ed | [260730-rmf-perzentil-wert-aus-api-moodlight-current](./quick/260730-rmf-perzentil-wert-aus-api-moodlight-current/) |
 | 260730-s1m | System-Status-Karte reflow-frei (festes 3-Spalten-Grid, tabular-nums, visibility-Toggle), System-Log von Startseite in setup-Info-Tab mit tab-gebundenem Polling | 2026-07-30 | a67c367, 51d3469 | [260730-s1m-index-html-systemstatus-bereich-beruhige](./quick/260730-s1m-index-html-systemstatus-bereich-beruhige/) |
 | 260731-fdf | mood.html ans Server-Dashboard angeglichen (Token-Konflikt mood.css/style.css aufgelöst, Chart-Farben auf Score-Palette), Gesamtverlauf 720h als Standard-Ansicht | 2026-07-31 | 33ddde9, b3cdee8, a5d14c1 | [260731-fdf-mood-html-statistik-auf-dem-ger-t-ans-la](./quick/260731-fdf-mood-html-statistik-auf-dem-ger-t-ans-la/) |
+| fast | Speichernutzung im Info-Tab als breite Grid-Kachel (span 2) mit sichtbarem Fortschrittsbalken | 2026-07-31 | bd2094a | — |
 
 ## Session Continuity
 
 Last session: 2026-07-30
-Stopped at: UI 9.13.2 deployed (mood.html = Dashboard-Look, Gesamtverlauf 720h Standard). Offen: Sicht-Check durch User
+Stopped at: UI 9.13.3 deployed (Speicher-Kachel im Info-Grid). Offen: Sicht-Check durch User
 Resume file: None
