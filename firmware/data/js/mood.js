@@ -99,6 +99,13 @@ function setupTabs() {
             });
             this.classList.add('active');
 
+            // Zeitraum-Badge neben der Ueberschrift auf den Label-Text des
+            // geklickten Tabs setzen (2e)
+            const rangeBadge = document.getElementById('range-badge');
+            if (rangeBadge) {
+                rangeBadge.textContent = this.textContent;
+            }
+
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
