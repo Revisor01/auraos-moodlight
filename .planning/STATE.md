@@ -58,9 +58,10 @@ None.
 | 260730-r7v | UI-Redesign index.html (Steuerung/Status/Logs) + setup.html im mood.html-Stil, Fonts (Inter/JetBrains Mono), Bugfix Lädt-Anzeige setup-Header | 2026-07-30 | 567bcd1, dc81d1a | [260730-r7v-ui-redesign-index-html-steuerung-status-](./quick/260730-r7v-ui-redesign-index-html-steuerung-status-/) |
 | 260730-rmf | Perzentil-Wert als HA-MQTT-Sensor (sensor.moodlight_weltlage_perzentil, %, 0-100), Release v9.13 + OTA-Deploy | 2026-07-30 | fd7ed9f, 54ee939, eb0f9ed | [260730-rmf-perzentil-wert-aus-api-moodlight-current](./quick/260730-rmf-perzentil-wert-aus-api-moodlight-current/) |
 | 260730-s1m | System-Status-Karte reflow-frei (festes 3-Spalten-Grid, tabular-nums, visibility-Toggle), System-Log von Startseite in setup-Info-Tab mit tab-gebundenem Polling | 2026-07-30 | a67c367, 51d3469 | [260730-s1m-index-html-systemstatus-bereich-beruhige](./quick/260730-s1m-index-html-systemstatus-bereich-beruhige/) |
+| 260731-fdf | mood.html ans Server-Dashboard angeglichen (Token-Konflikt mood.css/style.css aufgelöst, Chart-Farben auf Score-Palette), Gesamtverlauf 720h als Standard-Ansicht | 2026-07-31 | 33ddde9, b3cdee8, a5d14c1 | [260731-fdf-mood-html-statistik-auf-dem-ger-t-ans-la](./quick/260731-fdf-mood-html-statistik-auf-dem-ger-t-ans-la/) |
 
 ## Session Continuity
 
 Last session: 2026-07-30
-Stopped at: UI 9.13.1 deployed (Status-Karte beruhigt, Log in Info-Tab). Offen: Sicht-Check durch User, Restart-Counter-Beobachtung
+Stopped at: UI 9.13.2 deployed (mood.html = Dashboard-Look, Gesamtverlauf 720h Standard). Offen: Sicht-Check durch User
 Resume file: None
