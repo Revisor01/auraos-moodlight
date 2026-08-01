@@ -24,6 +24,18 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 ### Geändert
 - Meilenstein-Audits nach `.planning/milestones/` verschoben
 - GSD-Konfiguration: Worktrees deaktiviert (`use_worktrees: false`)
+- README inhaltlich richtiggestellt: nannte OpenAI GPT-4o-mini statt Anthropic
+  Claude Haiku, Version v9.0, Python 3.11, `OPENAI_API_KEY`, die entfernte
+  Diagnose-Seite und HA-Entitäten, die es so nie gab. Ergänzt: tatsächlicher
+  Deploy-Weg über GHCR und Portainer-Webhook, OTA-Installation über den Update-Tab
+- Projektseite: die zwölf Screenshots zeigten die UI vor dem Redesign in v9.13 und
+  bewarben die entfernte Diagnose-Seite. Ersetzt durch vier aktuelle Aufnahmen vom
+  Gerät unter Firmware v9.14 (MAC-Adresse maskiert)
+
+### Entfernt
+- `releases/v9.2/AuraOS-9.2.tgz` und `releases/v9.12/RELEASE-NOTES.md` aus dem
+  Tracking — `releases/` steht in der .gitignore, die Binaries hängen an den
+  GitHub-Releases, die Release-Notes sind in diesen CHANGELOG übernommen
 
 ### Sicherheit
 - GitHub Vulnerability-Alerts, Dependabot Security Updates und CodeQL Default Setup
