@@ -13,27 +13,6 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 
 ## [Unreleased]
 
-## [9.15] – 2026-08-01
-
-### Behoben
-- **Der LED-Ring reagierte auf nichts mehr** — weder auf die Web-Steuerung noch auf
-  Home Assistant, zeigte dauerhaft dieselbe Farbe und ließ sich nicht ausschalten.
-  Ursache: `Adafruit_NeoPixel pixels;` wurde parameterlos konstruiert und erst
-  danach per `setPin()` / `begin()` konfiguriert. Auf dem ESP32 funktioniert das
-  nicht — `begin()` ruft intern `setPin()` mit dem gespeicherten Wert `-1` auf und
-  verwirft die zuvor gesetzte Pin-Nummer. GPIO 26 wurde nie als Ausgang
-  konfiguriert, der Ring bekam nie ein Signal. Die Firmware verhielt sich dabei
-  unauffällig: `pixels.show()` lief, kein Fehler, kein Crash.
-  Die Instanz wird jetzt in `initPixels()` mit den echten Konstruktorparametern
-  erzeugt (`new Adafruit_NeoPixel(numLeds, ledPin, NEO_GRB + NEO_KHZ800)`).
-- Nach `initFirstLEDUpdate()` gab nichts den tatsächlichen LED-Zustand aus. Der
-  Ring wurde beim Start auf Schwarz gelöscht und blieb dunkel, bis zufällig ein
-  Ereignis `updateLEDs()` auslöste — beim 30-Minuten-Poll potenziell eine halbe
-  Stunde lang.
-- Wurde `pixels.show()` durch `ledSafeToShow` oder `wifiReconnectActive`
-  blockiert, war `ledUpdatePending` bereits zurückgesetzt — das Update ging
-  verloren. Es wird jetzt erneut versucht.
-
 ### Hinzugefügt
 - Debug-Dokumentation für zwei abgeschlossene Diagnosen: spontane ESP32-Neustarts
   (`isRestartRecommended()` prüft Fragmentierung ohne geladene Uptime aus NVS) und
@@ -84,6 +63,27 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 - Subresource Integrity für die CDN-Skripte in `docs/index.html` und
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
+
+## [9.15] – 2026-08-01
+
+### Behoben
+- **Der LED-Ring reagierte auf nichts mehr** — weder auf die Web-Steuerung noch auf
+  Home Assistant, zeigte dauerhaft dieselbe Farbe und ließ sich nicht ausschalten.
+  Ursache: `Adafruit_NeoPixel pixels;` wurde parameterlos konstruiert und erst
+  danach per `setPin()` / `begin()` konfiguriert. Auf dem ESP32 funktioniert das
+  nicht — `begin()` ruft intern `setPin()` mit dem gespeicherten Wert `-1` auf und
+  verwirft die zuvor gesetzte Pin-Nummer. GPIO 26 wurde nie als Ausgang
+  konfiguriert, der Ring bekam nie ein Signal. Die Firmware verhielt sich dabei
+  unauffällig: `pixels.show()` lief, kein Fehler, kein Crash.
+  Die Instanz wird jetzt in `initPixels()` mit den echten Konstruktorparametern
+  erzeugt (`new Adafruit_NeoPixel(numLeds, ledPin, NEO_GRB + NEO_KHZ800)`).
+- Nach `initFirstLEDUpdate()` gab nichts den tatsächlichen LED-Zustand aus. Der
+  Ring wurde beim Start auf Schwarz gelöscht und blieb dunkel, bis zufällig ein
+  Ereignis `updateLEDs()` auslöste — beim 30-Minuten-Poll potenziell eine halbe
+  Stunde lang.
+- Wurde `pixels.show()` durch `ledSafeToShow` oder `wifiReconnectActive`
+  blockiert, war `ledUpdatePending` bereits zurückgesetzt — das Update ging
+  verloren. Es wird jetzt erneut versucht.
 
 ## [9.14] – 2026-07-31
 
