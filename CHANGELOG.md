@@ -32,6 +32,18 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   Header, Fallback-Key statt aktuellem Signing-Key) und anthropic 0.86.0 → 0.87.0
   (Race Condition in der Pfadvalidierung des Memory Tools, unsichere Standard-
   Dateirechte im lokalen Filesystem-Memory-Tool)
+- SSRF-Guard bei der Feed-Validierung greift jetzt auch für Redirects: Der Check lief
+  nur gegen die Start-URL, `allow_redirects=True` erlaubte einem zugelassenen Host per
+  302 die Umleitung auf `127.0.0.1` oder `169.254.169.254`. Redirects werden nun manuell
+  verfolgt und jeder Hop erneut geprüft (max. 5 Weiterleitungen)
+- `set_setting()` loggte jeden Wert im Klartext — darunter `anthropic_api_key` und
+  `admin_password_hash`. Sensible Keys werden jetzt maskiert (nur Länge im Log)
+- Sechs Endpoints gaben `str(e)` an den Client zurück und konnten dabei Interna aus
+  psycopg2-Fehlern preisgeben (Hostnamen, Ports, Tabellennamen). Sie antworten jetzt
+  mit „Interner Serverfehler"; der volle Trace bleibt im Log
+- Subresource Integrity für die CDN-Skripte in `docs/index.html` und
+  `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
+  ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
 ## [9.14] – 2026-07-31
 

@@ -11,7 +11,7 @@ Integration in app.py:
 import ipaddress
 import logging
 import socket
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from flask import jsonify, request, session
 from functools import wraps
 from datetime import datetime, timedelta, timezone
@@ -67,6 +67,41 @@ def _validate_feed_url_ssrf(url: str) -> str | None:
             return f"Feed-URL zeigt auf nicht erlaubte interne Adresse: {ip_str}"
 
     return None
+
+
+def _safe_get_following_redirects(url: str, timeout: int = 5, max_redirects: int = 5):
+    """
+    Holt eine URL und prueft dabei JEDES Redirect-Ziel erneut gegen den SSRF-Guard.
+
+    requests mit allow_redirects=True wuerde nur die Start-URL pruefen — ein
+    erlaubter Host koennte per 302 auf 127.0.0.1 oder den Metadata-Endpoint
+    169.254.169.254 umleiten und der Guard liefe ins Leere. Deshalb folgen wir
+    den Redirects hier manuell und validieren jeden Hop.
+
+    Returns:
+        (response, None) bei Erfolg, (None, Fehlermeldung) wenn ein Hop
+        abgelehnt werden muss.
+    """
+    current = url
+    for _ in range(max_redirects + 1):
+        ssrf_error = _validate_feed_url_ssrf(current)
+        if ssrf_error:
+            return None, ssrf_error
+
+        resp = http_requests.get(current, timeout=timeout, allow_redirects=False, stream=True)
+
+        if resp.is_redirect or resp.is_permanent_redirect:
+            location = resp.headers.get('Location', '')
+            resp.close()
+            if not location:
+                return None, "Feed-URL antwortet mit Redirect ohne Ziel"
+            # Relative Redirects gegen die aktuelle URL aufloesen
+            current = urljoin(current, location)
+            continue
+
+        return resp, None
+
+    return None, f"Feed-URL hat mehr als {max_redirects} Weiterleitungen"
 
 
 def api_login_required(f):
@@ -306,7 +341,7 @@ def register_moodlight_endpoints(app):
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/history: {e}", exc_info=True)
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "Interner Serverfehler"}), 500
 
     # ===== TREND ENDPOINT =====
     @app.route('/api/moodlight/trend', methods=['GET'])
@@ -362,7 +397,7 @@ def register_moodlight_endpoints(app):
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/trend: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
     # ===== STATISTICS ENDPOINT =====
     @app.route('/api/moodlight/stats', methods=['GET'])
@@ -395,7 +430,7 @@ def register_moodlight_endpoints(app):
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/stats: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
     # ===== DEVICES ENDPOINT =====
     @app.route('/api/moodlight/devices', methods=['GET'])
@@ -426,7 +461,7 @@ def register_moodlight_endpoints(app):
 
         except Exception as e:
             logger.error(f"Fehler in /api/moodlight/devices: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
     # ===== CACHE CLEAR ENDPOINT (Admin) =====
     @app.route('/api/moodlight/cache/clear', methods=['POST'])
@@ -454,7 +489,7 @@ def register_moodlight_endpoints(app):
 
         except Exception as e:
             logger.error(f"Fehler beim Cache-Löschen: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
     # ===== MANUELLER ANALYSE-TRIGGER (CTRL-01, API-02) =====
     @app.route('/api/moodlight/analyze/trigger', methods=['POST'])
@@ -551,13 +586,19 @@ def register_moodlight_endpoints(app):
             # Pruefung koennte ein Feed mit URL auf ein internes Ziel (localhost,
             # 169.254.169.254 Metadata-Endpoint, RFC1918-Netz) angelegt werden und
             # der Worker wuerde regelmaessig interne Dienste abfragen (SSRF).
+            # Fruehe Ablehnung ohne Netzwerkzugriff; die Redirect-Kette prueft
+            # _safe_get_following_redirects unten Hop fuer Hop erneut.
             ssrf_error = _validate_feed_url_ssrf(url)
             if ssrf_error:
                 return jsonify({"status": "error", "message": ssrf_error}), 422
 
-            # URL-Validierung: Erreichbarkeit prüfen (FEED-05)
+            # URL-Validierung: Erreichbarkeit prüfen (FEED-05).
+            # Redirects werden manuell verfolgt, damit jeder Hop erneut gegen den
+            # SSRF-Guard laeuft (sonst umgeht ein 302 auf ein internes Ziel die Pruefung).
             try:
-                resp = http_requests.get(url, timeout=5, allow_redirects=True, stream=True)
+                resp, redirect_error = _safe_get_following_redirects(url, timeout=5)
+                if redirect_error:
+                    return jsonify({"status": "error", "message": redirect_error}), 422
                 resp.close()
                 if resp.status_code >= 400:
                     return jsonify({

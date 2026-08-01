@@ -432,7 +432,10 @@ def health_check():
     if not db_health.get('connected'):
       health["status"] = "unhealthy"
   except Exception as e:
-    health["checks"]["database"] = {"status": "unhealthy", "error": str(e)}
+    # Fehlertext nur ins Log, nicht in die oeffentliche Health-Antwort —
+    # psycopg2-Fehler enthalten Hostnamen, Ports und Tabellennamen
+    logging.error(f"Health-Check: Datenbank nicht erreichbar: {e}", exc_info=True)
+    health["checks"]["database"] = {"status": "unhealthy", "error": "Datenbank nicht erreichbar"}
     health["status"] = "unhealthy"
 
   # Anthropic-Check
