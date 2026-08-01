@@ -1170,3 +1170,60 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 .torch { width: min(72rem, 100% - 2rem); }
 /* Wortmarke gross, aber innerhalb des Containers (1234px bei 1152px Container) */
 .torch-mark { font-size: min(8.8vw, 7.4rem) !important; }
+
+/* ================= FINAL: Text immer sichtbar, Licht als Zugabe =================
+   background-clip: text war unzuverlaessig — je nach Scrollposition und
+   Kegelposition verschwand der Schriftzug ganz. Jetzt wird der Text ganz
+   normal in Grau gesetzt (immer lesbar), und der Lichtkegel liegt als
+   separates, weich auslaufendes Overlay darueber. Nichts kann mehr
+   verschwinden. */
+.torch-mark,
+.torch-play {
+  background: none !important;
+  background-image: none !important;
+  -webkit-background-clip: border-box !important;
+          background-clip: border-box !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+.torch-mark {
+  color: color-mix(in srgb, var(--fg) 42%, transparent) !important;
+  position: relative;
+}
+.torch-play {
+  color: color-mix(in srgb, var(--fg) 34%, transparent) !important;
+}
+.torch-play span { color: color-mix(in srgb, var(--live-color, var(--accent)) 75%, var(--fg)) !important; }
+
+/* Der Lichtkegel als Overlay ueber dem Text: eine Kopie in Markenfarbe,
+   die nur im Kegel sichtbar wird. Verschwindet der Kegel, bleibt der
+   graue Text darunter unveraendert stehen. */
+.torch-3d { position: relative; }
+.torch-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      color-mix(in srgb, var(--live-color, var(--accent)) 55%, transparent) 0%,
+      color-mix(in srgb, var(--live-color, var(--accent)) 22%, transparent) 45%,
+      transparent 72%);
+  mix-blend-mode: screen;
+  opacity: .95;
+  border-radius: 50%;
+}
+
+/* ---- Glow ohne Kanten ----
+   Der Overlay-Kasten zeichnete sich als Rechteck ab, weil border-radius und
+   mix-blend-mode zusammen einen sichtbaren Rand erzeugten. Der Verlauf laeuft
+   jetzt vollstaendig innerhalb des Kastens aus, der Kasten selbst ist
+   grosszuegig ueberdimensioniert und ohne Radius. */
+.torch-glow {
+  inset: -40% -20% !important;
+  border-radius: 0 !important;
+  mix-blend-mode: plus-lighter;
+  opacity: .8;
+  background: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      color-mix(in srgb, var(--live-color, var(--accent)) 42%, transparent) 0%,
+      color-mix(in srgb, var(--live-color, var(--accent)) 16%, transparent) 40%,
+      transparent 68%) !important;
+  filter: blur(6px);
+}
