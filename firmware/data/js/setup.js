@@ -68,6 +68,16 @@ function pageInit() {
     // "wifi", nicht "about" — vorher wurde die Version nie geladen).
     loadSystemInfo();
 
+    // Direktsprung per Hash: /setup#ui-update landet gleich im Update-Tab.
+    // Der Update-Hinweis auf der Startseite verlinkt so direkt dorthin.
+    const hash = (window.location.hash || '').replace('#', '');
+    if (hash) {
+        const target = document.querySelector('.tab-link[data-tab="' + hash + '"]');
+        if (target) {
+            target.click();
+        }
+    }
+
     // Initialen Tab laden (falls benötigt)
     const activeTab = document.querySelector('.tab-link.active');
     if (activeTab) {

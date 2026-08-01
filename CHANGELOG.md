@@ -80,6 +80,17 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
+## [9.18] – 2026-08-02
+
+### Hinzugefügt
+- Update-Hinweis auf der Startseite: Steht eine freigegebene Version bereit,
+  erscheint über den Karten ein Banner mit Versionsnummer, Link zu den
+  Release-Notes und einem Knopf, der direkt in den Update-Tab springt. Bisher
+  war der Hinweis nur im Setup zu sehen — dort schaut man nur nach, wenn man
+  ohnehin schon etwas ahnt
+- `/setup#ui-update` öffnet den Update-Tab direkt; die Tab-Navigation wertet
+  jetzt den URL-Hash aus
+
 ## [9.17] – 2026-08-01
 
 ### Hinzugefügt

@@ -36,6 +36,46 @@ function refreshLog() {
 // mit veralteten Daten überschreibt
 let refreshStatusInFlight = false;
 
+// Update-Banner auf der Startseite ein-/ausblenden.
+// Zeigt nur an, was das Gerät beim letzten stündlichen Poll erfahren hat —
+// löst selbst keine Suche aus, das macht die Firmware.
+function refreshUpdateBanner() {
+  const banner = document.getElementById('update-banner');
+  if (!banner) return;
+
+  fetch('/api/update/status')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.update_available) {
+        banner.style.display = 'none';
+        return;
+      }
+
+      const vEl = document.getElementById('update-banner-version');
+      const cEl = document.getElementById('update-banner-current');
+      if (vEl) vEl.textContent = data.latest || '?';
+      if (cEl) cEl.textContent = data.current || '?';
+
+      // Release-Notes liegen nicht auf dem Gerät — der Link führt zu GitHub
+      const notes = document.getElementById('update-banner-notes');
+      if (notes) {
+        if (data.release_url) {
+          notes.href = data.release_url;
+          notes.style.display = '';
+        } else {
+          notes.style.display = 'none';
+        }
+      }
+
+      banner.style.display = 'flex';
+    })
+    .catch(() => {
+      // Ältere Firmware kennt /api/update/status nicht — dann bleibt das
+      // Banner einfach aus, statt einen Fehler zu zeigen
+      banner.style.display = 'none';
+    });
+}
+
 // Status aktualisieren
 function refreshStatus() {
   if (refreshStatusInFlight) return;
@@ -450,6 +490,12 @@ window.onload = function() {
     refreshStatus();
     // Intervall von 2000ms auf 5000ms erhöht (C3) — reduziert Serverlast
     refreshStatusInterval = setInterval(refreshStatus, 5000);
+
+    // Update-Banner getrennt vom Status-Polling: /api/update/status liest den
+    // zuletzt geholten Stand aus dem RAM, muss aber nicht im 5-Sekunden-Takt
+    // abgefragt werden. Das Gerät selbst sucht ohnehin nur stündlich.
+    refreshUpdateBanner();
+    setInterval(refreshUpdateBanner, 300000);  // alle 5 Minuten
   }
 
   // Setup color grid
