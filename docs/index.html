@@ -1347,6 +1347,17 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   letter-spacing: .16em;
 }
 
+/* ---- MOOD und MUT dauerhaft in der aktuellen Farbe ----
+   Kein eigener Verlauf (der sass sonst an falscher Stelle), sondern eine
+   schlichte Vollfarbe: die aktuelle Sentiment-Farbe der Lampe. */
+.torch-play span {
+  color: var(--live-color, var(--accent)) !important;
+  -webkit-text-fill-color: var(--live-color, var(--accent)) !important;
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+          background-clip: border-box !important;
+}
+
 </style>
 
 <div class="aura" aria-hidden="true">
