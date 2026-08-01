@@ -1358,6 +1358,41 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
           background-clip: border-box !important;
 }
 
+/* ================= Firefox-tauglich + MOOD/MUT erst im Licht =================
+   -webkit-text-fill-color kennt Firefox nicht; dort blieb der Effekt aus.
+   background-clip: text ist dagegen in allen aktuellen Browsern verfuegbar —
+   entscheidend ist, die Transparenz ueber color zu setzen (Standard) und den
+   webkit-Wert nur ergaenzend. */
+.torch-mark,
+.torch-play {
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* MOOD und MUT liegen im selben Verlauf wie der Rest des Absatzes und werden
+   dadurch genau wie die Wortmarke erst vom Lichtkegel eingefaerbt. Sie
+   duerfen deshalb KEINE eigene Farbe und keinen eigenen Verlauf haben. */
+.torch-play span {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+  background: none !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  font-weight: 700;
+}
+
+/* Der Verlauf des Wortspiels traegt jetzt die Markenfarbe im Kegel, damit
+   MOOD und MUT dort rot erscheinen wie die Wortmarke. */
+.torch-play {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--live-color, #A855F7) 30%,
+      color-mix(in srgb, var(--live-color, #A855F7) 45%, #262B35) 58%,
+      #262B35 82%) !important;
+}
+
 </style>
 
 <div class="aura" aria-hidden="true">
