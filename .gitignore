@@ -31,6 +31,7 @@ wifi_credentials.h
 # Logs
 *.log
 debug.txt
+serial-log*.txt
 
 # Backup files
 backup/
