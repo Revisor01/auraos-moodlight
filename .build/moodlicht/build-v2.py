@@ -196,13 +196,15 @@ script = r"""
     // Textfarbe kippt hart, damit sie dem Grund nicht auf halber Strecke
     // begegnet — dort faellt der Kontrast sonst unter das Lesbare.
     // Etwas Hysterese verhindert Flackern beim Scrollen um die Schwelle.
-    // Harter Umschlag: Grund und Text kippen gemeinsam an einem Punkt.
-    // Ein weicher Verlauf fuehrt zwangslaeufig durch eine Zone, in der sich
-    // Text- und Grundhelligkeit annaehern und der Kontrast unter das Lesbare
-    // faellt. Der Schnitt ist ausserdem die staerkere Geste: die Welt kippt
-    // ins Helle, sie daemmert nicht.
-    // Hysterese (0.42/0.50) verhindert Flackern beim Scrollen an der Schwelle.
-    var ziel = lift > (textHell ? 0.42 : 0.50) ? 1 : 0;
+    // Der Grund darf nicht durch mittlere Helligkeit wandern: dort erreicht
+    // KEINE Textfarbe mehr 4.5:1 — das ist rechnerisch zwingend, egal wie man
+    // die Kurven gegeneinander versetzt. Deshalb springt der Grund an einer
+    // Schwelle (die CSS-Transition macht daraus einen weichen Fade von 1,1 s).
+    //
+    // Alles andere fliesst weiter kontinuierlich mit: die Aura, ihre Deckkraft,
+    // die Akzentfarbe. Der Eindruck bleibt ein Verlauf — nur der Moment, in dem
+    // die Welt ins Helle kippt, hat einen klaren Punkt.
+    var ziel = lift > (textHell ? 0.44 : 0.52) ? 1 : 0;
     if (ziel !== textHell) {
       textHell = ziel;
       document.body.style.setProperty('--textlift', String(ziel));

@@ -780,3 +780,22 @@ body {
 }
 .sources a { color: var(--fg-mid); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .sources a:hover { color: var(--accent); }
+
+/* ---- Der Umschlag als weicher Fade ----
+   Grund und Textfarbe springen an einer Schwelle (siehe Script), aber die
+   Transition macht daraus einen ruhigen Uebergang von gut einer Sekunde.
+   So bleibt der Eindruck ein Fluss statt eines Schnitts. */
+body,
+.live, .cmp, .part, .wiring, .value, .parts, .values, .repo-link {
+  transition:
+    background-color 1.1s cubic-bezier(.4,0,.2,1),
+    border-color     1.1s cubic-bezier(.4,0,.2,1),
+    color            1.1s cubic-bezier(.4,0,.2,1);
+}
+h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
+  transition: color 1.1s cubic-bezier(.4,0,.2,1);
+}
+@media (prefers-reduced-motion: reduce) {
+  body, .live, .cmp, .part, .wiring, .value, .parts, .values, .repo-link,
+  h1, h2, h3, p, a, code { transition: none; }
+}
