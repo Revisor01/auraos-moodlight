@@ -15,6 +15,13 @@ services:
       - DEFAULT_HEADLINES_PER_SOURCE=1
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
+      # Firmware-Spiegel: Token, mit dem sich die CI beim Sync ausweist
+      - FIRMWARE_SYNC_TOKEN=${FIRMWARE_SYNC_TOKEN}
+      - FIRMWARE_MIRROR_DIR=/data/firmware
+    volumes:
+      # Gespiegelte Firmware-Binaries — muss einen Container-Neustart ueberleben,
+      # sonst kaeme kein Geraet mehr an ein Update
+      - /opt/stacks/auraos-moodlight/data/firmware:/data/firmware
     depends_on:
       postgres:
         condition: service_healthy

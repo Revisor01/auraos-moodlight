@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Versionierung
-#define MOODLIGHT_VERSION "9.16"
+#define MOODLIGHT_VERSION "9.17"
 #define MOODLIGHT_NAME "AuraOS"
 #define MOODLIGHT_FULL_VERSION MOODLIGHT_VERSION " - " MOODLIGHT_NAME
 
@@ -22,6 +22,18 @@
 // API Endpoints
 #define DEFAULT_NEWS_API_URL "http://analyse.godsapp.de/api/moodlight/current"
 #define DEFAULT_STATS_API_URL "http://analyse.godsapp.de/api/moodlight/history"
+
+// Firmware-Updates: Das Backend spiegelt die GitHub-Releases und liefert sie per
+// HTTP aus. Direkt von GitHub zu laden wuerde TLS, Zertifikate und zwei Redirects
+// ueber wechselnde Hosts bedeuten — lauter Fehlerquellen in genau dem Pfad, der
+// ein defektes Geraet wieder flottmachen soll.
+#define DEFAULT_UPDATE_API_BASE "http://analyse.godsapp.de"
+#define UPDATE_CHECK_INTERVAL 3600000         // 1 Stunde zwischen zwei Abfragen
+#define UPDATE_CHECK_INITIAL_DELAY 120000     // 2 Min nach Boot warten (WLAN/NTP zuerst)
+#define UPDATE_HTTP_TIMEOUT 10000             // Timeout fuer die Versionsabfrage
+#define UPDATE_DOWNLOAD_TIMEOUT 60000         // Timeout fuer den Binary-Download
+#define UPDATE_MIN_FIRMWARE_SIZE 200000       // Kleiner als 200 KB ist keine AuraOS-Firmware
+#define UPDATE_MIN_FREE_HEAP 40000            // Ohne so viel freien Heap kein Flash-Versuch
 
 // Netzwerk
 #define DNS_PORT 53

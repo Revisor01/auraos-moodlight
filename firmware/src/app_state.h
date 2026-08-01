@@ -108,6 +108,19 @@ struct AppState {
     float currentHum = NAN;
 
     // =========================================================
+    // Update-Gruppe
+    // =========================================================
+    bool updateCheckEnabled = true;                  // Stuendliche Suche nach neuer Firmware
+    unsigned long lastUpdateCheck = 0;               // millis() der letzten Abfrage
+    bool updateAvailable = false;                    // Backend meldet eine neuere Version
+    String updateVersion = "";                       // Version die bereitsteht, z.B. "9.17"
+    String updateReleaseUrl = "";                    // GitHub-Release-Seite fuer die Notes
+    String updateFirmwarePath = "";                  // Pfad am Backend, nicht die volle URL
+    size_t updateFirmwareSize = 0;                   // Erwartete Groesse in Bytes
+    bool updateInProgress = false;                   // Laeuft gerade ein Download+Flash
+    String updateLastError = "";                     // Letzter Fehlschlag fuer die WebUI
+
+    // =========================================================
     // System-Gruppe
     // =========================================================
     bool rebootNeeded = false;

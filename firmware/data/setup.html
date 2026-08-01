@@ -243,14 +243,60 @@
     <div id="ui-update-tab" class="tab-content" role="tabpanel" aria-labelledby="ui-update-tab">
         <div class="card">
             <div class="card-header">
-                <h2><span class="card-icon"><i class="fas fa-rocket" aria-hidden="true"></i></span> AuraOS Update</h2>
+                <h2><span class="card-icon"><i class="fas fa-cloud-arrow-down" aria-hidden="true"></i></span> Online-Update</h2>
+            </div>
+
+            <div class="alert alert-info">
+                <p>Aktuelle Version: <strong id="online-current-version">—</strong></p>
+            </div>
+
+            <div class="section">
+                <div id="update-check-result" class="alert" style="display:none"></div>
+
+                <div class="form-group">
+                    <label class="switch-label" for="update-check-enabled">
+                        <input type="checkbox" id="update-check-enabled" onchange="saveUpdateSettings()">
+                        Stündlich nach Updates suchen
+                    </label>
+                    <div class="help-text">
+                        Das Gerät fragt beim Backend nach freigegebenen Versionen.
+                        Installiert wird nur auf Klick.
+                    </div>
+                </div>
+
+                <div id="online-update-actions">
+                    <button class="btn" id="check-update-btn" onclick="checkForUpdateNow()">
+                        <i class="fas fa-magnifying-glass" aria-hidden="true"></i> Jetzt nach Update suchen
+                    </button>
+                    <button class="btn btn-success" id="install-update-btn"
+                            onclick="installOnlineUpdate()" style="display:none">
+                        <i class="fas fa-download" aria-hidden="true"></i> Installieren
+                    </button>
+                    <a class="btn btn-secondary" id="release-notes-link" href="#" target="_blank"
+                       rel="noopener noreferrer" style="display:none">
+                        <i class="fas fa-list" aria-hidden="true"></i> Was ist neu?
+                    </a>
+                </div>
+
+                <div id="online-update-progress" class="update-progress-wrapper" style="display:none">
+                    <div id="online-update-step" class="update-step">Lade Firmware…</div>
+                    <div class="help-text">
+                        Das kann eine Minute dauern. Bitte nicht unterbrechen.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2><span class="card-icon"><i class="fas fa-rocket" aria-hidden="true"></i></span> Update aus Datei</h2>
             </div>
             <div class="alert alert-info">
                 <p>Aktuelle Version: <strong id="current-version">—</strong></p>
             </div>
 
             <div class="section">
-                <p>Wähle die Update-Dateien aus und starte das Update mit einem Klick. Das Build-Script erzeugt beide Dateien automatisch.</p>
+                <p>Für den Fall, dass das Online-Update nicht greift: Dateien selbst auswählen. Das Build-Script erzeugt beide automatisch.</p>
 
                 <div class="form-group">
                     <label for="ui-file">1. UI-Datei (TGZ)</label>
@@ -396,6 +442,134 @@
     }).catch(function(){
         document.getElementById('current-version').textContent = '?.?';
     });
+
+    // ===== Online-Update =====
+
+    function showUpdateResult(text, kind) {
+        var box = document.getElementById('update-check-result');
+        if (!box) return;
+        box.textContent = text;
+        box.className = 'alert alert-' + (kind || 'info');
+        box.style.display = 'block';
+    }
+
+    // Zeichnet den Update-Bereich aus dem Status des Geraets
+    function applyUpdateStatus(d) {
+        var cur = document.getElementById('online-current-version');
+        if (cur) cur.textContent = d.current || '?.?';
+
+        var toggle = document.getElementById('update-check-enabled');
+        if (toggle) toggle.checked = !!d.check_enabled;
+
+        var installBtn = document.getElementById('install-update-btn');
+        var notesLink = document.getElementById('release-notes-link');
+
+        if (d.update_available) {
+            showUpdateResult('Version ' + d.latest + ' steht bereit.', 'success');
+            if (installBtn) installBtn.style.display = '';
+            // Die Notes stehen nicht auf dem Geraet — ein Klick fuehrt zur
+            // GitHub-Release-Seite, wo sie vollstaendig lesbar sind
+            if (notesLink && d.release_url) {
+                notesLink.href = d.release_url;
+                notesLink.style.display = '';
+            }
+        } else {
+            if (installBtn) installBtn.style.display = 'none';
+            if (notesLink) notesLink.style.display = 'none';
+        }
+
+        if (d.last_error) {
+            showUpdateResult('Letzter Fehler: ' + d.last_error, 'warning');
+        }
+    }
+
+    function loadUpdateStatus() {
+        fetch('/api/update/status').then(function(r){return r.json();}).then(applyUpdateStatus)
+        .catch(function(){ /* Geraet antwortet nicht — Abschnitt bleibt leer */ });
+    }
+
+    function checkForUpdateNow() {
+        var btn = document.getElementById('check-update-btn');
+        if (btn) { btn.disabled = true; }
+        showUpdateResult('Frage beim Backend nach…', 'info');
+
+        fetch('/api/update/check', { method: 'POST' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            if (btn) btn.disabled = false;
+            if (d.status !== 'success') {
+                showUpdateResult(d.message || 'Prüfung fehlgeschlagen', 'warning');
+                return;
+            }
+            if (d.update_available) {
+                loadUpdateStatus();
+            } else {
+                showUpdateResult('Die installierte Version ist die neueste.', 'info');
+            }
+        })
+        .catch(function(){
+            if (btn) btn.disabled = false;
+            showUpdateResult('Gerät nicht erreichbar', 'warning');
+        });
+    }
+
+    function installOnlineUpdate() {
+        if (!confirm('Update jetzt installieren? Das Gerät startet danach neu.')) return;
+
+        document.getElementById('online-update-actions').style.display = 'none';
+        document.getElementById('online-update-progress').style.display = 'block';
+        showUpdateResult('Update läuft — bitte nicht unterbrechen.', 'info');
+
+        // Grosszuegiger Timeout: Download plus Flash dauern deutlich laenger
+        // als ein normaler Request
+        var ctrl = new AbortController();
+        var timer = setTimeout(function(){ ctrl.abort(); }, 180000);
+
+        fetch('/api/update/install', { method: 'POST', signal: ctrl.signal })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            clearTimeout(timer);
+            if (d.status === 'success') {
+                document.getElementById('online-update-step').textContent =
+                    'Fertig — das Gerät startet neu.';
+                showUpdateResult(d.message || 'Update installiert', 'success');
+                // Der Neustart braucht einen Moment, dann ist die Seite wieder da
+                setTimeout(function(){ window.location.href = '/'; }, 20000);
+            } else {
+                document.getElementById('online-update-progress').style.display = 'none';
+                document.getElementById('online-update-actions').style.display = '';
+                showUpdateResult(d.message || 'Update fehlgeschlagen', 'warning');
+            }
+        })
+        .catch(function(){
+            clearTimeout(timer);
+            // Bricht die Verbindung ab, kann das Geraet trotzdem gerade neu
+            // starten — deshalb hier keine Fehlermeldung behaupten
+            document.getElementById('online-update-step').textContent =
+                'Verbindung abgebrochen. Falls das Gerät neu startet, ist das normal.';
+            setTimeout(function(){ window.location.href = '/'; }, 20000);
+        });
+    }
+
+    function saveUpdateSettings() {
+        var enabled = document.getElementById('update-check-enabled').checked;
+        fetch('/api/update/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ check_enabled: enabled })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(){
+            showUpdateResult(enabled
+                ? 'Automatische Suche aktiviert.'
+                : 'Automatische Suche deaktiviert.', 'info');
+        })
+        .catch(function(){
+            showUpdateResult('Einstellung konnte nicht gespeichert werden', 'warning');
+        });
+    }
+
+    loadUpdateStatus();
     </script>
     
     <!-- Hardware Tab -->

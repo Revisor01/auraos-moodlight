@@ -24,6 +24,7 @@
 #include "led_controller.h"
 #include "mqtt_handler.h"
 #include "sensor_manager.h"
+#include "update_checker.h"
 
 // === Externe Globals aus moodlight.cpp ===
 extern AppState appState;
@@ -1843,6 +1844,120 @@ void setupWebServer() {
                 setStatusLED(0);
             }
         });
+
+    // Update-Status fuer die WebUI: was liegt bereit, was ist gerade los
+    server.on("/api/update/status", HTTP_GET, []() {
+        JsonDocument doc;
+        doc["current"] = MOODLIGHT_VERSION;
+        doc["check_enabled"] = appState.updateCheckEnabled;
+        doc["update_available"] = appState.updateAvailable;
+        doc["in_progress"] = appState.updateInProgress;
+        if (appState.updateAvailable) {
+            doc["latest"] = appState.updateVersion;
+            // Die Release-Notes zeigt die Lampe nicht selbst an — sie verlinkt
+            // auf GitHub. Spart RAM und die Notes bleiben vollstaendig lesbar.
+            doc["release_url"] = appState.updateReleaseUrl;
+            doc["size"] = appState.updateFirmwareSize;
+        }
+        if (appState.lastUpdateCheck > 0) {
+            doc["last_check_ago_s"] = (millis() - appState.lastUpdateCheck) / 1000;
+        }
+        if (appState.updateLastError.length() > 0) {
+            doc["last_error"] = appState.updateLastError;
+        }
+        char* jsonBuffer = jsonPool.acquire();
+        serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(200, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+    });
+
+    // Sofort nachsehen, ohne auf den Stundentakt zu warten
+    server.on("/api/update/check", HTTP_POST, []() {
+        if (WiFi.status() != WL_CONNECTED) {
+            server.send(503, "application/json",
+                        "{\"status\":\"error\",\"message\":\"Keine WLAN-Verbindung\"}");
+            return;
+        }
+        appState.lastUpdateCheck = millis();
+        bool ok = checkForUpdate();
+
+        JsonDocument doc;
+        doc["status"] = ok ? "success" : "error";
+        doc["update_available"] = appState.updateAvailable;
+        if (appState.updateAvailable) {
+            doc["latest"] = appState.updateVersion;
+            doc["release_url"] = appState.updateReleaseUrl;
+        }
+        if (!ok) {
+            doc["message"] = "Backend nicht erreichbar";
+        }
+        char* jsonBuffer = jsonPool.acquire();
+        serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(ok ? 200 : 502, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+    });
+
+    // Installation anstossen — der Neustart passiert in der loop(), damit
+    // diese Antwort den Browser noch erreicht
+    server.on("/api/update/install", HTTP_POST, []() {
+        if (!appState.updateAvailable) {
+            server.send(400, "application/json",
+                        "{\"status\":\"error\",\"message\":\"Kein Update vorgemerkt\"}");
+            return;
+        }
+        if (appState.updateInProgress) {
+            server.send(409, "application/json",
+                        "{\"status\":\"error\",\"message\":\"Update laeuft bereits\"}");
+            return;
+        }
+
+        String version = appState.updateVersion;
+        bool ok = downloadAndInstallUpdate();
+
+        JsonDocument doc;
+        doc["status"] = ok ? "success" : "error";
+        if (ok) {
+            doc["message"] = String(F("Version ")) + version +
+                             F(" installiert — das Geraet startet neu");
+            doc["restarting"] = true;
+        } else {
+            doc["message"] = appState.updateLastError.length() > 0
+                                 ? appState.updateLastError
+                                 : String(F("Update fehlgeschlagen"));
+        }
+        char* jsonBuffer = jsonPool.acquire();
+        serializeJson(doc, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(ok ? 200 : 500, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+    });
+
+    // Automatische Suche an-/abschalten
+    server.on("/api/update/settings", HTTP_POST, []() {
+        if (!server.hasArg("plain")) {
+            server.send(400, "application/json",
+                        "{\"status\":\"error\",\"message\":\"Kein Body\"}");
+            return;
+        }
+        JsonDocument doc;
+        if (deserializeJson(doc, server.arg("plain"))) {
+            server.send(400, "application/json",
+                        "{\"status\":\"error\",\"message\":\"Ungueltiges JSON\"}");
+            return;
+        }
+        if (doc["check_enabled"].is<bool>()) {
+            appState.updateCheckEnabled = doc["check_enabled"].as<bool>();
+            appState.settingsNeedSaving = true;
+            debug(String(F("Update-Suche: ")) +
+                  (appState.updateCheckEnabled ? F("aktiviert") : F("deaktiviert")));
+        }
+        JsonDocument resp;
+        resp["status"] = "success";
+        resp["check_enabled"] = appState.updateCheckEnabled;
+        char* jsonBuffer = jsonPool.acquire();
+        serializeJson(resp, jsonBuffer, JSON_BUFFER_SIZE);
+        server.send(200, "application/json", jsonBuffer);
+        jsonPool.release(jsonBuffer);
+    });
 
     server.on("/api/firmware-version", HTTP_GET, []() {
         JsonDocument doc;
