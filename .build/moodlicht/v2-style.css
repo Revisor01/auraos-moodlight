@@ -1140,3 +1140,33 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 .torch-mark { white-space: nowrap !important; font-size: clamp(2.6rem, 8.2vw, 7rem) !important; }
 /* Wortmarke innerhalb des Containers halten (war 1029px bei 960px Container) */
 .torch-mark { font-size: clamp(2.4rem, 7.6vw, 6.4rem) !important; }
+
+/* ---- Verschwinden behoben ----
+   background-attachment: fixed verankerte den Verlauf am Viewport — beim
+   Scrollen wanderte der Lichtkegel vom Text weg und der Schriftzug wurde
+   unsichtbar. Der Verlauf gehoert an das Element selbst.
+
+   Ausserdem: Ohne Zeigerbewegung (--tr = 0) war der Kegel ein Punkt und der
+   Text praktisch weg. Es gibt jetzt eine Grundhelligkeit, die den Schriftzug
+   immer erkennbar laesst — freigelegt wird er trotzdem nur im Lichtkegel. */
+.torch-mark,
+.torch-play {
+  background-attachment: scroll !important;
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--live-color, #A855F7) 34%,
+      color-mix(in srgb, var(--live-color, #A855F7) 50%, transparent) 60%,
+      color-mix(in srgb, var(--fg) 22%, transparent) 100%) !important;
+}
+.torch-play {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--fg-mid) 42%,
+      color-mix(in srgb, var(--fg) 20%, transparent) 100%) !important;
+}
+
+/* Groesser */
+.torch-mark { font-size: clamp(2.8rem, 9.5vw, 8rem) !important; }
+.torch { width: min(72rem, 100% - 2rem); }
+/* Wortmarke gross, aber innerhalb des Containers (1234px bei 1152px Container) */
+.torch-mark { font-size: min(8.8vw, 7.4rem) !important; }

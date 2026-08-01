@@ -1156,6 +1156,36 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 /* Wortmarke innerhalb des Containers halten (war 1029px bei 960px Container) */
 .torch-mark { font-size: clamp(2.4rem, 7.6vw, 6.4rem) !important; }
 
+/* ---- Verschwinden behoben ----
+   background-attachment: fixed verankerte den Verlauf am Viewport — beim
+   Scrollen wanderte der Lichtkegel vom Text weg und der Schriftzug wurde
+   unsichtbar. Der Verlauf gehoert an das Element selbst.
+
+   Ausserdem: Ohne Zeigerbewegung (--tr = 0) war der Kegel ein Punkt und der
+   Text praktisch weg. Es gibt jetzt eine Grundhelligkeit, die den Schriftzug
+   immer erkennbar laesst — freigelegt wird er trotzdem nur im Lichtkegel. */
+.torch-mark,
+.torch-play {
+  background-attachment: scroll !important;
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--live-color, #A855F7) 34%,
+      color-mix(in srgb, var(--live-color, #A855F7) 50%, transparent) 60%,
+      color-mix(in srgb, var(--fg) 22%, transparent) 100%) !important;
+}
+.torch-play {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--fg-mid) 42%,
+      color-mix(in srgb, var(--fg) 20%, transparent) 100%) !important;
+}
+
+/* Groesser */
+.torch-mark { font-size: clamp(2.8rem, 9.5vw, 8rem) !important; }
+.torch { width: min(72rem, 100% - 2rem); }
+/* Wortmarke gross, aber innerhalb des Containers (1234px bei 1152px Container) */
+.torch-mark { font-size: min(8.8vw, 7.4rem) !important; }
+
 </style>
 
 <div class="aura" aria-hidden="true">
@@ -1676,7 +1706,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
     if (window.matchMedia('(hover: none)').matches) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    var RADIUS = 300;      // Groesse des Lichtkegels
+    var RADIUS = 380;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
     var lagen = torch.querySelectorAll('.torch-3d');
     var pending = false, px = 0, py = 0, rx = 0, ry = 0;
@@ -1691,9 +1721,9 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
     }
 
     torch.addEventListener('pointermove', function (e) {
-      // background-attachment: fixed -> Koordinaten relativ zum Viewport
-      px = e.clientX;
-      py = e.clientY;
+      var rr = torch.getBoundingClientRect();
+      px = e.clientX - rr.left;
+      py = e.clientY - rr.top;
 
       // Kippen: Zeiger links -> Schrift dreht nach rechts weg
       var r = torch.getBoundingClientRect();
@@ -1715,7 +1745,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 
     // Beim Laden kurz aufblitzen, damit sich der Hero zu erkennen gibt
     var r0 = torch.getBoundingClientRect();
-    px = r0.left + r0.width * 0.5; py = r0.top + r0.height * 0.42;
+    px = r0.width * 0.5; py = r0.height * 0.42;
     zeichne();
     setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.35) + 'px'); }, 600);
     setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2800);
