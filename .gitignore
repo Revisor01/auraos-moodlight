@@ -63,3 +63,4 @@ releases/
 # Python (sentiment-api)
 __pycache__/
 *.pyc
+.playwright-mcp/

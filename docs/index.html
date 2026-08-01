@@ -1242,121 +1242,56 @@
         </div>
     </section>
 
-    <!-- Screenshots Section -->
+
+    <!-- Screenshots Section — Stand v9.14 -->
     <section class="section" id="screenshots" style="background: var(--surface);">
         <div class="container">
             <h2 class="section-title">AuraOS Ansichten</h2>
             <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px; color: var(--text-secondary);">
-                Benutzeroberfläche und Funktionen des intelligenten Stimmungslichts
+                Das Web-Interface des Moodlights — Stand Firmware v9.14
             </p>
-            
+
             <div class="screenshots-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-top: 40px;">
                 <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="main.png" alt="Dashboard Screenshot" style="width: 100%; height: auto; display: block;">
+                    <img src="main.png" alt="Dashboard des Moodlights mit aktueller Weltlage, Perzentil-Einordnung und Steuerung" loading="lazy" style="width: 100%; height: auto; display: block;">
                     <div style="padding: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--text-primary);">Dashboard</h3>
                         <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Hauptübersicht mit aktueller Stimmungslage, Systemstatus und Sensor-Werten. Zeigt LED-Status und Verbindungsqualität.
+                            Aktuelle Weltlage mit Score und Kategorie, Einordnung ins 7-Tage-Fenster,
+                            LED-Farbzuordnung über Perzentil-Schwellen sowie Steuerung und Systemstatus.
                         </p>
                     </div>
                 </div>
 
                 <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="farben.png" alt="Farbkonfiguration Screenshot" style="width: 100%; height: auto; display: block;">
+                    <img src="statistik.png" alt="Statistikseite mit Stimmungsverlauf, Kennzahlen und analysierten Schlagzeilen" loading="lazy" style="width: 100%; height: auto; display: block;">
+                    <div style="padding: 20px;">
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Weltlage-Statistik</h3>
+                        <p style="color: var(--text-secondary); line-height: 1.5;">
+                            Stimmungsverlauf über den gesamten Zeitraum, stündliche und Wochentag-Analyse,
+                            Verteilung, Trend sowie die analysierten Schlagzeilen mit Einzelbewertung.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
+                    <img src="farben.png" alt="Konfiguration der fünf Stimmungsfarben" loading="lazy" style="width: 100%; height: auto; display: block;">
                     <div style="padding: 20px;">
                         <h3 style="margin-bottom: 10px; color: var(--text-primary);">Farbkonfiguration</h3>
                         <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Intuitive Farbauswahl für jede Sentiment-Kategorie. Anpassbare RGB-Werte für vollständige Personalisierung.
+                            Für jede der fünf Stimmungskategorien lässt sich eine eigene LED-Farbe
+                            wählen — von „sehr negativ" bis „sehr positiv".
                         </p>
                     </div>
                 </div>
 
                 <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="wlan.png" alt="WLAN Konfiguration Screenshot" style="width: 100%; height: auto; display: block;">
+                    <img src="info.png" alt="Info-Tab mit Versionsangaben, Speichernutzung und System-Log" loading="lazy" style="width: 100%; height: auto; display: block;">
                     <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">WLAN-Konfiguration</h3>
+                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">System-Informationen</h3>
                         <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Einfache Netzwerk-Einrichtung mit SSID-Scanner und automatischer Verbindungsverwaltung.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="statistik1.png" alt="Statistik Screenshot" style="width: 100%; height: auto; display: block;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Statistiken</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Detaillierte Charts und Trends der Sentiment-Daten. Historische Analyse und Durchschnittswerte über verschiedene Zeiträume.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="mqtt.png" alt="MQTT Integration Screenshot" style="width: 100%; height: auto; display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 200px;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">MQTT & Home Assistant</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Vollständige Home Assistant Integration mit Auto-Discovery. Alle Sensoren und Steuerungselemente automatisch verfügbar.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="settings.png" alt="Settings Screenshot" style="width: 100%; height: auto; display: block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); min-height: 200px;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Intervall-Einstellungen</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Konfigurierbare Update-Intervalle für Sentiment-Analyse und Sensor-Abfragen. Anpassbare Helligkeit und Welleneffekt-Einstellungen.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="ota.png" alt="OTA Update Screenshot" style="width: 100%; height: auto; display: block; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); min-height: 200px;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: --text-primary);">Over-The-Air Updates</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Firmware und Web-UI Updates direkt über WiFi. Kein USB-Kabel erforderlich für Updates im Betrieb.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="pins.png" alt="Hardware Pin Configuration Screenshot" style="width: 100%; height: auto; display: block; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); min-height: 200px;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Hardware-Konfiguration</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Flexible Pin-Konfiguration für LEDs und Sensoren. Anpassbar für verschiedene ESP32-Boards und LED-Strips.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="darkmode.png" alt="Dark Mode Screenshot" style="width: 100%; height: auto; display: block; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); min-height: 200px;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Dark Mode</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Umschaltbarer Dark Mode für angenehmes Arbeiten bei Nacht. Alle UI-Elemente passen sich automatisch an.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="info.png" alt="Hardware Information Screenshot" style="width: 100%; height: auto; display: block; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); min-height: 200px;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">Hardware-Informationen</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Detaillierte Systeminfos: Speicher, CPU-Temperatur, WiFi-Signal, Laufzeit und Firmware-Version auf einen Blick.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="screenshot-card" style="background: var(--surface); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px var(--shadow); overflow: hidden;">
-                    <img src="diagnostics.png" alt="System Diagnostics Screenshot" style="width: 100%; height: auto; display: block; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); min-height: 200px;">
-                    <div style="padding: 20px;">
-                        <h3 style="margin-bottom: 10px; color: var(--text-primary);">System-Diagnose</h3>
-                        <p style="color: var(--text-secondary); line-height: 1.5;">
-                            Umfassendes Diagnose-Tool mit Echtzeit-Metriken, Logs und Wartungsfunktionen für Systemüberwachung und Fehlerbehebung.
+                            UI- und Firmware-Version, Chip-Typ, Speichernutzung mit Fortschrittsbalken
+                            und das laufende System-Log direkt im Einstellungsbereich.
                         </p>
                     </div>
                 </div>
