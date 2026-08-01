@@ -13,6 +13,27 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 
 ## [Unreleased]
 
+## [9.15] – 2026-08-01
+
+### Behoben
+- **Der LED-Ring reagierte auf nichts mehr** — weder auf die Web-Steuerung noch auf
+  Home Assistant, zeigte dauerhaft dieselbe Farbe und ließ sich nicht ausschalten.
+  Ursache: `Adafruit_NeoPixel pixels;` wurde parameterlos konstruiert und erst
+  danach per `setPin()` / `begin()` konfiguriert. Auf dem ESP32 funktioniert das
+  nicht — `begin()` ruft intern `setPin()` mit dem gespeicherten Wert `-1` auf und
+  verwirft die zuvor gesetzte Pin-Nummer. GPIO 26 wurde nie als Ausgang
+  konfiguriert, der Ring bekam nie ein Signal. Die Firmware verhielt sich dabei
+  unauffällig: `pixels.show()` lief, kein Fehler, kein Crash.
+  Die Instanz wird jetzt in `initPixels()` mit den echten Konstruktorparametern
+  erzeugt (`new Adafruit_NeoPixel(numLeds, ledPin, NEO_GRB + NEO_KHZ800)`).
+- Nach `initFirstLEDUpdate()` gab nichts den tatsächlichen LED-Zustand aus. Der
+  Ring wurde beim Start auf Schwarz gelöscht und blieb dunkel, bis zufällig ein
+  Ereignis `updateLEDs()` auslöste — beim 30-Minuten-Poll potenziell eine halbe
+  Stunde lang.
+- Wurde `pixels.show()` durch `ledSafeToShow` oder `wifiReconnectActive`
+  blockiert, war `ledUpdatePending` bereits zurückgesetzt — das Update ging
+  verloren. Es wird jetzt erneut versucht.
+
 ### Hinzugefügt
 - Debug-Dokumentation für zwei abgeschlossene Diagnosen: spontane ESP32-Neustarts
   (`isRestartRecommended()` prüft Fragmentierung ohne geladene Uptime aus NVS) und
@@ -248,7 +269,8 @@ seit Monaten beobachteten LED-Pulsierens und der Spontan-Reboots ist gefunden.
 - Backend mit RSS-Feed-Analyse, Statistik-Dashboard und Trend-Ansicht
 - Projekt-Homepage mit Live-Statistiken
 
-[Unreleased]: https://github.com/Revisor01/auraos-moodlight/compare/v9.14...HEAD
+[Unreleased]: https://github.com/Revisor01/auraos-moodlight/compare/v9.15...HEAD
+[9.15]: https://github.com/Revisor01/auraos-moodlight/compare/v9.14...v9.15
 [9.14]: https://github.com/Revisor01/auraos-moodlight/compare/v9.13...v9.14
 [9.13]: https://github.com/Revisor01/auraos-moodlight/compare/v9.12...v9.13
 [9.12]: https://github.com/Revisor01/auraos-moodlight/compare/v9.11...v9.12

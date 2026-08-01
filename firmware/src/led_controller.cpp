@@ -3,8 +3,26 @@
 
 extern AppState appState;
 
-// Hardware-Instanz — definiert in diesem Modul
-Adafruit_NeoPixel pixels;
+// Hardware-Instanz. Wird in initPixels() mit den echten Parametern erzeugt —
+// genau so wie im minimalen Testsketch, der nachweislich funktioniert:
+//   Adafruit_NeoPixel pixels(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+// Der Umweg ueber ein parameterlos konstruiertes Objekt mit spaeterem
+// setPin()/updateLength() hat den GPIO nie korrekt konfiguriert: begin()
+// ruft intern setPin() mit dem gespeicherten Wert (-1) auf und verwirft damit
+// eine vorher gesetzte Pin-Nummer.
+#undef pixels
+Adafruit_NeoPixel *pixelsPtr = nullptr;
+#define pixels (*pixelsPtr)
+
+void initPixels() {
+    if (pixelsPtr) return;  // nur einmal
+    pixelsPtr = new Adafruit_NeoPixel(appState.numLeds, appState.ledPin,
+                                      NEO_GRB + NEO_KHZ800);
+    pixelsPtr->begin();
+    pixelsPtr->setBrightness(DEFAULT_LED_BRIGHTNESS);
+    pixelsPtr->clear();
+    pixelsPtr->show();
+}
 
 // Farbnamen für UI
 const char *colorNames[5] = {
@@ -195,8 +213,11 @@ void processLEDUpdates() {
             if (appState.ledClear) {
                 pixels.clear();
             } else {
+                // setBrightness() VOR setPixelColor(): die Bibliothek wendet den
+                // Helligkeitsfaktor beim Schreiben jedes Pixels an. Umgekehrte
+                // Reihenfolge skaliert den bereits gefuellten Puffer ein zweites
+                // Mal und dunkelt bei jedem Durchlauf weiter ab.
                 pixels.setBrightness(appState.ledBrightness);
-
                 for (int i = 0; i < appState.numLeds; i++) {
                     pixels.setPixelColor(i, appState.ledColors[i]);
                 }
@@ -217,8 +238,22 @@ void processLEDUpdates() {
             // Staendiges Umschalten zwischen WIFI_PS_MIN_MODEM und WIFI_PS_NONE
             // destabilisiert den WiFi-Stack bei schwachem Signal.
             // Power Save ist global auf WIFI_PS_NONE gesetzt (nach WiFi-Connect).
+            //
+            // KEIN portDISABLE_INTERRUPTS() um show(): die Adafruit-Bibliothek
+            // nutzt auf dem ESP32 den RMT-Peripheriebaustein, der die Bitfolge
+            // interruptgesteuert ausgibt. Mit gesperrten Interrupts kann RMT die
+            // Uebertragung nicht abschliessen — der Ring bleibt dunkel.
             pixels.show();
             lastLedUpdateTime = currentTime;
+        } else {
+            // Das Update ist oben bereits als erledigt markiert worden, wurde aber
+            // nie ausgegeben — sonst bleibt der Ring stehen, bis zufaellig ein
+            // weiteres Update kommt. Flag zuruecksetzen, damit der naechste
+            // Durchlauf es erneut versucht.
+            if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+                appState.ledUpdatePending = true;
+                xSemaphoreGive(appState.ledMutex);
+            }
         }
     }
 }
@@ -236,5 +271,12 @@ void initFirstLEDUpdate() {
     }
     appState.firstLedShowDone = true;
     debug(F("First LED update scheduled"));
+
+    // Direkt danach den tatsaechlichen Zustand ausgeben. Ohne diesen Aufruf
+    // bleibt der Ring nach dem Loeschen dunkel, bis zufaellig ein Ereignis
+    // (Web-Klick, MQTT-Befehl, Sentiment-Abruf) updateLEDs() ausloest — beim
+    // 30-Minuten-Poll also potenziell eine halbe Stunde lang.
+    updateLEDs();
+    debug(F("Initialer LED-Zustand ausgegeben"));
 }
 
