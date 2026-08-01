@@ -87,15 +87,13 @@ void setup() {
 
     // NeoPixel-LEDs ZULETZT initialisieren
     delay(500);  // Laengere Pause damit WiFi-Subsystem stabil ist
-    // KEIN Copy-Assignment auf pixels (Adafruit_NeoPixel hat keinen
-    // Copy-Assignment-Operator; das Temporary wuerde shallow kopiert und sein
-    // Destruktor gibt danach den Puffer des globalen Objekts frei -> Heap-UAF).
-    // Stattdessen das bereits existierende globale Objekt konfigurieren.
-    pixels.updateType(NEO_GRB + NEO_KHZ800);
-    pixels.updateLength(appState.numLeds);  // allokiert Puffer im globalen Objekt (free(NULL) ist safe)
-    pixels.setPin(appState.ledPin);
-    pixels.begin();
-    pixels.setBrightness(DEFAULT_LED_BRIGHTNESS);
+    // Instanz mit den echten Parametern erzeugen — exakt wie im minimalen
+    // Testsketch, der nachweislich funktioniert. Nachtraegliches setPin() auf
+    // einem parameterlos konstruierten Objekt hat den GPIO nie konfiguriert.
+    initPixels();
+    debug(String(F("NeoPixel initialisiert: Pin ")) + String(appState.ledPin) +
+          F(", LEDs ") + String(appState.numLeds) +
+          F(", Bibliothek meldet Pin ") + String(pixels.getPin()));
     debug(F("Setup abgeschlossen."));
 
     appState.startupTime = millis();
