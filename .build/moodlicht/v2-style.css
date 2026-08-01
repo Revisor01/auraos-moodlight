@@ -1315,3 +1315,19 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   background-attachment: scroll !important;
 }
 .torch-hint { opacity: .55; }
+
+/* ---- Spans duerfen keinen eigenen Verlauf haben ----
+   Ein radial-gradient auf einem <span> bezieht sich auf dessen eigenen,
+   kleinen Kasten — der Lichtpunkt sass dadurch an einer voellig anderen
+   Stelle als der Zeiger. MOOD und MUT erben jetzt einfach den Verlauf des
+   umgebenden Absatzes und heben sich nur durch das Schriftgewicht ab. */
+.torch-play span {
+  background: none !important;
+  background-image: none !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  -webkit-text-fill-color: inherit !important;
+  color: inherit !important;
+  font-weight: 700;
+  letter-spacing: .16em;
+}
