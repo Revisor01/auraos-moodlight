@@ -84,12 +84,14 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 - Wurde `pixels.show()` durch `ledSafeToShow` oder `wifiReconnectActive`
   blockiert, war `ledUpdatePending` bereits zurückgesetzt — das Update ging
   verloren. Es wird jetzt erneut versucht.
-- Die blaue Status-LED blinkte dauerhaft weiter, obwohl WLAN längst verbunden
-  war. Die Rückstellung lag in einem `else if`-Zweig und griff nur beim Wechsel
-  getrennt → verbunden; war `wifiWasConnected` bereits `true` (etwa nach einem
-  OTA-Neustart mit sofort stehender Verbindung), lief sie nie. Für Nutzende sah
-  das nach einem Defekt aus. Der Status wird jetzt bei jedem Verbindungscheck
-  aufgeräumt.
+- Die Status-LED blinkte dauerhaft weiter, obwohl längst alles funktionierte.
+  Die Rückstellungen hingen an einzelnen Ereignissen und griffen unzuverlässig:
+  Der WLAN-Status (blau) wurde nur beim Wechsel getrennt → verbunden gelöscht —
+  stand die Verbindung nach einem Neustart sofort, lief das nie. Der API-Status
+  (rot) wurde erst beim nächsten erfolgreichen Sentiment-Abruf gelöscht, also
+  bis zu 30 Minuten später. Für Nutzende sieht dauerhaftes Blinken nach einem
+  Defekt aus. Der Status wird jetzt zustandsbasiert geführt: Wenn WLAN steht und
+  die API erreichbar ist, blinkt nichts.
 - `/api/firmware-version` meldete eine veraltete Version: Der Wert wurde aus
   `/firmware-version.txt` im Flash gelesen, die aber nur beim OTA-Update
   geschrieben wird und einen USB-Flash unverändert überlebt. Die UI zeigte
