@@ -251,7 +251,7 @@ script = r"""
     var r0 = torch.getBoundingClientRect();
     px = r0.width * 0.5; py = r0.height * 0.42;
     zeichne();
-    setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.35) + 'px'); }, 600);
+    setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.2) + 'px'); }, 600);
     setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2800);
   })();
 

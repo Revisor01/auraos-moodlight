@@ -1275,3 +1275,43 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   color: #6E7684 !important;
 }
 .torch-play span { color: var(--live-color, var(--accent)) !important; }
+
+/* ================= Dunkler Grundzustand =================
+   Ohne Zeiger liegt alles deutlich im Dunkeln — gerade so erkennbar, dass
+   klar wird: da ist etwas, man muss hinsehen. Erst der Lichtkegel bringt die
+   Farbe. Auch MOOD und MUT sind vorher nur zu ahnen. */
+.torch-mark {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--live-color, #A855F7) 32%,
+      color-mix(in srgb, var(--live-color, #A855F7) 40%, #2A2F3A) 58%,
+      #2A2F3A 82%) !important;
+}
+.torch-play {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--fg-mid) 0%,
+      var(--fg-mid) 34%,
+      color-mix(in srgb, var(--fg-mid) 40%, #262B35) 60%,
+      #262B35 82%) !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  background-attachment: scroll !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+}
+/* MOOD und MUT: im Dunkeln nur zu ahnen, im Licht in Markenfarbe */
+.torch-play span {
+  color: transparent !important;
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, var(--accent)) 0%,
+      var(--live-color, var(--accent)) 34%,
+      color-mix(in srgb, var(--live-color, var(--accent)) 35%, #2A2F3A) 60%,
+      #2A2F3A 82%) !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-attachment: scroll !important;
+}
+.torch-hint { opacity: .55; }
