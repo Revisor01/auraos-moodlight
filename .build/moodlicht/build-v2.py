@@ -198,9 +198,10 @@ script = r"""
     }
 
     torch.addEventListener('pointermove', function (e) {
-      var rr = torch.getBoundingClientRect();
-      px = e.clientX - rr.left;
-      py = e.clientY - rr.top;
+      var g = torch.querySelector('.torch-glow');
+      var gr = g ? g.getBoundingClientRect() : torch.getBoundingClientRect();
+      px = e.clientX - gr.left;
+      py = e.clientY - gr.top;
 
       // Kippen: Zeiger links -> Schrift dreht nach rechts weg
       var r = torch.getBoundingClientRect();
