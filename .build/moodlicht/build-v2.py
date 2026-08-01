@@ -209,26 +209,29 @@ script = r"""
     if (window.matchMedia('(hover: none)').matches) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    var RADIUS = 380;      // Groesse des Lichtkegels
+    var RADIUS = 300;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
-    var lagen = torch.querySelectorAll('.torch-3d');
-    var spans = torch.querySelectorAll('.torch-play span');
+
+    // Die Maske sitzt auf .torch-lit, die Rotation auf .torch-3d. Beide
+    // Koordinatensysteme haengen an der maskierten Ebene: --tx/--ty werden
+    // relativ zu IHREM Kasten berechnet, sonst sitzt der Kegel versetzt.
+    var lit = torch.querySelector('.torch-lit');
+    var dreh = torch.querySelector('.torch-3d');
+    if (!lit || !dreh) return;
+
     var pending = false, px = 0, py = 0, rx = 0, ry = 0;
 
     function zeichne() {
       torch.style.setProperty('--tx', px + 'px');
       torch.style.setProperty('--ty', py + 'px');
-      for (var i = 0; i < lagen.length; i++) {
-        lagen[i].style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
-      }
+      dreh.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
       pending = false;
     }
 
     torch.addEventListener('pointermove', function (e) {
-      var g = torch.querySelector('.torch-glow');
-      var gr = g ? g.getBoundingClientRect() : torch.getBoundingClientRect();
-      px = e.clientX - gr.left;
-      py = e.clientY - gr.top;
+      var lr = lit.getBoundingClientRect();
+      px = e.clientX - lr.left;
+      py = e.clientY - lr.top;
 
       // Kippen: Zeiger links -> Schrift dreht nach rechts weg
       var r = torch.getBoundingClientRect();
@@ -239,24 +242,17 @@ script = r"""
 
       torch.style.setProperty('--tr', RADIUS + 'px');
       torch.classList.add('touched');
-      // Jeder Span braucht Koordinaten relativ zu seinem EIGENEN Kasten —
-      // ein Verlauf bezieht sich immer auf das Element, auf dem er liegt.
-      for (var s = 0; s < spans.length; s++) {
-        var sr = spans[s].getBoundingClientRect();
-        spans[s].style.setProperty('--sx', (e.clientX - sr.left) + 'px');
-        spans[s].style.setProperty('--sy', (e.clientY - sr.top) + 'px');
-      }
       if (!pending) { pending = true; requestAnimationFrame(zeichne); }
     });
 
     torch.addEventListener('pointerleave', function () {
       torch.style.setProperty('--tr', '0px');
       rx = 0; ry = 0;
-      for (var i = 0; i < lagen.length; i++) lagen[i].style.transform = '';
+      dreh.style.transform = '';
     });
 
     // Beim Laden kurz aufblitzen, damit sich der Hero zu erkennen gibt
-    var r0 = torch.getBoundingClientRect();
+    var r0 = lit.getBoundingClientRect();
     px = r0.width * 0.5; py = r0.height * 0.42;
     zeichne();
     setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.2) + 'px'); }, 600);

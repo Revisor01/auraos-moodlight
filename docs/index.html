@@ -212,21 +212,6 @@ h1 {
 .live[data-state="ok"] .scale-pin { transform: translateX(-1.5px) scaleY(1); }
 .live-note { margin: 1.1rem 0 0; font-size: var(--step--1); color: var(--fg-low); }
 
-.scroll-hint {
-  display: inline-flex; align-items: center; gap: .6rem;
-  margin-top: clamp(2.5rem, 5vw, 3.5rem);
-  color: var(--fg-low);
-  text-decoration: none;
-  font-size: var(--step--1);
-  letter-spacing: .04em;
-  transition: color .2s var(--ease);
-}
-.scroll-hint:hover { color: var(--fg); }
-@media (prefers-reduced-motion: no-preference) {
-  .scroll-hint svg { animation: nudge 2.6s var(--ease) infinite; }
-}
-@keyframes nudge { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
-
 /* ---------- Kapitel: von dunkel nach hell ---------- */
 .chapter { padding: clamp(4.5rem, 11vw, 9rem) 0; position: relative; }
 .chapter + .chapter { border-top: 1px solid var(--line-soft); }
@@ -488,7 +473,9 @@ a:focus-visible, [tabindex]:focus-visible {
   background: radial-gradient(closest-side,
     color-mix(in srgb, var(--live-color, var(--accent)) 62%, transparent),
     transparent 72%);
-  opacity: calc(.12 + var(--lift) * .5);
+  /* Oben bewusst zurueckhaltend: im Hero soll der Lichtkegel wirken, nicht
+     die Wolke dahinter. Nach unten hin oeffnet sie sich unveraendert. */
+  opacity: calc(.04 + var(--lift) * .58);
 }
 .aura-b {
   width: 90vmax; height: 90vmax;
@@ -534,23 +521,6 @@ body::before {
 }
 .values { background: var(--line); }
 .value { background: color-mix(in srgb, var(--surface) 90%, transparent); }
-
-/* ================= Hero: Text links, Live-Kachel rechts ================= */
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
-  gap: clamp(2rem, 5vw, 4.5rem);
-  align-items: center;
-}
-.hero-text { min-width: 0; }
-.hero-grid .live { margin-top: 0; max-width: none; }
-.hero-grid .scroll-hint { margin-top: 2.6rem; }
-
-@media (max-width: 60rem) {
-  .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
-  .hero-grid .scroll-hint { display: none; }
-  .hero-grid .live { max-width: 32rem; }
-}
 
 /* ================= Selber bauen ================= */
 .c5 { background: transparent; }
@@ -815,96 +785,124 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   h1, h2, h3, p, a, code { transition: none; }
 }
 
-/* ================= Wortmarke im Hero =================
-   "Moodlicht" bekommt einen eigenen Auftritt statt einer kleinen Kicker-Zeile,
-   direkt gefolgt vom Wortspiel, das den Namen erklaert. */
-.wordmark {
-  font-family: 'Clash Display', sans-serif;
-  font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
-  font-weight: 600;
-  letter-spacing: -.02em;
-  line-height: 1;
-  margin: 0 0 .55rem;
-  color: var(--accent);
-}
-.wordplay {
-  font-size: var(--step--1);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  font-weight: 500;
-  color: var(--fg-low);
-  margin: 0 0 1.9rem;
-}
-.wordplay span {
-  color: var(--fg-mid);
-  font-weight: 600;
-}
-.pull em {
-  font-style: normal;
-  color: var(--accent);
+
+/* =====================================================================
+   HERO — Taschenlampe
+   =====================================================================
+   Der Hero-Text liegt im Dunkeln; ein Lichtkegel folgt dem Zeiger und legt
+   ihn frei. Man muss hinsehen, um zu sehen — das ist die Idee des Geraets.
+
+   Aufbau: zwei zeichengleiche Textebenen in derselben Grid-Zelle.
+
+     .torch-dark   die dunkle Ebene, immer da, bestimmt die Hoehe
+     .torch-lit    die leuchtende Ebene, per radialer Maske auf den
+                   Lichtkegel beschnitten, aria-hidden
+
+   Warum so und nicht per background-clip auf dem Text:
+   background-clip: text macht den Text selbst transparent. Greift die Regel
+   nicht (Firefox-Eigenheiten, alte Engines), ist der Schriftzug nicht bloss
+   ungefaerbt, sondern komplett weg. Ausserdem bezieht sich ein Verlauf immer
+   auf den EIGENEN Kasten — MOOD und MUT als <span> haetten je einen eigenen
+   Lichtkegel an falscher Stelle. Beides entfaellt hier: gefaerbt wird nicht
+   der Text, sondern eine ganze Ebene wird maskiert. Ein Verlauf, eine
+   Koordinate, ein Bezugssystem.
+
+   Die 3D-Rotation sitzt auf dem gemeinsamen Elternknoten .torch-3d. Beide
+   Ebenen liegen dadurch im selben transformierten Raum und koennen nicht
+   gegeneinander verrutschen — die maskierte Ebene bildet zwar einen eigenen
+   Rendering-Kontext, aber die Perspektive wird oberhalb davon aufgeloest.
+
+   Der Kegelradius --tr ist ueber @property als <length> registriert und
+   dadurch animierbar: das Aufblitzen beim Laden und das Ausblenden beim
+   Verlassen laufen weich statt zu springen.
+   ===================================================================== */
+
+@property --tr {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
 }
 
-/* ================= Hero: Taschenlampe =================
-   Zwei identische Textebenen liegen in derselben Grid-Zelle und sind dadurch
-   pixelgenau deckungsgleich. Die untere ist nur zu ahnen, die obere leuchtet
-   und wird per radialer Maske auf den Lichtkegel beschnitten, der dem Zeiger
-   folgt. Beide kippen leicht in 3D — man muss hinsehen, um zu sehen. */
 .torch {
   display: grid;
+  grid-template-columns: 100%;   /* feste Spalte: beide Ebenen exakt gleich breit */
   grid-template-rows: auto auto;
-  width: min(60rem, 100% - 2.5rem);
+  width: min(80rem, 100% - 2.5rem);
   margin-inline: auto;
   padding-block: clamp(2rem, 6vw, 4.5rem) clamp(1.5rem, 3vw, 2.5rem);
   perspective: 900px;
   cursor: default;
-  --tx: 50%;
+  text-align: center;
+
+  --tx: 50%;   /* Kegelmitte, vom Script in px gesetzt */
   --ty: 45%;
-  --tr: 0px;
+  --tr: 0px;   /* Kegelradius */
   transition: --tr .9s cubic-bezier(.4,0,.2,1);
 }
 
-/* Beide Ebenen: identische Zelle, identische Abmessungen */
-.torch-layer {
+/* Traeger der 3D-Rotation. Beide Ebenen sind seine Kinder und teilen sich
+   dadurch zwangslaeufig dieselbe Geometrie. */
+.torch-3d {
+  display: grid;
+  grid-template-columns: 100%;
   grid-area: 1 / 1;
   transform-style: preserve-3d;
   transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition: transform .25s cubic-bezier(.22,.61,.36,1);
   will-change: transform;
 }
+
+.torch-layer {
+  grid-area: 1 / 1;    /* dieselbe Zelle = deckungsgleich */
+  min-width: 0;
+}
+
+/* Die leuchtende Ebene existiert nur im Lichtkegel. */
 .torch-lit {
   -webkit-mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%);
+          #000 0%, #000 42%, rgba(0,0,0,.5) 70%, transparent 100%);
           mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%);
+          #000 0%, #000 42%, rgba(0,0,0,.5) 70%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
   pointer-events: none;
 }
 
+/* ---- Typografie: gilt fuer beide Ebenen gleichermassen ----
+   Die Wortmarke steht in einer Zeile. Damit sie den Container nicht sprengt
+   (und die Ebenen dadurch unterschiedlich breit werden), begrenzt min() sie
+   zusaetzlich per vw. */
 .torch-mark {
-  font-family: 'Clash Display', sans-serif;
-  font-size: clamp(3.4rem, 2rem + 7vw, 8.5rem);
+  font-family: 'Clash Display', ui-sans-serif, system-ui, sans-serif;
+  font-size: min(9.6vw, 8.6rem);
   font-weight: 600;
   letter-spacing: -.045em;
-  line-height: .9;
-  margin: 0 0 .8rem;
+  line-height: .95;
+  white-space: nowrap;
+  margin: 0 0 .7rem;
   transform: translateZ(60px);
 }
 .torch-play {
-  font-size: clamp(1rem, .8rem + .9vw, 1.6rem);
+  font-size: clamp(1.05rem, .82rem + 1.05vw, 1.8rem);
   letter-spacing: .14em;
   text-transform: uppercase;
   font-weight: 600;
+  line-height: 1.35;
   margin: 0;
   transform: translateZ(35px);
 }
+.torch-play span { font-weight: 700; letter-spacing: .16em; }
 
-.torch-dark .torch-mark { color: color-mix(in srgb, var(--fg) 11%, transparent); }
-.torch-dark .torch-play { color: color-mix(in srgb, var(--fg) 9%, transparent); }
+/* ---- Dunkler Grundzustand: nur zu ahnen ---- */
+.torch-dark .torch-mark { color: color-mix(in srgb, var(--fg) 13%, transparent); }
+.torch-dark .torch-play { color: color-mix(in srgb, var(--fg) 10%, transparent); }
+.torch-dark .torch-play span { color: color-mix(in srgb, var(--fg) 16%, transparent); }
 
+/* ---- Im Licht: Wortmarke und Wortspiel in der aktuellen Sentiment-Farbe ---- */
 .torch-lit .torch-mark {
   color: var(--live-color, var(--accent));
-  text-shadow:
-    0 0 26px color-mix(in srgb, var(--live-color, var(--accent)) 65%, transparent),
-    0 0 70px color-mix(in srgb, var(--live-color, var(--accent)) 40%, transparent);
+  /* Kein Schein: die Farbe allein traegt den Effekt. Ein text-shadow legte
+     sich als Nebel um die Buchstaben und nahm der Schrift die Kante. */
 }
 .torch-lit .torch-play { color: var(--fg-mid); }
 .torch-lit .torch-play span { color: var(--live-color, var(--accent)); }
@@ -916,79 +914,48 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--fg-low);
-  opacity: .7;
+  opacity: .55;
   transition: opacity .5s ease;
 }
 .torch.touched .torch-hint { opacity: 0; }
 
-@property --tr {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: 0px;
-}
-
-/* Ohne Zeigegeraet gaebe es nichts freizulegen */
-@media (hover: none) {
+/* ---- Ohne Zeigegeraet gaebe es nichts freizulegen ----
+   Auf Touch und bei reduzierter Bewegung zeigt die leuchtende Ebene den Text
+   dauerhaft; die dunkle Ebene weicht, damit sie nicht durchscheint. */
+@media (hover: none), (prefers-reduced-motion: reduce) {
   .torch-dark { visibility: hidden; }
-  .torch-lit { -webkit-mask-image: none; mask-image: none; }
-  .torch-layer { transform: none; }
+  .torch-lit {
+    -webkit-mask-image: none;
+            mask-image: none;
+  }
   .torch-hint { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .torch-layer { transition: none; transform: none; }
-  .torch { transition: none; }
+  .torch, .torch-3d { transition: none; }
+  .torch-3d { transform: none; }
 }
 
-/* ---- Subclaim und Hero-Text ---- */
-.hero { display: block; text-align: center; }
-.hero-grid { display: block; }
-
-/* ================= Taschenlampen-Wortmarke =================
-   Der Schriftzug liegt fast unsichtbar im Dunkeln. Ein Lichtkegel folgt der
-   Maus (oder der Beruehrung) und legt ihn frei — man muss hinsehen, um ihn
-   zu sehen. Genau das ist die Idee des Geraets.
-
-   Technik: zwei identische Schriftzuege uebereinander. Der untere ist
-   angedeutet dunkel, der obere leuchtet in der Markenfarbe und wird per
-   radialer Maske auf den Lichtkegel beschnitten. */
-/* Grundzustand: nur zu ahnen */
-/* Der beleuchtete Zwilling */
-/* Ohne Zeigegeraet (Touch) waere die Marke unlesbar — dort wird sie
-   dauerhaft gezeigt, ergaenzt um eine langsam wandernde Lichtbewegung. */
-/* Der Radius wird animierbar gemacht, damit das Aufblitzen beim Laden und
-   das Ausblenden beim Verlassen weich laufen statt zu springen. */
-@property --tr {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: 0px;
+/* Letzte Sicherung: kennt eine Engine mask-image nicht, bliebe die leuchtende
+   Ebene ungeschnitten ueber der dunklen stehen — der Text waere dann eben
+   dauerhaft sichtbar statt kaputt. */
+@supports not ((-webkit-mask-image: radial-gradient(#000, transparent)) or (mask-image: radial-gradient(#000, transparent))) {
+  .torch-dark { visibility: hidden; }
+  .torch-hint { display: none; }
 }
-/* ================= Hero als Taschenlampe (zentriert, gross) =================
-   Der komplette Hero-Text liegt im Dunkeln. Ein Lichtkegel folgt dem Zeiger
-   und legt ihn frei; gleichzeitig kippt die Schrift leicht in die
-   Gegenrichtung, was Tiefe erzeugt. */
+
+/* =====================================================================
+   HERO — Aufbau unterhalb des Lichtkegels
+   ===================================================================== */
 .hero { display: block; text-align: center; }
-.hero-grid { display: block; }        /* alte Zweispaltigkeit aufheben */
 
-/* Wortmarke */
-/* Dunkle Ebene: nur zu ahnen */
-/* Beleuchtete Ebene */
-.hero-below { margin-top: clamp(2.5rem, 5vw, 4rem); text-align: left; }
-.hero-below .lede { margin-inline: auto; text-align: center; }
-.hero-below .live { margin-inline: auto; }
-.hero-below .scroll-hint { display: inline-flex; margin-top: 2.6rem; }
-.hero-below { display: flex; flex-direction: column; align-items: center; }
+.hero-below {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+}
 
-/* ---- Deckungsgleichheit der beiden Textebenen ----
-   Die beleuchtete Ebene war absolut positioniert, die dunkle lag im Fluss —
-   dadurch verschoben sie sich um die Paddings. Jetzt liegen beide absolut
-   im selben Kasten; ein unsichtbarer Platzhalter haelt die Hoehe. */
-/* Beide Ebenen brauchen identische Innenabstaende, sonst driften sie */
-/* ---- Sauber: beide Ebenen im selben Grid-Feld ----
-   Kein Mischen von absolut und im Fluss mehr. Beide Ebenen belegen dieselbe
-   Grid-Zelle und sind dadurch pixelgenau deckungsgleich; die dunkle bestimmt
-   die Hoehe, die beleuchtete legt sich exakt darueber. */
-/* ---- Wortspiel groesser ---- */
-/* ---- Lede und Live-Kachel nebeneinander ---- */
+/* Claim links, Live-Kachel rechts */
 .hero-cols {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
@@ -997,50 +964,14 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   width: 100%;
   text-align: left;
 }
-.hero-cols .lede { margin: 0; text-align: left; max-width: 26rem; }
-.hero-cols .live { margin: 0; max-width: none; }
 
-@media (max-width: 56rem) {
-  .hero-cols { grid-template-columns: 1fr; gap: 2rem; }
-  .hero-cols .lede { text-align: center; margin-inline: auto; }
-  .hero-cols .live { max-width: 32rem; margin-inline: auto; }
-}
-
-/* ================= FINAL: Hero-Ebenen sauber ueberlagern =================
-   Ueber die Iterationen haben sich widerspruechliche Positionsregeln
-   angesammelt (absolut vs. Grid, mehrere inset-Werte). Diese Sektion setzt
-   den Zustand abschliessend und gewinnt durch ihre Position am Dateiende. */
-/* Die Maske gehoert nur auf die beleuchtete Ebene */
-/* ---- Subclaim unter dem Hero ----
-   Die Headline liegt nicht mehr im Lichtkegel — dort steht nur noch die
-   Wortmarke. Als Subclaim traegt sie die Aussage in normaler Lesbarkeit. */
-.subclaim {
-  font-family: 'Clash Display', sans-serif;
-  font-size: clamp(1.7rem, 1.1rem + 2.6vw, 3.2rem);
-  font-weight: 600;
-  line-height: 1.06;
-  letter-spacing: -.03em;
-  text-align: center;
-  text-wrap: balance;
-  margin: 0 0 clamp(2rem, 4vw, 3.2rem);
-  color: var(--fg);
-}
-/* Der Fliesstext daneben ist Fliesstext, keine Schautypografie */
-.hero-cols .lede {
-  font-size: var(--step-0) !important;
-  line-height: 1.6;
-  color: var(--fg-mid) !important;
-}
-
-/* ---- Claim-Block: Ueberschrift + Fliesstext, linksbuendig, ohne Flaeche ---- */
 .claim-block { text-align: left; }
 .claim-block .subclaim {
-  font-family: 'Clash Display', sans-serif;
+  font-family: 'Clash Display', ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(1.6rem, 1.1rem + 2.1vw, 2.8rem);
   font-weight: 600;
   line-height: 1.06;
   letter-spacing: -.03em;
-  text-align: left;
   text-wrap: balance;
   margin: 0 0 1.1rem;
   color: var(--fg);
@@ -1049,390 +980,21 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   font-size: var(--step-0);
   line-height: 1.6;
   color: var(--fg-mid);
-  margin: 0;
   max-width: 30rem;
-  text-align: left;
+  margin: 0;
 }
 
-/* ---- Beide Ebenen exakt gleich breit ----
-   Die dunkle Ebene liegt als erste im Grid und dehnte die Zelle ueber die
-   Containerbreite hinaus (Schriftzug 1028px in 960px Container); die zweite
-   Ebene wurde dagegen beschnitten. Ergebnis: 68px Versatz.
-   Beide Ebenen bekommen jetzt dieselbe feste Breite, und die Wortmarke
-   skaliert so, dass sie hineinpasst. */
-.torch-layer { width: 100%; min-width: 0; }
-.torch-mark {
-  white-space: nowrap;
-  font-size: clamp(2.6rem, 10.5vw, 7rem);
+.hero-cols .live { margin: 0; max-width: none; }
+
+@media (max-width: 56rem) {
+  .hero-cols { grid-template-columns: 1fr; gap: 2rem; }
+  .claim-block { text-align: center; }
+  .claim-block .lede { margin-inline: auto; text-align: center; }
+  .hero-cols .live { max-width: 32rem; margin-inline: auto; }
 }
 
-/* ---- Ursache des Versatzes: Grid-Spalte richtet sich am breitesten Item aus ----
-   Die dunkle Ebene sprengte mit 1029px die 960px-Spalte und wurde nicht
-   beschnitten, die leuchtende schon. Eine feste Spaltenbreite von 100%
-   zwingt beide Ebenen auf identische Abmessungen. */
-.torch { grid-template-columns: 100%; }
-.torch-layer { max-width: 100%; overflow: visible; }
-/* Wortmarke muss in die Spalte passen, sonst dehnt sie sie wieder */
-.torch-mark { font-size: min(clamp(2.6rem, 10vw, 7rem), 15.5vw); }
-
-/* ---- Die eigentliche Ursache: der Schriftzug war breiter als der Container ----
-   Bei 112px war "Moodlicht" 1029px breit, der Container nur 960px. Die dunkle
-   Ebene (erstes Grid-Item) sprengte die Spalte, die leuchtende wurde
-   beschnitten — daher der Versatz von 34px.
-   8.5vw haelt die Wortmarke in jeder Fensterbreite innerhalb des Containers,
-   damit sind beide Ebenen zwangslaeufig deckungsgleich. */
-.torch-mark { font-size: min(8.5vw, 7rem) !important; }
-
-/* ---- Ursache gefunden: die Maske beschnitt die Ebene auf Containerbreite ----
-   Beide Ebenen hatten identische Schrift (102px), aber die maskierte war exakt
-   960px breit statt 1028px. mask-image erzeugt einen eigenen Rendering-Kontext,
-   der am Elementkasten endet — der ueberstehende Schriftzug wurde abgeschnitten
-   und dadurch anders positioniert.
-   Loesung: die Wortmarke passt in den Container, dann steht nichts mehr ueber.
-   7.9vw ergibt bei 1200px Fenster ~95px und damit ~957px Breite. */
-.torch-mark { font-size: min(7.9vw, 6.5rem) !important; }
-.torch-layer { width: 100%; }
-
-/* ---- Die tatsaechliche Ursache ----
-   Beide Ebenen sind exakt 960px breit und identisch positioniert. Das <p> mit
-   der Wortmarke hat aber white-space: nowrap und laeuft ueber diesen Kasten
-   hinaus (1029px). Bei der dunklen Ebene ist der Ueberlauf sichtbar, bei der
-   leuchtenden schneidet die Maske ihn am Kastenrand ab — daher der Versatz.
-   Loesung: nowrap aufheben und die Groesse so waehlen, dass "Moodlicht" in
-   einer Zeile bleibt, ohne ueberzulaufen. */
-.torch-mark {
-  white-space: normal !important;
-  font-size: clamp(2.4rem, 8vw, 6rem) !important;
-  overflow-wrap: normal;
-}
-
-/* ---- Wirkliche Ursache: mask-image + 3D-Transform vertragen sich nicht ----
-   Die gemessene Breite reagierte gar nicht auf die Schriftgroesse — sie kommt
-   von der 3D-Rotation. Ein maskiertes Element bildet einen eigenen
-   Rendering-Kontext, der die Perspektive anders aufloest als die unmaskierte
-   Ebene. Dadurch driften beide beim Kippen auseinander.
-
-   Loesung: Die Rotation wandert auf den gemeinsamen Elternknoten. Beide Ebenen
-   liegen dann im selben transformierten Raum und koennen nicht mehr
-   gegeneinander verrutschen. */
-.torch-layer { transform: none !important; }
-.torch-3d {
-  transform-style: preserve-3d;
-  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  transition: transform .25s cubic-bezier(.22,.61,.36,1);
-  display: grid;
-  grid-template-columns: 100%;
-  grid-template-rows: auto;
-  will-change: transform;
-}
-.torch-3d > .torch-layer { grid-area: 1 / 1; }
-
-/* ================= FINAL: eine Ebene, Licht im Text =================
-   Zwei uebereinandergelegte Ebenen liessen sich nicht zuverlaessig zur Deckung
-   bringen — die Maske veraenderte die Geometrie der leuchtenden Ebene. Jetzt
-   gibt es nur noch EINEN Schriftzug: Der Lichtkegel ist ein radialer Verlauf,
-   der per background-clip in die Buchstaben gestanzt wird. Ein Versatz ist
-   damit strukturell unmoeglich. */
-.torch-mark,
-.torch-play {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, #A855F7) 0%,
-      var(--live-color, #A855F7) 38%,
-      color-mix(in srgb, var(--live-color, #A855F7) 45%, transparent) 62%,
-      color-mix(in srgb, var(--fg) 12%, transparent) 100%);
-  background-attachment: fixed;
-  -webkit-background-clip: text;
-          background-clip: text;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent;
-}
-.torch-play {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, #A855F7) 0%,
-      var(--fg-mid) 45%,
-      color-mix(in srgb, var(--fg) 10%, transparent) 100%);
-}
-.torch-mark { white-space: nowrap !important; font-size: clamp(2.6rem, 8.2vw, 7rem) !important; }
-/* Wortmarke innerhalb des Containers halten (war 1029px bei 960px Container) */
-.torch-mark { font-size: clamp(2.4rem, 7.6vw, 6.4rem) !important; }
-
-/* ---- Verschwinden behoben ----
-   background-attachment: fixed verankerte den Verlauf am Viewport — beim
-   Scrollen wanderte der Lichtkegel vom Text weg und der Schriftzug wurde
-   unsichtbar. Der Verlauf gehoert an das Element selbst.
-
-   Ausserdem: Ohne Zeigerbewegung (--tr = 0) war der Kegel ein Punkt und der
-   Text praktisch weg. Es gibt jetzt eine Grundhelligkeit, die den Schriftzug
-   immer erkennbar laesst — freigelegt wird er trotzdem nur im Lichtkegel. */
-.torch-mark,
-.torch-play {
-  background-attachment: scroll !important;
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, #A855F7) 0%,
-      var(--live-color, #A855F7) 34%,
-      color-mix(in srgb, var(--live-color, #A855F7) 50%, transparent) 60%,
-      color-mix(in srgb, var(--fg) 22%, transparent) 100%) !important;
-}
-.torch-play {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, #A855F7) 0%,
-      var(--fg-mid) 42%,
-      color-mix(in srgb, var(--fg) 20%, transparent) 100%) !important;
-}
-
-/* Groesser */
-.torch-mark { font-size: clamp(2.8rem, 9.5vw, 8rem) !important; }
-.torch { width: min(72rem, 100% - 2rem); }
-/* Wortmarke gross, aber innerhalb des Containers (1234px bei 1152px Container) */
-.torch-mark { font-size: min(8.8vw, 7.4rem) !important; }
-
-/* ================= FINAL: Text immer sichtbar, Licht als Zugabe =================
-   background-clip: text war unzuverlaessig — je nach Scrollposition und
-   Kegelposition verschwand der Schriftzug ganz. Jetzt wird der Text ganz
-   normal in Grau gesetzt (immer lesbar), und der Lichtkegel liegt als
-   separates, weich auslaufendes Overlay darueber. Nichts kann mehr
-   verschwinden. */
-.torch-mark,
-.torch-play {
-  background: none !important;
-  background-image: none !important;
-  -webkit-background-clip: border-box !important;
-          background-clip: border-box !important;
-  -webkit-text-fill-color: currentColor !important;
-}
-.torch-mark {
-  color: color-mix(in srgb, var(--fg) 42%, transparent) !important;
-  position: relative;
-}
-.torch-play {
-  color: color-mix(in srgb, var(--fg) 34%, transparent) !important;
-}
-.torch-play span { color: color-mix(in srgb, var(--live-color, var(--accent)) 75%, var(--fg)) !important; }
-
-/* Der Lichtkegel als Overlay ueber dem Text: eine Kopie in Markenfarbe,
-   die nur im Kegel sichtbar wird. Verschwindet der Kegel, bleibt der
-   graue Text darunter unveraendert stehen. */
-.torch-3d { position: relative; }
-.torch-glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      color-mix(in srgb, var(--live-color, var(--accent)) 55%, transparent) 0%,
-      color-mix(in srgb, var(--live-color, var(--accent)) 22%, transparent) 45%,
-      transparent 72%);
-  mix-blend-mode: screen;
-  opacity: .95;
-  border-radius: 50%;
-}
-
-/* ---- Glow ohne Kanten ----
-   Der Overlay-Kasten zeichnete sich als Rechteck ab, weil border-radius und
-   mix-blend-mode zusammen einen sichtbaren Rand erzeugten. Der Verlauf laeuft
-   jetzt vollstaendig innerhalb des Kastens aus, der Kasten selbst ist
-   grosszuegig ueberdimensioniert und ohne Radius. */
-.torch-glow {
-  inset: -40% -20% !important;
-  border-radius: 0 !important;
-  mix-blend-mode: plus-lighter;
-  opacity: .8;
-  background: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      color-mix(in srgb, var(--live-color, var(--accent)) 42%, transparent) 0%,
-      color-mix(in srgb, var(--live-color, var(--accent)) 16%, transparent) 40%,
-      transparent 68%) !important;
-  filter: blur(6px);
-}
-
-/* ================= FINAL FINAL: kein Blend-Mode, kein Flackern =================
-   mix-blend-mode (screen/plus-lighter) verursachte Flackern und
-   Verschwinden — der Browser komponiert die Ebene bei jeder Bewegung neu.
-   Der Glow ist jetzt ein schlichtes Overlay ohne Blend-Mode, der Text
-   darunter bleibt unangetastet sichtbar. */
-.torch-glow {
-  mix-blend-mode: normal !important;
-  filter: none !important;
-  opacity: 1 !important;
-  inset: -30% -15% !important;
-  z-index: 0;
-  background: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      color-mix(in srgb, var(--live-color, var(--accent)) 30%, transparent) 0%,
-      color-mix(in srgb, var(--live-color, var(--accent)) 12%, transparent) 45%,
-      transparent 70%) !important;
-}
-/* Text ueber dem Glow, damit er nie verdeckt wird */
-.torch-mark, .torch-play { position: relative; z-index: 1; }
-.torch-mark { color: color-mix(in srgb, var(--fg) 55%, transparent) !important; }
-
-/* ================= NUR die Schrift faerbt sich =================
-   Kein Overlay, kein Leuchtfleck, kein Blend-Mode. Der Schriftzug steht grau
-   da und nimmt dort, wo der Zeiger ist, die Markenfarbe an — mehr nicht.
-   Umgesetzt ueber background-clip auf dem Text, aber mit deckendem Grau als
-   Basis, damit nie etwas verschwinden kann. */
-.torch-glow { display: none !important; }
-
-.torch-mark {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, #A855F7) 0%,
-      var(--live-color, #A855F7) 35%,
-      color-mix(in srgb, var(--live-color, #A855F7) 55%, #6E7684) 60%,
-      #6E7684 85%) !important;
-  -webkit-background-clip: text !important;
-          background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  background-attachment: scroll !important;
-  background-repeat: no-repeat !important;
-  background-size: 100% 100% !important;
-}
-.torch-play {
-  background: none !important;
-  -webkit-text-fill-color: currentColor !important;
-  color: #6E7684 !important;
-}
-.torch-play span { color: var(--live-color, var(--accent)) !important; }
-
-/* ================= Dunkler Grundzustand =================
-   Ohne Zeiger liegt alles deutlich im Dunkeln — gerade so erkennbar, dass
-   klar wird: da ist etwas, man muss hinsehen. Erst der Lichtkegel bringt die
-   Farbe. Auch MOOD und MUT sind vorher nur zu ahnen. */
-.torch-mark {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, #A855F7) 0%,
-      var(--live-color, #A855F7) 32%,
-      color-mix(in srgb, var(--live-color, #A855F7) 40%, #2A2F3A) 58%,
-      #2A2F3A 82%) !important;
-}
-.torch-play {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--fg-mid) 0%,
-      var(--fg-mid) 34%,
-      color-mix(in srgb, var(--fg-mid) 40%, #262B35) 60%,
-      #262B35 82%) !important;
-  -webkit-background-clip: text !important;
-          background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  background-attachment: scroll !important;
-  background-repeat: no-repeat !important;
-  background-size: 100% 100% !important;
-}
-/* MOOD und MUT: im Dunkeln nur zu ahnen, im Licht in Markenfarbe */
-.torch-play span {
-  color: transparent !important;
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, var(--accent)) 0%,
-      var(--live-color, var(--accent)) 34%,
-      color-mix(in srgb, var(--live-color, var(--accent)) 35%, #2A2F3A) 60%,
-      #2A2F3A 82%) !important;
-  -webkit-background-clip: text !important;
-          background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-attachment: scroll !important;
-}
-.torch-hint { opacity: .55; }
-
-/* ---- Spans duerfen keinen eigenen Verlauf haben ----
-   Ein radial-gradient auf einem <span> bezieht sich auf dessen eigenen,
-   kleinen Kasten — der Lichtpunkt sass dadurch an einer voellig anderen
-   Stelle als der Zeiger. MOOD und MUT erben jetzt einfach den Verlauf des
-   umgebenden Absatzes und heben sich nur durch das Schriftgewicht ab. */
-.torch-play span {
-  background: none !important;
-  background-image: none !important;
-  -webkit-background-clip: text !important;
-          background-clip: text !important;
-  -webkit-text-fill-color: inherit !important;
-  color: inherit !important;
-  font-weight: 700;
-  letter-spacing: .16em;
-}
-
-/* ---- MOOD und MUT dauerhaft in der aktuellen Farbe ----
-   Kein eigener Verlauf (der sass sonst an falscher Stelle), sondern eine
-   schlichte Vollfarbe: die aktuelle Sentiment-Farbe der Lampe. */
-.torch-play span {
-  color: var(--live-color, var(--accent)) !important;
-  -webkit-text-fill-color: var(--live-color, var(--accent)) !important;
-  background: none !important;
-  -webkit-background-clip: border-box !important;
-          background-clip: border-box !important;
-}
-
-/* ================= Firefox-tauglich + MOOD/MUT erst im Licht =================
-   -webkit-text-fill-color kennt Firefox nicht; dort blieb der Effekt aus.
-   background-clip: text ist dagegen in allen aktuellen Browsern verfuegbar —
-   entscheidend ist, die Transparenz ueber color zu setzen (Standard) und den
-   webkit-Wert nur ergaenzend. */
-.torch-mark,
-.torch-play {
-  background-clip: text !important;
-  -webkit-background-clip: text !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-}
-
-/* MOOD und MUT liegen im selben Verlauf wie der Rest des Absatzes und werden
-   dadurch genau wie die Wortmarke erst vom Lichtkegel eingefaerbt. Sie
-   duerfen deshalb KEINE eigene Farbe und keinen eigenen Verlauf haben. */
-.torch-play span {
-  color: inherit !important;
-  -webkit-text-fill-color: inherit !important;
-  background: none !important;
-  background-clip: text !important;
-  -webkit-background-clip: text !important;
-  font-weight: 700;
-}
-
-/* Der Verlauf des Wortspiels traegt jetzt die Markenfarbe im Kegel, damit
-   MOOD und MUT dort rot erscheinen wie die Wortmarke. */
-.torch-play {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
-      var(--live-color, #A855F7) 0%,
-      var(--live-color, #A855F7) 30%,
-      color-mix(in srgb, var(--live-color, #A855F7) 45%, #262B35) 58%,
-      #262B35 82%) !important;
-}
-
-/* ================= Nur MOOD und MUT faerben =================
-   Der Absatz selbst bleibt durchgehend gedaempft. Nur die beiden Spans
-   bekommen den Lichtverlauf — und zwar mit background-attachment: fixed,
-   damit sich der Kegel am Viewport orientiert statt am winzigen Span-Kasten.
-   Das Script setzt --gx/--gy deshalb in Viewport-Koordinaten. */
-.torch-play {
-  background: none !important;
-  background-image: none !important;
-  color: #262B35 !important;
-  -webkit-text-fill-color: #262B35 !important;
-  background-clip: border-box !important;
-  -webkit-background-clip: border-box !important;
-}
-.torch-play span {
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--gx, 50%) var(--gy, 40%),
-      var(--live-color, #A855F7) 0%,
-      var(--live-color, #A855F7) 34%,
-      color-mix(in srgb, var(--live-color, #A855F7) 40%, #2A2F3A) 62%,
-      #2A2F3A 85%) !important;
-  background-attachment: fixed !important;
-  background-clip: text !important;
-  -webkit-background-clip: text !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-  font-weight: 700;
-}
-
-/* ---- Kegel synchron zur Maus ----
-   background-attachment: fixed verhaelt sich bei background-clip: text je
-   nach Browser anders — der Kegel sass weit links. Jetzt scroll-Attachment
-   und pro Span eigene Koordinaten, die das Script relativ zum jeweiligen
-   Span-Kasten berechnet. */
-.torch-play span {
-  background-attachment: scroll !important;
-  background-image: radial-gradient(circle var(--tr, 0px) at var(--sx, 50%) var(--sy, 50%),
-      var(--live-color, #A855F7) 0%,
-      var(--live-color, #A855F7) 34%,
-      color-mix(in srgb, var(--live-color, #A855F7) 40%, #2A2F3A) 62%,
-      #2A2F3A 85%) !important;
-}
+/* Wortspiel im Fliesstext (Kapitel 3) */
+.pull em { font-style: normal; color: var(--accent); }
 
 </style>
 
@@ -1446,15 +1008,23 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 <header class="hero" id="top">
   <div class="glow" aria-hidden="true"></div>
 
-  <!-- Der ganze Hero ist der Lichtkegel: Wortmarke, Wortspiel und Headline
-       liegen im Dunkeln und werden vom Zeiger freigelegt. -->
+  <!-- Der Hero ist der Lichtkegel. Zwei identische Textebenen liegen in
+       derselben Grid-Zelle: die untere im Dunkeln, die obere leuchtend und
+       vom Zeiger freigelegt. Die Ebenen sind zeichengleich, deshalb kann
+       kein Versatz entstehen. Aria nur auf der dunklen Ebene, damit der
+       Text Screenreadern genau einmal begegnet. -->
   <div class="torch" id="torch">
     <div class="torch-3d">
-      <p class="torch-mark">Moodlicht</p>
-      <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      <div class="torch-layer torch-dark">
+        <p class="torch-mark">Moodlicht</p>
+        <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      </div>
+      <div class="torch-layer torch-lit" aria-hidden="true">
+        <p class="torch-mark">Moodlicht</p>
+        <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      </div>
     </div>
     <p class="torch-hint">mit der Maus darüberfahren</p>
-  </div>
   </div>
 
   <div class="wrap hero-below">
@@ -1980,26 +1550,29 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
     if (window.matchMedia('(hover: none)').matches) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    var RADIUS = 380;      // Groesse des Lichtkegels
+    var RADIUS = 300;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
-    var lagen = torch.querySelectorAll('.torch-3d');
-    var spans = torch.querySelectorAll('.torch-play span');
+
+    // Die Maske sitzt auf .torch-lit, die Rotation auf .torch-3d. Beide
+    // Koordinatensysteme haengen an der maskierten Ebene: --tx/--ty werden
+    // relativ zu IHREM Kasten berechnet, sonst sitzt der Kegel versetzt.
+    var lit = torch.querySelector('.torch-lit');
+    var dreh = torch.querySelector('.torch-3d');
+    if (!lit || !dreh) return;
+
     var pending = false, px = 0, py = 0, rx = 0, ry = 0;
 
     function zeichne() {
       torch.style.setProperty('--tx', px + 'px');
       torch.style.setProperty('--ty', py + 'px');
-      for (var i = 0; i < lagen.length; i++) {
-        lagen[i].style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
-      }
+      dreh.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
       pending = false;
     }
 
     torch.addEventListener('pointermove', function (e) {
-      var g = torch.querySelector('.torch-glow');
-      var gr = g ? g.getBoundingClientRect() : torch.getBoundingClientRect();
-      px = e.clientX - gr.left;
-      py = e.clientY - gr.top;
+      var lr = lit.getBoundingClientRect();
+      px = e.clientX - lr.left;
+      py = e.clientY - lr.top;
 
       // Kippen: Zeiger links -> Schrift dreht nach rechts weg
       var r = torch.getBoundingClientRect();
@@ -2010,24 +1583,17 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 
       torch.style.setProperty('--tr', RADIUS + 'px');
       torch.classList.add('touched');
-      // Jeder Span braucht Koordinaten relativ zu seinem EIGENEN Kasten —
-      // ein Verlauf bezieht sich immer auf das Element, auf dem er liegt.
-      for (var s = 0; s < spans.length; s++) {
-        var sr = spans[s].getBoundingClientRect();
-        spans[s].style.setProperty('--sx', (e.clientX - sr.left) + 'px');
-        spans[s].style.setProperty('--sy', (e.clientY - sr.top) + 'px');
-      }
       if (!pending) { pending = true; requestAnimationFrame(zeichne); }
     });
 
     torch.addEventListener('pointerleave', function () {
       torch.style.setProperty('--tr', '0px');
       rx = 0; ry = 0;
-      for (var i = 0; i < lagen.length; i++) lagen[i].style.transform = '';
+      dreh.style.transform = '';
     });
 
     // Beim Laden kurz aufblitzen, damit sich der Hero zu erkennen gibt
-    var r0 = torch.getBoundingClientRect();
+    var r0 = lit.getBoundingClientRect();
     px = r0.width * 0.5; py = r0.height * 0.42;
     zeichne();
     setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.2) + 'px'); }, 600);

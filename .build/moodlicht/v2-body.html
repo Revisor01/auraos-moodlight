@@ -8,15 +8,23 @@
 <header class="hero" id="top">
   <div class="glow" aria-hidden="true"></div>
 
-  <!-- Der ganze Hero ist der Lichtkegel: Wortmarke, Wortspiel und Headline
-       liegen im Dunkeln und werden vom Zeiger freigelegt. -->
+  <!-- Der Hero ist der Lichtkegel. Zwei identische Textebenen liegen in
+       derselben Grid-Zelle: die untere im Dunkeln, die obere leuchtend und
+       vom Zeiger freigelegt. Die Ebenen sind zeichengleich, deshalb kann
+       kein Versatz entstehen. Aria nur auf der dunklen Ebene, damit der
+       Text Screenreadern genau einmal begegnet. -->
   <div class="torch" id="torch">
     <div class="torch-3d">
-      <p class="torch-mark">Moodlicht</p>
-      <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      <div class="torch-layer torch-dark">
+        <p class="torch-mark">Moodlicht</p>
+        <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      </div>
+      <div class="torch-layer torch-lit" aria-hidden="true">
+        <p class="torch-mark">Moodlicht</p>
+        <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      </div>
     </div>
     <p class="torch-hint">mit der Maus darüberfahren</p>
-  </div>
   </div>
 
   <div class="wrap hero-below">

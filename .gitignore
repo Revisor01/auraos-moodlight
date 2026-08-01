@@ -67,3 +67,4 @@ __pycache__/
 
 # Von der pioarduino-Plattform generiert, kein Projekt-Quellcode
 firmware/src/idf_component.yml
+.build/moodlicht/moodlicht.html
