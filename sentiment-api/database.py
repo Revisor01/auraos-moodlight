@@ -22,6 +22,22 @@ logger = logging.getLogger(__name__)
 MAX_RECONNECT_ATTEMPTS = 3
 RECONNECT_DELAY_SECONDS = 1
 
+# Settings-Keys, deren Werte nie im Klartext ins Log gehoeren
+SENSITIVE_SETTING_KEYS = ('anthropic_api_key', 'admin_password_hash')
+
+
+def _mask_secret(key: str, value: str) -> str:
+    """
+    Maskiert sensible Settings-Werte fuer die Log-Ausgabe.
+
+    Der Anthropic-API-Key und der Passwort-Hash landen sonst im Klartext im
+    Container-Log. Zurueckgegeben wird nur die Laenge, damit sich ein
+    "gesetzt/leer"-Problem weiterhin debuggen laesst.
+    """
+    if key in SENSITIVE_SETTING_KEYS:
+        return f"<maskiert, {len(value) if value else 0} Zeichen>"
+    return value
+
 
 class Database:
     """PostgreSQL Datenbank-Wrapper mit robustem Connection-Handling
@@ -789,7 +805,8 @@ class Database:
         try:
             with self.get_cursor() as cur:
                 cur.execute(query, (key, value))
-                logger.info(f"Einstellung gespeichert: {key}='{value}'")
+                # Sensible Werte (API-Key, Passwort-Hash) nie im Klartext loggen
+                logger.info(f"Einstellung gespeichert: {key}='{_mask_secret(key, value)}'")
                 return True
         except Exception as e:
             # Commit/Rollback übernimmt get_cursor() automatisch (B4)
