@@ -1090,3 +1090,54 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   .hero-cols .lede { text-align: center; margin-inline: auto; }
   .hero-cols .live { max-width: 32rem; margin-inline: auto; }
 }
+
+/* ================= FINAL: Hero-Ebenen sauber ueberlagern =================
+   Ueber die Iterationen haben sich widerspruechliche Positionsregeln
+   angesammelt (absolut vs. Grid, mehrere inset-Werte). Diese Sektion setzt
+   den Zustand abschliessend und gewinnt durch ihre Position am Dateiende. */
+.torch {
+  display: grid !important;
+  grid-template-rows: auto auto;
+  justify-items: stretch;
+}
+.torch-layer,
+.torch-dark,
+.torch-lit {
+  grid-area: 1 / 1 !important;
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+/* Die Maske gehoert nur auf die beleuchtete Ebene */
+.torch-lit {
+  -webkit-mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
+                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%) !important;
+          mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
+                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%) !important;
+  pointer-events: none;
+}
+.torch-hint { grid-area: 2 / 1 !important; }
+
+/* ---- Subclaim unter dem Hero ----
+   Die Headline liegt nicht mehr im Lichtkegel — dort steht nur noch die
+   Wortmarke. Als Subclaim traegt sie die Aussage in normaler Lesbarkeit. */
+.subclaim {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(1.7rem, 1.1rem + 2.6vw, 3.2rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -.03em;
+  text-align: center;
+  text-wrap: balance;
+  margin: 0 0 clamp(2rem, 4vw, 3.2rem);
+  color: var(--fg);
+}
+/* Der Fliesstext daneben ist Fliesstext, keine Schautypografie */
+.hero-cols .lede {
+  font-size: var(--step-0) !important;
+  line-height: 1.6;
+  color: var(--fg-mid) !important;
+}
