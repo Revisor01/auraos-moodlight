@@ -80,6 +80,28 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
+## [9.20] – 2026-08-02
+
+### Behoben
+- Der „Installieren"-Knopf im Update-Banner landete auf der Setup-Seite, aber
+  nicht im Update-Tab. Die Hash-Auswertung hing in `pageInit()`, das an
+  `window.onload` hängt und damit auf alle Ressourcen wartet — auch die Icons
+  vom CDN. Sie läuft jetzt eigenständig bei `DOMContentLoaded` und schaltet den
+  Tab direkt um, statt einen Klick-Handler zu benutzen, den es zu diesem
+  Zeitpunkt noch nicht gibt. Ein `hashchange`-Listener fängt zusätzlich den
+  Fall ab, dass die Setup-Seite bereits offen ist
+
+### Geändert
+- Fortschrittsanzeige beim Online-Update: Balken mit Prozentwert und benannten
+  Phasen („Lade und schreibe Firmware…", „Schließe Update ab…") statt eines
+  statischen „Lade Firmware…", das eine Minute lang unverändert stand. Der
+  Neustart zählt sichtbar herunter.
+  Der Wert ist geschätzt, nicht gemessen: Während das Gerät lädt und in die
+  OTA-Partition schreibt, blockiert es und beantwortet keine Statusanfragen.
+  Ein gemessener Balken stünde die ganze Zeit auf 0 und spränge dann auf 100.
+  Dauert es länger als veranschlagt, bleibt die Anzeige bei 98 % stehen, statt
+  einen Abschluss zu behaupten, den das Gerät nicht bestätigt hat
+
 ## [9.19] – 2026-08-02
 
 ### Hinzugefügt
