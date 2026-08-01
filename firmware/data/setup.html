@@ -253,6 +253,8 @@
             <div class="section">
                 <div id="update-check-result" class="alert" style="display:none"></div>
 
+                <div class="help-text" id="update-last-check" style="margin-bottom:12px"></div>
+
                 <div class="form-group">
                     <label class="switch-label" for="update-check-enabled">
                         <input type="checkbox" id="update-check-enabled" onchange="saveUpdateSettings()">
@@ -460,6 +462,27 @@
 
         var toggle = document.getElementById('update-check-enabled');
         if (toggle) toggle.checked = !!d.check_enabled;
+
+        // Zeigt, ob die stuendliche Suche tatsaechlich laeuft — ohne diese
+        // Anzeige sieht man einem stillen Update-Tab nicht an, ob das Geraet
+        // ueberhaupt nachfragt oder seit Tagen nichts mehr getan hat
+        var lastEl = document.getElementById('update-last-check');
+        if (lastEl) {
+            if (typeof d.last_check_ago_s === 'number') {
+                var s = d.last_check_ago_s;
+                var text;
+                if (s < 90) {
+                    text = 'gerade eben';
+                } else if (s < 5400) {
+                    text = 'vor ' + Math.round(s / 60) + ' Minuten';
+                } else {
+                    text = 'vor ' + Math.round(s / 3600) + ' Stunden';
+                }
+                lastEl.textContent = 'Zuletzt gesucht: ' + text;
+            } else {
+                lastEl.textContent = 'Seit dem Neustart noch nicht gesucht.';
+            }
+        }
 
         var installBtn = document.getElementById('install-update-btn');
         var notesLink = document.getElementById('release-notes-link');

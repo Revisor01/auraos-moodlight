@@ -80,6 +80,18 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
+## [9.19] – 2026-08-02
+
+### Hinzugefügt
+- Der Update-Tab zeigt, wann zuletzt gesucht wurde („gerade eben", „vor 40
+  Minuten"). Ohne diese Angabe sieht man einem stillen Update-Bereich nicht an,
+  ob das Gerät stündlich nachfragt oder seit Tagen nichts mehr getan hat — die
+  Firmware lieferte den Wert bereits, nur die Anzeige fehlte
+
+### Sonstiges
+- Erste Version, die über den Online-Weg installiert wird: 9.18 brachte den
+  Update-Checker mit, konnte sich selbst aber noch nicht so beziehen
+
 ## [9.18] – 2026-08-02
 
 ### Hinzugefügt
