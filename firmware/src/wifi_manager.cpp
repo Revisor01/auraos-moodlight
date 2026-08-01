@@ -36,7 +36,14 @@ public:
     CaptiveRequestHandler() {}
     virtual ~CaptiveRequestHandler() {}
 
+    // Arduino-Core 3.x reicht die WebServer-Referenz zusaetzlich durch, 2.x
+    // nicht. Ohne diese Weiche uebersetzt der Handler nur gegen genau eine
+    // Core-Version — lokal lief es, in der CI (neuere Version) nicht.
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+    bool canHandle(WebServer &server, HTTPMethod method, const String &uri) override
+#else
     bool canHandle(HTTPMethod method, const String &uri) override
+#endif
     {
         return true; // Faengt alles ab
     }
