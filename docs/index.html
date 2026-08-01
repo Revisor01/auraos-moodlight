@@ -844,6 +844,87 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   color: var(--accent);
 }
 
+/* ================= Taschenlampen-Wortmarke =================
+   Der Schriftzug liegt fast unsichtbar im Dunkeln. Ein Lichtkegel folgt der
+   Maus (oder der Beruehrung) und legt ihn frei — man muss hinsehen, um ihn
+   zu sehen. Genau das ist die Idee des Geraets.
+
+   Technik: zwei identische Schriftzuege uebereinander. Der untere ist
+   angedeutet dunkel, der obere leuchtet in der Markenfarbe und wird per
+   radialer Maske auf den Lichtkegel beschnitten. */
+.torch {
+  position: relative;
+  display: inline-block;
+  margin-bottom: .7rem;
+  cursor: default;
+  --tx: 50%;
+  --ty: 50%;
+  --tr: 0px;          /* Radius des Kegels: 0 = aus */
+}
+.torch-word {
+  display: block;
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(2.6rem, 1.6rem + 4.6vw, 5.4rem);
+  font-weight: 600;
+  letter-spacing: -.035em;
+  line-height: .95;
+  white-space: nowrap;
+  user-select: none;
+}
+/* Grundzustand: nur zu ahnen */
+.torch-word:not(.torch-lit) {
+  color: color-mix(in srgb, var(--fg) 13%, transparent);
+}
+/* Der beleuchtete Zwilling */
+.torch-lit {
+  position: absolute;
+  inset: 0;
+  color: var(--live-color, var(--accent));
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--live-color, var(--accent)) 70%, transparent),
+    0 0 46px color-mix(in srgb, var(--live-color, var(--accent)) 45%, transparent);
+  -webkit-mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
+                #000 0%, #000 42%, rgba(0,0,0,.35) 68%, transparent 100%);
+          mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
+                #000 0%, #000 42%, rgba(0,0,0,.35) 68%, transparent 100%);
+  transition: opacity .3s ease;
+}
+.torch-hint {
+  display: block;
+  margin-top: .5rem;
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg-low);
+  opacity: .75;
+  transition: opacity .4s ease;
+}
+.torch.touched .torch-hint { opacity: 0; }
+
+/* Ohne Zeigegeraet (Touch) waere die Marke unlesbar — dort wird sie
+   dauerhaft gezeigt, ergaenzt um eine langsam wandernde Lichtbewegung. */
+@media (hover: none) {
+  .torch-word:not(.torch-lit) { color: color-mix(in srgb, var(--fg) 30%, transparent); }
+  .torch-lit {
+    -webkit-mask-image: none;
+            mask-image: none;
+    opacity: .92;
+  }
+  .torch-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .torch-lit { transition: none; }
+}
+
+/* Der Radius wird animierbar gemacht, damit das Aufblitzen beim Laden und
+   das Ausblenden beim Verlassen weich laufen statt zu springen. */
+@property --tr {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+.torch { transition: --tr .9s cubic-bezier(.4,0,.2,1); }
+
 </style>
 
 <div class="aura" aria-hidden="true">
@@ -856,7 +937,11 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 <header class="hero" id="top">
   <div class="wrap hero-grid">
    <div class="hero-text">
-    <p class="wordmark">Moodlicht</p>
+    <div class="torch" id="torch">
+      <span class="torch-word" aria-label="Moodlicht">Moodlicht</span>
+      <span class="torch-word torch-lit" aria-hidden="true">Moodlicht</span>
+      <span class="torch-hint">mit der Maus darüberfahren</span>
+    </div>
     <p class="wordplay"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
     <h1>Die Welt ist öfter hell,<br>als die Nachrichten<br>glauben machen.</h1>
     <p class="lede">
@@ -1346,6 +1431,44 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
       if (el) el.textContent = d.tag_name;
     })
     .catch(function () { /* der statische Wert im Markup bleibt stehen */ });
+
+  // Taschenlampe auf der Wortmarke: der Lichtkegel folgt dem Zeiger und
+  // legt den Schriftzug frei. Ohne Bewegung bleibt er im Dunkeln — man muss
+  // hinsehen, um ihn zu sehen.
+  (function () {
+    var torch = document.getElementById('torch');
+    if (!torch) return;
+    if (window.matchMedia('(hover: none)').matches) return;  // Touch: dauerhaft sichtbar
+
+    var RADIUS = 130;
+    var pending = false, px = 0, py = 0;
+
+    function zeichne() {
+      torch.style.setProperty('--tx', px + 'px');
+      torch.style.setProperty('--ty', py + 'px');
+      pending = false;
+    }
+
+    torch.addEventListener('pointermove', function (e) {
+      var r = torch.getBoundingClientRect();
+      px = e.clientX - r.left;
+      py = e.clientY - r.top;
+      torch.style.setProperty('--tr', RADIUS + 'px');
+      torch.classList.add('touched');
+      if (!pending) { pending = true; requestAnimationFrame(zeichne); }
+    });
+
+    torch.addEventListener('pointerleave', function () {
+      torch.style.setProperty('--tr', '0px');
+    });
+
+    // Beim ersten Laden kurz aufblitzen, damit die Marke sich zu erkennen gibt
+    var r = torch.getBoundingClientRect();
+    px = r.width * 0.5; py = r.height * 0.5;
+    zeichne();
+    setTimeout(function () { torch.style.setProperty('--tr', RADIUS * 1.5 + 'px'); }, 700);
+    setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2400);
+  })();
 
   // Fortschrittsbalken
   var bar = document.getElementById('progressBar');
