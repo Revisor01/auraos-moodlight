@@ -28,6 +28,24 @@
         </div>
     </div>
 
+    <!-- Update-Hinweis: erscheint nur, wenn eine freigegebene Version bereitsteht -->
+    <div id="update-banner" style="display:none; margin-bottom:1rem; padding:0.85rem 1.15rem;
+         background:rgba(46,125,70,0.12); border:1px solid rgba(46,125,70,0.35);
+         border-radius:8px; align-items:center; gap:0.85rem; flex-wrap:wrap;">
+        <i class="fas fa-cloud-arrow-down" aria-hidden="true" style="color:#2d7d46;"></i>
+        <span style="flex:1; font-size:0.9rem; color:var(--text);">
+            <strong>Version <span id="update-banner-version">—</span> ist verfügbar.</strong>
+            <span style="color:var(--text-muted);">Installierte Version: <span id="update-banner-current">—</span></span>
+        </span>
+        <a id="update-banner-notes" href="#" target="_blank" rel="noopener noreferrer"
+           class="btn btn-sm" style="display:none;">
+            <i class="fas fa-list" aria-hidden="true"></i> Was ist neu?
+        </a>
+        <a href="/setup#ui-update" class="btn btn-sm">
+            <i class="fas fa-download" aria-hidden="true"></i> Installieren
+        </a>
+    </div>
+
     <div class="grid">
         <div class="card" id="weltlage-card">
             <h2><i class="fas fa-globe-europe" aria-hidden="true"></i> Aktuelle Weltlage</h2>
