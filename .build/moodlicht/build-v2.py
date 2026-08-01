@@ -173,6 +173,44 @@ script = r"""
     })
     .catch(function () { /* der statische Wert im Markup bleibt stehen */ });
 
+  // Taschenlampe auf der Wortmarke: der Lichtkegel folgt dem Zeiger und
+  // legt den Schriftzug frei. Ohne Bewegung bleibt er im Dunkeln — man muss
+  // hinsehen, um ihn zu sehen.
+  (function () {
+    var torch = document.getElementById('torch');
+    if (!torch) return;
+    if (window.matchMedia('(hover: none)').matches) return;  // Touch: dauerhaft sichtbar
+
+    var RADIUS = 130;
+    var pending = false, px = 0, py = 0;
+
+    function zeichne() {
+      torch.style.setProperty('--tx', px + 'px');
+      torch.style.setProperty('--ty', py + 'px');
+      pending = false;
+    }
+
+    torch.addEventListener('pointermove', function (e) {
+      var r = torch.getBoundingClientRect();
+      px = e.clientX - r.left;
+      py = e.clientY - r.top;
+      torch.style.setProperty('--tr', RADIUS + 'px');
+      torch.classList.add('touched');
+      if (!pending) { pending = true; requestAnimationFrame(zeichne); }
+    });
+
+    torch.addEventListener('pointerleave', function () {
+      torch.style.setProperty('--tr', '0px');
+    });
+
+    // Beim ersten Laden kurz aufblitzen, damit die Marke sich zu erkennen gibt
+    var r = torch.getBoundingClientRect();
+    px = r.width * 0.5; py = r.height * 0.5;
+    zeichne();
+    setTimeout(function () { torch.style.setProperty('--tr', RADIUS * 1.5 + 'px'); }, 700);
+    setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2400);
+  })();
+
   // Fortschrittsbalken
   var bar = document.getElementById('progressBar');
   var ticking = false;
