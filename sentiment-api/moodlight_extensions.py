@@ -616,9 +616,12 @@ def register_moodlight_endpoints(app):
                     "message": "Feed-URL nicht erreichbar: Verbindungsfehler"
                 }), 422
             except http_requests.exceptions.RequestException as e:
+                # Der requests-Fehlertext enthaelt Hostnamen, Ports und Proxy-Details —
+                # nur ins Log, dem Client genuegt die generische Meldung
+                logger.warning(f"Feed-URL nicht abrufbar ({url}): {e}")
                 return jsonify({
                     "status": "error",
-                    "message": f"Feed-URL ungültig: {str(e)}"
+                    "message": "Feed-URL ungültig oder nicht abrufbar"
                 }), 422
 
             # In DB anlegen
