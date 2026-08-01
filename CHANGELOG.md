@@ -38,6 +38,22 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 - Projektseite: die zwölf Screenshots zeigten die UI vor dem Redesign in v9.13 und
   bewarben die entfernte Diagnose-Seite. Ersetzt durch vier aktuelle Aufnahmen vom
   Gerät unter Firmware v9.14 (MAC-Adresse maskiert)
+- Projektseite: neuer Hero mit Taschenlampen-Effekt — die Seite startet dunkel,
+  der Mauszeiger führt einen Lichtkegel über „Mood der Welt. Mut im Raum.", und
+  nur im Licht erscheinen MOOD und MUT in der aktuellen Sentiment-Farbe. Das ist
+  die Aussage der Lampe als Interaktion: man sieht die Lage erst, wenn man
+  hinschaut
+- Hero-CSS neu geschrieben statt weiter ergänzt (1421 → 982 Zeilen, keine
+  `!important`-Flags mehr). Die alte Technik (`background-clip: text`) versagte in
+  Firefox lautlos und ließ die Schrift grau; zwei deckungsgleiche Textebenen in
+  derselben Grid-Zelle, die obere per `mask-image` auf den Lichtkegel begrenzt,
+  funktionieren in Chrome und Firefox gleichermaßen. Geprüft bei 1440/1280/1024/
+  768/390 px Breite, mit Rückfallebenen für Touch, `prefers-reduced-motion` und
+  fehlendes `mask-image`
+- Claim heißt „Die Welt ist besser, als die Nachrichten glauben machen" statt
+  „öfter hell" — im Hero und im `<title>`. „Hell" war eine Lichtmetapher, gemessen
+  wird aber Stimmung. Die Meta-Description behält „hell", dort geht es wörtlich um
+  die Farbe der Lampe
 
 ### Entfernt
 - `releases/v9.2/AuraOS-9.2.tgz` und `releases/v9.12/RELEASE-NOTES.md` aus dem

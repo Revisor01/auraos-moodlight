@@ -4,13 +4,14 @@ milestone: v10.0
 milestone_name: Perzentil-Transparenz & Firmware-Stabilität
 status: complete
 stopped_at: All phases complete
-last_updated: "2026-03-28T00:00:00.000Z"
-last_activity: 2026-03-28
+last_updated: "2026-08-01T20:45:00.000Z"
+last_activity: "2026-08-01 - Projektseite: Hero mit Taschenlampen-Effekt, Hero-CSS neu geschrieben, Claim auf \"besser\" korrigiert; Firmware-Fix Status-LED (5ca20db)"
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 3
   completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -64,6 +65,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-30
-Stopped at: v9.14 deployed (Poll-Sync auf Server-Takt). Offen: Verifikation des ersten synchronisierten Polls (~15:34), Sicht-Check durch User
+Last session: 2026-08-01
+Stopped at: Projektseite-Hero abgeschlossen (Firefox + Chrome geprüft), Endstand-Check durchgeführt
 Resume file: None
