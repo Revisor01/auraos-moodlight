@@ -796,6 +796,25 @@ body {
 .sources a { color: var(--fg-mid); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .sources a:hover { color: var(--accent); }
 
+/* ---- Der Umschlag als weicher Fade ----
+   Grund und Textfarbe springen an einer Schwelle (siehe Script), aber die
+   Transition macht daraus einen ruhigen Uebergang von gut einer Sekunde.
+   So bleibt der Eindruck ein Fluss statt eines Schnitts. */
+body,
+.live, .cmp, .part, .wiring, .value, .parts, .values, .repo-link {
+  transition:
+    background-color 1.1s cubic-bezier(.4,0,.2,1),
+    border-color     1.1s cubic-bezier(.4,0,.2,1),
+    color            1.1s cubic-bezier(.4,0,.2,1);
+}
+h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
+  transition: color 1.1s cubic-bezier(.4,0,.2,1);
+}
+@media (prefers-reduced-motion: reduce) {
+  body, .live, .cmp, .part, .wiring, .value, .parts, .values, .repo-link,
+  h1, h2, h3, p, a, code { transition: none; }
+}
+
 </style>
 
 <div class="aura" aria-hidden="true">
@@ -1122,7 +1141,7 @@ body {
   <section class="chapter closing" id="ende">
     <div class="wrap narrow">
       <p class="closing-line">
-        Sie steht im Wohnzimmer<br>und sagt nichts.
+        Sie sagt eine Menge.<br>Sie plappert nur nicht.
       </p>
       <p class="closing-sub">Das ist ihre beste Eigenschaft.</p>
       <p class="closing-meta">
@@ -1314,13 +1333,15 @@ body {
     // Textfarbe kippt hart, damit sie dem Grund nicht auf halber Strecke
     // begegnet — dort faellt der Kontrast sonst unter das Lesbare.
     // Etwas Hysterese verhindert Flackern beim Scrollen um die Schwelle.
-    // Harter Umschlag: Grund und Text kippen gemeinsam an einem Punkt.
-    // Ein weicher Verlauf fuehrt zwangslaeufig durch eine Zone, in der sich
-    // Text- und Grundhelligkeit annaehern und der Kontrast unter das Lesbare
-    // faellt. Der Schnitt ist ausserdem die staerkere Geste: die Welt kippt
-    // ins Helle, sie daemmert nicht.
-    // Hysterese (0.42/0.50) verhindert Flackern beim Scrollen an der Schwelle.
-    var ziel = lift > (textHell ? 0.42 : 0.50) ? 1 : 0;
+    // Der Grund darf nicht durch mittlere Helligkeit wandern: dort erreicht
+    // KEINE Textfarbe mehr 4.5:1 — das ist rechnerisch zwingend, egal wie man
+    // die Kurven gegeneinander versetzt. Deshalb springt der Grund an einer
+    // Schwelle (die CSS-Transition macht daraus einen weichen Fade von 1,1 s).
+    //
+    // Alles andere fliesst weiter kontinuierlich mit: die Aura, ihre Deckkraft,
+    // die Akzentfarbe. Der Eindruck bleibt ein Verlauf — nur der Moment, in dem
+    // die Welt ins Helle kippt, hat einen klaren Punkt.
+    var ziel = lift > (textHell ? 0.44 : 0.52) ? 1 : 0;
     if (ziel !== textHell) {
       textHell = ziel;
       document.body.style.setProperty('--textlift', String(ziel));
