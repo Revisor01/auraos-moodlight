@@ -1038,3 +1038,105 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   max-width: 30rem;
   text-align: left;
 }
+
+/* ---- Beide Ebenen exakt gleich breit ----
+   Die dunkle Ebene liegt als erste im Grid und dehnte die Zelle ueber die
+   Containerbreite hinaus (Schriftzug 1028px in 960px Container); die zweite
+   Ebene wurde dagegen beschnitten. Ergebnis: 68px Versatz.
+   Beide Ebenen bekommen jetzt dieselbe feste Breite, und die Wortmarke
+   skaliert so, dass sie hineinpasst. */
+.torch-layer { width: 100%; min-width: 0; }
+.torch-mark {
+  white-space: nowrap;
+  font-size: clamp(2.6rem, 10.5vw, 7rem);
+}
+
+/* ---- Ursache des Versatzes: Grid-Spalte richtet sich am breitesten Item aus ----
+   Die dunkle Ebene sprengte mit 1029px die 960px-Spalte und wurde nicht
+   beschnitten, die leuchtende schon. Eine feste Spaltenbreite von 100%
+   zwingt beide Ebenen auf identische Abmessungen. */
+.torch { grid-template-columns: 100%; }
+.torch-layer { max-width: 100%; overflow: visible; }
+/* Wortmarke muss in die Spalte passen, sonst dehnt sie sie wieder */
+.torch-mark { font-size: min(clamp(2.6rem, 10vw, 7rem), 15.5vw); }
+
+/* ---- Die eigentliche Ursache: der Schriftzug war breiter als der Container ----
+   Bei 112px war "Moodlicht" 1029px breit, der Container nur 960px. Die dunkle
+   Ebene (erstes Grid-Item) sprengte die Spalte, die leuchtende wurde
+   beschnitten — daher der Versatz von 34px.
+   8.5vw haelt die Wortmarke in jeder Fensterbreite innerhalb des Containers,
+   damit sind beide Ebenen zwangslaeufig deckungsgleich. */
+.torch-mark { font-size: min(8.5vw, 7rem) !important; }
+
+/* ---- Ursache gefunden: die Maske beschnitt die Ebene auf Containerbreite ----
+   Beide Ebenen hatten identische Schrift (102px), aber die maskierte war exakt
+   960px breit statt 1028px. mask-image erzeugt einen eigenen Rendering-Kontext,
+   der am Elementkasten endet — der ueberstehende Schriftzug wurde abgeschnitten
+   und dadurch anders positioniert.
+   Loesung: die Wortmarke passt in den Container, dann steht nichts mehr ueber.
+   7.9vw ergibt bei 1200px Fenster ~95px und damit ~957px Breite. */
+.torch-mark { font-size: min(7.9vw, 6.5rem) !important; }
+.torch-layer { width: 100%; }
+
+/* ---- Die tatsaechliche Ursache ----
+   Beide Ebenen sind exakt 960px breit und identisch positioniert. Das <p> mit
+   der Wortmarke hat aber white-space: nowrap und laeuft ueber diesen Kasten
+   hinaus (1029px). Bei der dunklen Ebene ist der Ueberlauf sichtbar, bei der
+   leuchtenden schneidet die Maske ihn am Kastenrand ab — daher der Versatz.
+   Loesung: nowrap aufheben und die Groesse so waehlen, dass "Moodlicht" in
+   einer Zeile bleibt, ohne ueberzulaufen. */
+.torch-mark {
+  white-space: normal !important;
+  font-size: clamp(2.4rem, 8vw, 6rem) !important;
+  overflow-wrap: normal;
+}
+
+/* ---- Wirkliche Ursache: mask-image + 3D-Transform vertragen sich nicht ----
+   Die gemessene Breite reagierte gar nicht auf die Schriftgroesse — sie kommt
+   von der 3D-Rotation. Ein maskiertes Element bildet einen eigenen
+   Rendering-Kontext, der die Perspektive anders aufloest als die unmaskierte
+   Ebene. Dadurch driften beide beim Kippen auseinander.
+
+   Loesung: Die Rotation wandert auf den gemeinsamen Elternknoten. Beide Ebenen
+   liegen dann im selben transformierten Raum und koennen nicht mehr
+   gegeneinander verrutschen. */
+.torch-layer { transform: none !important; }
+.torch-3d {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform .25s cubic-bezier(.22,.61,.36,1);
+  display: grid;
+  grid-template-columns: 100%;
+  grid-template-rows: auto;
+  will-change: transform;
+}
+.torch-3d > .torch-layer { grid-area: 1 / 1; }
+
+/* ================= FINAL: eine Ebene, Licht im Text =================
+   Zwei uebereinandergelegte Ebenen liessen sich nicht zuverlaessig zur Deckung
+   bringen — die Maske veraenderte die Geometrie der leuchtenden Ebene. Jetzt
+   gibt es nur noch EINEN Schriftzug: Der Lichtkegel ist ein radialer Verlauf,
+   der per background-clip in die Buchstaben gestanzt wird. Ein Versatz ist
+   damit strukturell unmoeglich. */
+.torch-mark,
+.torch-play {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--live-color, #A855F7) 38%,
+      color-mix(in srgb, var(--live-color, #A855F7) 45%, transparent) 62%,
+      color-mix(in srgb, var(--fg) 12%, transparent) 100%);
+  background-attachment: fixed;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+}
+.torch-play {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--fg-mid) 45%,
+      color-mix(in srgb, var(--fg) 10%, transparent) 100%);
+}
+.torch-mark { white-space: nowrap !important; font-size: clamp(2.6rem, 8.2vw, 7rem) !important; }
+/* Wortmarke innerhalb des Containers halten (war 1029px bei 960px Container) */
+.torch-mark { font-size: clamp(2.4rem, 7.6vw, 6.4rem) !important; }

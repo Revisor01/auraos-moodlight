@@ -103,7 +103,7 @@ script = r"""
         document.getElementById('valPct').textContent = pct + ' %';
         document.getElementById('cmpPct').textContent = pct + ' %';
         document.getElementById('cmpPctPin').style.left = pct + '%';
-        document.getElementById('valPctHint').textContent = 'Platz im 7-Tage-Fenster';
+        document.getElementById('valPctHint').textContent = pct + ' % der Woche waren schlechter';
         document.getElementById('cmpPctCat').textContent = WORTE[idx];
       }
       if (d.historical) {
@@ -121,7 +121,7 @@ script = r"""
           'Isoliert betrachtet fällt diese Messung in die Kategorie „' + d.category +
           '“. Das ist die Lesart eines Nachrichtentickers.';
         document.getElementById('cmpPctText').textContent =
-          'Nur ' + pct + ' % der Messungen dieser Woche waren schlechter — ' +
+          pct + ' % der Messungen dieser Woche waren schlechter, ' + (100 - pct) + ' % besser — ' +
           'deshalb leuchtet die Lampe gerade ' + WORTE[idx] + '.';
       }
       document.getElementById('compare').classList.add('ready');
@@ -185,7 +185,7 @@ script = r"""
 
     var RADIUS = 300;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
-    var lagen = torch.querySelectorAll('.torch-layer');
+    var lagen = torch.querySelectorAll('.torch-3d');
     var pending = false, px = 0, py = 0, rx = 0, ry = 0;
 
     function zeichne() {
@@ -198,13 +198,14 @@ script = r"""
     }
 
     torch.addEventListener('pointermove', function (e) {
-      var r = torch.getBoundingClientRect();
-      px = e.clientX - r.left;
-      py = e.clientY - r.top;
+      // background-attachment: fixed -> Koordinaten relativ zum Viewport
+      px = e.clientX;
+      py = e.clientY;
 
       // Kippen: Zeiger links -> Schrift dreht nach rechts weg
-      var nx = (px / r.width) * 2 - 1;    // -1 .. 1
-      var ny = (py / r.height) * 2 - 1;
+      var r = torch.getBoundingClientRect();
+      var nx = ((e.clientX - r.left) / r.width) * 2 - 1;
+      var ny = ((e.clientY - r.top) / r.height) * 2 - 1;
       ry = nx * KIPP;
       rx = -ny * KIPP * 0.6;
 
@@ -221,7 +222,7 @@ script = r"""
 
     // Beim Laden kurz aufblitzen, damit sich der Hero zu erkennen gibt
     var r0 = torch.getBoundingClientRect();
-    px = r0.width * 0.5; py = r0.height * 0.42;
+    px = r0.left + r0.width * 0.5; py = r0.top + r0.height * 0.42;
     zeichne();
     setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.35) + 'px'); }, 600);
     setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2800);
