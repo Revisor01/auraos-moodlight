@@ -323,7 +323,7 @@ script = r"""
 
 html = f"""<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Moodlicht — die Welt ist öfter hell, als die Nachrichten glauben machen</title>
+<title>Moodlicht — die Welt ist besser, als die Nachrichten glauben machen</title>
 <meta name="description" content="Eine Lampe, die die Nachrichtenlage nicht an einem Ideal misst, sondern an der Woche, die tatsächlich war. 90 % der Messungen sind negativ — und trotzdem leuchtet sie 63 % der Zeit neutral oder hell.">
 <meta name="color-scheme" content="dark light">
 <style>
