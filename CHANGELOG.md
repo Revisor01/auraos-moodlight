@@ -28,6 +28,10 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 ### Sicherheit
 - GitHub Vulnerability-Alerts, Dependabot Security Updates und CodeQL Default Setup
   für das Repository aktiviert
+- Backend-Abhängigkeiten aktualisiert: Flask 3.1.0 → 3.1.3 (fehlender `Vary: Cookie`-
+  Header, Fallback-Key statt aktuellem Signing-Key) und anthropic 0.86.0 → 0.87.0
+  (Race Condition in der Pfadvalidierung des Memory Tools, unsichere Standard-
+  Dateirechte im lokalen Filesystem-Memory-Tool)
 
 ## [9.14] – 2026-07-31
 
@@ -64,30 +68,69 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 
 ## [9.12] – 2026-07-29
 
+Großes Stabilitäts- und Wartungsrelease. Zwei vollständige Code-Review-Runden über
+Firmware, Backend und Web-UI mit über 60 umgesetzten Findings. Kern: die Ursache des
+seit Monaten beobachteten LED-Pulsierens und der Spontan-Reboots ist gefunden.
+
 ### Hinzugefügt
 - Perzentil-Visualisierung auf dem Haupt-Dashboard und in mood.html mit Score-Erklärung
 - Read-only-Endpoint für den Neustart-Zähler sowie Endpoint zum Zurücksetzen
 - Dynamische LED-Farben in der Statistik-Ansicht
+- Backend: Redis-Cache (120 s) für History, Trend, Stats und Feed-Trends;
+  gunicorn-Healthcheck im Compose, `.dockerignore`
 
 ### Geändert
 - Statistik-Ladevorgang optimiert, Perzentil-Sektion nach oben verschoben,
   Filter für veraltete Daten entfernt
 - Separate Diagnose-Seite entfernt — Inhalte im Update-/Info-Tab von setup.html
+- Backend: Feeds werden parallel statt sequenziell geholt (vorher bis zu 15 s pro Feed)
+- Backend: Perzentile erst ab 20 echten Messwerten (vorher 3), Kategorie-Logik nur
+  noch in Python (DB-Trigger per Migration 002 entfernt)
+- Firmware: ~51 KB Flash durch Totcode-Entfernung gespart (CSVBuffer, TaskManager,
+  verwaiste Endpoints), ~24 KB RAM durch JSON-Pool-Verkleinerung (16 KB → 4 KB)
+- Firmware: Blockaden im `loop()` reduziert (MQTT-Busy-Wait, stündlicher WiFi-Scan,
+  `initTime()`-Blocking entfernt), Cache-Header für CSS/JS/Favicon,
+  `WiFi.persistent(false)` gegen Flash-Writes bei jedem Reconnect
+- UI: ~350 KB CDN-Ballast entfernt (moment.js + Chart.js-Adapter durch native
+  Date-Formatierung ersetzt), Status-Polling entschärft (In-Flight-Guard, 5 s statt 2 s)
 
 ### Behoben
-- Firmware: NeoPixel-Use-after-free, MQTT-Passwort-Roundtrip, Upload-Robustheit und
-  blockierende Operationen im `loop()`
-- Firmware: Flash-I/O und blockierende Operationen aus MQTT-Callbacks entfernt
-- Firmware: Neustart-Schleife durch Watchdog, MQTT-Race-Condition und WLAN-Instabilität
-- Firmware: Pulsier-Animation entfernt, spontane Neustarts und Boot-Crash behoben
-- Firmware: MQTT-Doppel-Send, Eingabevalidierung und Fallback-Logik
-- Backend: Fehlerbehandlung, DB-Connection-Pool und Cache-Invalidierung korrigiert
-- UI: XSS-Reste, Log-Anzeige, History-Direktzugriff, moment.js entfernt
+- Firmware: NeoPixel-Use-after-free — `pixels = Adafruit_NeoPixel(...)` in `setup()`
+  erzeugte über den fehlenden Copy-Assignment-Operator einen Zugriff auf freigegebenen
+  Speicher; Ursache des rhythmischen LED-Pulsierens und der Heap-Korruption mit Reboots.
+  Initialisierung jetzt über `updateType()/updateLength()/setPin()/begin()`
+- Firmware: nächtliche Reboot-Schleife — kumulierte NVS-Uptime wurde als aktuelle
+  Laufzeit interpretiert, ab 30 Tagen Gesamtlaufzeit empfahl jeder Boot einen Neustart
+- Firmware: MQTT sendete alle Initial-States bei jedem Boot doppelt (fehlendes
+  `mqttWasConnected`-Flag, `setRetain(true)` auf Command-Entitäten)
+- Firmware: MQTT-Passwort wurde beim Speichern durch die Maske `****` überschrieben
+- Firmware: Neutral-Fallback greift wirklich (Erfolgs-Flags wurden in Fehlerpfaden
+  zurückgesetzt), HA-Kategorie-Sensor aktualisiert wieder
+- Firmware: OTA-Härtung — Magic-Byte-Prüfung (0xE9), HTTP 500 bei Fehlern,
+  Abbruch-Handling, Platzprüfung vor Upload; Factory-Reset löscht `settings.json`
+- Firmware: Eingabevalidierung für `numLeds` (1–64), GPIO-Pins (Flash-Pins gesperrt),
+  SSID/Passwort-Längen, Farbwerte, Intervalle
+- Backend: API-Ausfälle erzeugten falsche Daten — fehlgeschlagene Anthropic-Aufrufe
+  wurden einen Monat lang als Sentiment 0.0 gespeichert (1911 unbrauchbare Messungen,
+  verfälschte Perzentil-Schwellen). Fehler überspringen jetzt den Zyklus; Altdaten bereinigt
+- Backend: Connection-Pool wird wirklich genutzt (vorher teilten sich alle Threads eine
+  Connection mit gemeinsamer Transaktion), Rollback in allen Fehlerpfaden
+- Backend: Worker-Robustheit — `reconfigure()` in den ersten 10 s tötete den Worker
+  dauerhaft, Intervalländerungen lösten Sofort-Analysen aus; Lock gegen Parallelanalysen
+- Backend: Cache-Invalidierung löschte den falschen Key, fehlendes `import requests`
+  (`/api/news` war tot), `init.sql` läuft wieder auf frischer DB, timezone-aware Timestamps
+- UI: XSS-Reste (WLAN-SSIDs, Settings, Log), Log-Anzeige wieder mehrzeilig,
+  History kommt direkt vom Backend (vorher OOM-Risiko beim 720-h-Proxy über den ESP),
+  „WLAN zurücksetzen"-Button funktioniert, kein weißer Flash im Dark Mode
 - Build: fehlende diagnostics.html aus der tar-Liste entfernt, Geräte-IP korrigiert
 
 ### Sicherheit
-- Backend: `SECRET_KEY` schlägt beim Start fehl, wenn nicht gesetzt (Fail-Fast)
-- Backend: Rate-Limit auf dem Login, Worker-Lebensdauer und Redis-Caching korrigiert
+- Backend: `SECRET_KEY` schlägt beim Start fehl, wenn nicht gesetzt (kein bekannter
+  Fallback-Wert mehr), Login-Rate-Limit (5 Versuche / 60 s Sperre)
+- Backend: `/api/news`-Kostenvektor gedeckelt (`headlines_per_source` max. 10),
+  Open-Redirect im Login geschlossen, SSRF-Guard bei der Feed-Validierung, `SameSite=Lax`
+- Backend: `requests` ≥ 2.32.4 (CVE-2024-47081)
+- Firmware: `/logs` liefert `text/plain; charset=utf-8` — Stored-XSS-Weg geschlossen
 
 ## [9.11] – 2026-03-27
 
