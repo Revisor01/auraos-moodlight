@@ -333,16 +333,22 @@ void checkAndReconnectWifi()
         setStatusLED(0);
     }
 
-    // Selbstheilung: Die Rueckstellung oben liegt in einem else-if-Zweig und
-    // greift nur beim Wechsel getrennt -> verbunden. War wifiWasConnected schon
-    // true (z.B. nach einem OTA-Reboot mit sofort stehender Verbindung), lief
-    // sie nie — die blaue Status-LED blinkte dann dauerhaft weiter, obwohl
-    // WiFi laengst verbunden war. Fuer den Nutzer sieht das nach einem Defekt
-    // aus. Deshalb hier bei jedem Check aufraeumen.
-    if (WiFi.status() == WL_CONNECTED && appState.statusLedMode == 1) {
+    // Selbstheilung der Status-LED. Die Rueckstellungen im Code haengen an
+    // einzelnen Ereignissen und greifen deshalb nicht zuverlaessig:
+    //   - Modus 1 (WiFi) wurde nur beim Wechsel getrennt -> verbunden geloescht;
+    //     stand die Verbindung nach einem Reboot sofort, lief das nie.
+    //   - Modus 2 (API-Fehler) wird erst beim naechsten erfolgreichen
+    //     Sentiment-Abruf geloescht — das ist bis zu 30 Minuten spaeter.
+    // Fuer Nutzende sieht dauerhaftes Blinken nach einem Defekt aus, obwohl
+    // laengst alles laeuft. Der Status wird daher zustandsbasiert gefuehrt:
+    // Wenn WLAN steht und die API erreichbar ist, blinkt nichts.
+    bool wifiOk = (WiFi.status() == WL_CONNECTED);
+    bool apiOk  = appState.sentimentAPIAvailable;
+
+    if (wifiOk && apiOk && (appState.statusLedMode == 1 || appState.statusLedMode == 2)) {
         setStatusLED(0);
         appState.disconnectStartMs = 0;
-        debug(F("Status-LED zurueckgesetzt: WiFi ist verbunden"));
+        debug(F("Status-LED zurueckgesetzt: WLAN und API sind in Ordnung"));
     }
 
     yield();
