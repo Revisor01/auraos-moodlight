@@ -238,6 +238,9 @@ script = r"""
 
       torch.style.setProperty('--tr', RADIUS + 'px');
       torch.classList.add('touched');
+      // Viewport-Koordinaten fuer die Spans (background-attachment: fixed)
+      torch.style.setProperty('--gx', e.clientX + 'px');
+      torch.style.setProperty('--gy', e.clientY + 'px');
       if (!pending) { pending = true; requestAnimationFrame(zeichne); }
     });
 

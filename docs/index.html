@@ -1393,6 +1393,33 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
       #262B35 82%) !important;
 }
 
+/* ================= Nur MOOD und MUT faerben =================
+   Der Absatz selbst bleibt durchgehend gedaempft. Nur die beiden Spans
+   bekommen den Lichtverlauf — und zwar mit background-attachment: fixed,
+   damit sich der Kegel am Viewport orientiert statt am winzigen Span-Kasten.
+   Das Script setzt --gx/--gy deshalb in Viewport-Koordinaten. */
+.torch-play {
+  background: none !important;
+  background-image: none !important;
+  color: #262B35 !important;
+  -webkit-text-fill-color: #262B35 !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+}
+.torch-play span {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--gx, 50%) var(--gy, 40%),
+      var(--live-color, #A855F7) 0%,
+      var(--live-color, #A855F7) 34%,
+      color-mix(in srgb, var(--live-color, #A855F7) 40%, #2A2F3A) 62%,
+      #2A2F3A 85%) !important;
+  background-attachment: fixed !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 700;
+}
+
 </style>
 
 <div class="aura" aria-hidden="true">
@@ -1968,6 +1995,9 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 
       torch.style.setProperty('--tr', RADIUS + 'px');
       torch.classList.add('touched');
+      // Viewport-Koordinaten fuer die Spans (background-attachment: fixed)
+      torch.style.setProperty('--gx', e.clientX + 'px');
+      torch.style.setProperty('--gy', e.clientY + 'px');
       if (!pending) { pending = true; requestAnimationFrame(zeichne); }
     });
 
