@@ -1,0 +1,342 @@
+<div class="aura" aria-hidden="true">
+  <div class="aura-a"></div>
+  <div class="aura-b"></div>
+</div>
+
+<div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+   <div class="hero-text">
+    <p class="kicker">Moodlicht</p>
+    <h1>Die Welt ist öfter hell,<br>als die Nachrichten<br>glauben machen.</h1>
+    <p class="lede">
+      Eine Lampe, die alle 30 Minuten die Schlagzeilen liest — und sie nicht an
+      einem Ideal misst, sondern an der Woche, die tatsächlich war.
+    </p>
+
+    <a class="scroll-hint" href="#selberbauen">
+      <span>Selber bauen</span>
+      <svg width="14" height="20" viewBox="0 0 14 20" fill="none" aria-hidden="true">
+        <path d="M7 1v17m0 0 5-5m-5 5-5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+   </div>
+
+    <div class="live" id="live" data-state="loading">
+      <div class="live-top">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span class="live-label">Live vom Server</span>
+        <span class="live-time" id="liveTime"></span>
+      </div>
+
+      <p class="live-word" id="liveWord">wird gelesen</p>
+
+      <div class="scale" role="img" aria-label="Position der aktuellen Lage auf der Farbskala" id="scale">
+        <div class="scale-track"></div>
+        <div class="scale-pin" id="scalePin"></div>
+      </div>
+      <p class="live-note" id="liveNote">Die Messung wird abgerufen.</p>
+
+      <div class="values">
+        <div class="value">
+          <p class="value-label">Nachrichten jetzt</p>
+          <p class="value-num" id="valRaw">–</p>
+          <p class="value-hint" id="valRawHint">absoluter Wert von −1 bis +1</p>
+        </div>
+        <div class="value">
+          <p class="value-label">Im Wochenvergleich</p>
+          <p class="value-num accent" id="valPct">–</p>
+          <p class="value-hint" id="valPctHint">Position im 7-Tage-Fenster</p>
+        </div>
+      </div>
+      <p class="values-note" id="valuesNote"></p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="chapter c1" id="kapitel1">
+    <div class="wrap narrow">
+      <p class="chapter-mark">Das Problem</p>
+      <h2>Bad news sells. Good news nicht.</h2>
+      <p>
+        Es braucht <strong>fünf bis sieben gute Nachrichten</strong>, um eine
+        einzige schlechte auszugleichen. Das ist keine Stimmungssache, sondern
+        Psychologie: Negatives haftet schneller und tiefer. Evolutionär war das
+        sinnvoll — wer das Rascheln im Gebüsch überhörte, war tot. Wer die Beeren
+        übersah, hatte morgen eine neue Chance.
+      </p>
+      <p>
+        Medien wissen das. Schlechte Nachrichten werden häufiger geklickt,
+        länger gelesen, öfter geteilt. Empörung funktioniert besser als Freude,
+        Hass besser als Liebe. Was daraus entsteht, heißt Doomscrolling: Man
+        wischt weiter, obwohl es einem schlechter dabei geht. Und nach einer
+        Stunde hat man das Gefühl, die Welt gehe unter — ohne je einen Maßstab
+        gehabt zu haben, an dem sich das prüfen ließe.
+      </p>
+      <p>
+        Genau diesen Maßstab liefert die Lampe nach. Sie speichert, wie die Lage
+        in den letzten sieben Tagen wirklich war, und vergleicht jede neue
+        Messung damit. Kein Ausgleich durch gute Nachrichten — sondern der
+        ehrliche Vergleich mit dem, was war.
+      </p>
+    </div>
+  </section>
+
+  <section class="chapter c2" id="kapitel2">
+    <div class="wrap">
+      <p class="chapter-mark">Die Zahlen</p>
+      <h2>Zwei Werte, dieselben Daten</h2>
+      <p class="chapter-lede">
+        Aus den Messungen der letzten 30 Tage lassen sich zwei Fragen
+        beantworten. Die Antworten könnten kaum weiter auseinanderliegen.
+      </p>
+
+      <div class="figures">
+        <div class="fig">
+          <p class="fig-q">Wie viele Messungen sind negativ?</p>
+          <p class="fig-num dim" id="figNeg">90<span>&#8239;%</span></p>
+          <p class="fig-a">
+            Absolut betrachtet ist die Nachrichtenlage fast durchgehend dunkel.
+            Das ist die Zahl, die dem Bauchgefühl entspricht.
+          </p>
+        </div>
+        <div class="fig">
+          <p class="fig-q">Wie oft leuchtet die Lampe trotzdem neutral oder hell?</p>
+          <p class="fig-num bright" id="figHell">63<span>&#8239;%</span></p>
+          <p class="fig-a">
+            Weil sie nicht fragt „ist das gut?“, sondern „ist das heller als die
+            Woche davor?“ — und das ist es überraschend oft.
+          </p>
+        </div>
+      </div>
+
+      <p class="chapter-close">
+        Beide Zahlen stimmen. Sie beantworten nur verschiedene Fragen. Die zweite
+        ist die, mit der sich leben lässt — ohne dass etwas beschönigt wird.
+      </p>
+    </div>
+  </section>
+
+  <section class="chapter c2b" id="kapitel2b">
+    <div class="wrap">
+      <p class="chapter-mark">Gerade eben</p>
+      <h2>Dasselbe Jetzt, zwei Lesarten</h2>
+      <p class="chapter-lede">
+        Die Werte unten sind die aktuelle Messung — live, nicht illustriert.
+        Links, was die Schlagzeilen dieser halben Stunde für sich genommen sagen.
+        Rechts, wo dieser Wert im Verhältnis zur Woche steht.
+      </p>
+
+      <div class="compare" id="compare">
+        <div class="cmp cmp-abs">
+          <p class="cmp-kind">Für sich genommen</p>
+          <p class="cmp-big" id="cmpRaw">–</p>
+          <p class="cmp-cat" id="cmpRawCat">wird geladen</p>
+          <div class="cmp-bar" role="img" aria-label="Absoluter Wert auf der Skala von minus eins bis plus eins">
+            <div class="cmp-bar-track abs"></div>
+            <div class="cmp-bar-zero"></div>
+            <div class="cmp-bar-pin" id="cmpRawPin"></div>
+          </div>
+          <p class="cmp-scale"><span>−1</span><span>0</span><span>+1</span></p>
+          <p class="cmp-text" id="cmpRawText">
+            So liest sich die Nachrichtenlage, wenn man nur auf diesen Moment schaut.
+          </p>
+        </div>
+
+        <div class="cmp cmp-rel">
+          <p class="cmp-kind">Im Vergleich zur Woche</p>
+          <p class="cmp-big accent" id="cmpPct">–</p>
+          <p class="cmp-cat" id="cmpPctCat">wird geladen</p>
+          <div class="cmp-bar" role="img" aria-label="Position im 7-Tage-Fenster">
+            <div class="cmp-bar-track rel"></div>
+            <div class="cmp-bar-pin" id="cmpPctPin"></div>
+          </div>
+          <p class="cmp-scale"><span id="cmpMin">min</span><span>Median</span><span id="cmpMax">max</span></p>
+          <p class="cmp-text" id="cmpPctText">
+            Und so steht derselbe Wert da, wenn man die letzten sieben Tage danebenlegt.
+          </p>
+        </div>
+      </div>
+
+      <p class="chapter-close" id="compareClose">
+        Die Lampe zeigt den rechten Wert. Nicht weil der linke falsch wäre — sondern
+        weil der rechte die Frage beantwortet, die man abends im Wohnzimmer wirklich hat.
+      </p>
+    </div>
+  </section>
+
+  <section class="chapter c3" id="kapitel3">
+    <div class="wrap narrow">
+      <p class="chapter-mark">Der Punkt</p>
+      <h2>Einordnen statt übersehen</h2>
+      <p>
+        Der Vergleichsmaßstab ist keine Schönfärberei. Ein wirklich schwerer Tag
+        bleibt ein schwerer Tag, und dann wird die Lampe rot — verlässlich, weil
+        sie es nicht schon vorher war.
+      </p>
+      <p>
+        Was der Vergleich wegnimmt, ist die Dauererregung. Das meiste ist
+        gewöhnlich. Manches ist besser als gedacht. Weniges ist wirklich schlimm.
+        Diese Unterscheidung wieder treffen zu können, verändert mehr als jede
+        weitere Meldung.
+      </p>
+      <blockquote class="pull">
+        Mut ist nicht, das Dunkle zu übersehen.<br>
+        Mut ist, es richtig einzuordnen.
+      </blockquote>
+    </div>
+  </section>
+
+  <section class="chapter c4" id="kapitel4">
+    <div class="wrap">
+      <p class="chapter-mark">Der Ablauf</p>
+      <h2>Was dabei passiert</h2>
+      <ol class="steps">
+        <li>
+          <h3>Lesen</h3>
+          <p>Ein Server holt die Schlagzeilen aus zwölf deutschen Quellen — alle 30 Minuten.</p>
+        </li>
+        <li>
+          <h3>Gewichten</h3>
+          <p>Jede Schlagzeile bekommt einen Wert zwischen sehr schwer und sehr leicht.</p>
+        </li>
+        <li>
+          <h3>Vergleichen</h3>
+          <p>Der Wert wird gegen die letzten sieben Tage gehalten. Die Position darin entscheidet.</p>
+        </li>
+        <li>
+          <h3>Leuchten</h3>
+          <p>Die Lampe wechselt die Farbe. Ohne Ton, ohne Meldung, ohne Feed.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+
+  <section class="chapter c5" id="selberbauen">
+    <div class="wrap">
+      <p class="chapter-mark">Nachbauen</p>
+      <h2>Vier Teile, ein Nachmittag</h2>
+      <p class="chapter-lede">
+        Das Moodlicht ist Open Source. Die Firmware, der Analyse-Server und diese
+        Seite liegen offen auf GitHub. Wer löten kann — oder es lernen will —
+        baut sich das Ding für unter 30&#8239;Euro nach.
+      </p>
+
+      <div class="parts">
+        <div class="part">
+          <p class="part-name">ESP32-Board</p>
+          <p class="part-spec">esp32dev, z.&#8239;B. DevKit&nbsp;v1</p>
+          <p class="part-price">ca. 8&#8239;€</p>
+        </div>
+        <div class="part">
+          <p class="part-name">LED-Ring</p>
+          <p class="part-spec">WS2812B, 12 LEDs<br>(bis 64 möglich)</p>
+          <p class="part-price">ca. 6&#8239;€</p>
+        </div>
+        <div class="part">
+          <p class="part-name">DHT22</p>
+          <p class="part-spec">Temperatur &amp; Luftfeuchte<br>optional</p>
+          <p class="part-price">ca. 5&#8239;€</p>
+        </div>
+        <div class="part">
+          <p class="part-name">Gehäuse</p>
+          <p class="part-spec">Diffusor nach Wunsch —<br>Papier tut es auch</p>
+          <p class="part-price">nach Geschmack</p>
+        </div>
+      </div>
+
+      <div class="wiring">
+        <h3>Verkabelung</h3>
+        <table class="wire-table">
+          <thead>
+            <tr><th>Vom Bauteil</th><th>Zum ESP32</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>LED-Ring DIN</td><td><code>GPIO 26</code></td></tr>
+            <tr><td>LED-Ring 5V</td><td><code>VIN</code> / <code>5V</code></td></tr>
+            <tr><td>LED-Ring GND</td><td><code>GND</code></td></tr>
+            <tr><td>DHT22 Data</td><td><code>GPIO 18</code></td></tr>
+            <tr><td>DHT22 VCC / GND</td><td><code>3V3</code> / <code>GND</code></td></tr>
+          </tbody>
+        </table>
+        <p class="wire-note">
+          Beide Pins lassen sich später im Web-Interface ändern. Bei mehr als
+          etwa 16 LEDs auf voller Helligkeit gehört ein eigenes 5-Volt-Netzteil
+          dazu — der USB-Anschluss allein reicht dann nicht.
+        </p>
+      </div>
+
+      <div class="steps-diy">
+        <div class="step-diy">
+          <p class="step-num">01</p>
+          <h3>Firmware flashen</h3>
+          <p>
+            Fertige <code>.bin</code> vom GitHub-Release herunterladen und mit
+            PlatformIO oder dem ESP-Flash-Tool aufspielen. Wer den Quellcode
+            baut: <code>pio run -t upload</code>.
+          </p>
+        </div>
+        <div class="step-diy">
+          <p class="step-num">02</p>
+          <h3>WLAN einrichten</h3>
+          <p>
+            Beim ersten Start öffnet das Gerät ein eigenes WLAN. Verbinden,
+            Zugangsdaten eintragen, fertig — kein Kabel, keine App.
+          </p>
+        </div>
+        <div class="step-diy">
+          <p class="step-num">03</p>
+          <h3>Loslegen</h3>
+          <p>
+            Das Gerät holt sich den Wert vom öffentlichen Analyse-Server. Wer
+            lieber selbst hostet: Der Server liegt als Docker-Compose im
+            Repository. Home Assistant findet die Lampe per MQTT automatisch.
+          </p>
+        </div>
+      </div>
+
+      <div class="repo">
+        <a class="repo-link" href="https://github.com/Revisor01/auraos-moodlight">
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+          </svg>
+          <span>
+            <strong>Quellcode auf GitHub</strong>
+            <em>Firmware, Server und diese Seite — MIT-Lizenz</em>
+          </span>
+        </a>
+        <p class="repo-version">
+          Aktuelle Firmware: <code id="fwVersion">v9.15</code>
+          <span class="sep">·</span>
+          <a href="https://github.com/Revisor01/auraos-moodlight/releases">Alle Releases</a>
+          <span class="sep">·</span>
+          <a href="https://github.com/Revisor01/auraos-moodlight/blob/main/CHANGELOG.md">Änderungen</a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter closing" id="ende">
+    <div class="wrap narrow">
+      <p class="closing-line">
+        Sie steht im Wohnzimmer<br>und sagt nichts.
+      </p>
+      <p class="closing-sub">Das ist ihre beste Eigenschaft.</p>
+      <p class="closing-meta">
+        Ein privates Projekt · selbst gebaut ·
+        <a href="https://github.com/Revisor01/auraos-moodlight">Quellcode auf GitHub</a>
+      </p>
+      <p class="sources">
+        Zum Negativitäts-Bias:
+        <a href="https://journals.sagepub.com/doi/abs/10.1037/1089-2680.5.4.323">Baumeister u.&#8239;a., <em>Bad Is Stronger Than Good</em> (2001)</a>,
+        <a href="https://www.gottman.com/blog/the-magic-ratio-the-key-to-relationship-satisfaction/">Gottmans 5:1-Verhältnis</a>
+        und
+        <a href="https://www.pnas.org/doi/10.1073/pnas.1908369116">Soroka u.&#8239;a., PNAS (2019)</a>
+        — 17 Länder, messbar stärkere körperliche Reaktion auf negative Nachrichten.
+      </p>
+    </div>
+  </section>
+</main>

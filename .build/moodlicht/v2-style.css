@@ -1,0 +1,782 @@
+/* Moodlicht — Dark-first. Das Objekt ist eine Lampe; sie gehoert in den dunklen Raum.
+   Die Seite wird von Kapitel zu Kapitel heller: die Dramaturgie ist das Argument. */
+
+:root {
+  /* Datenpalette = die fuenf Farbstufen des Geraets */
+  --c1: #F0555A;
+  --c2: #F5A524;
+  --c3: #4C97F5;
+  --c4: #8A2BE2;
+  --c5: #B455F5;
+
+  --bg:        #0B0E14;
+  --surface:   #141924;
+  --surface-2: #1B2130;
+  --line:      rgba(255,255,255,.09);
+  --line-soft: rgba(255,255,255,.055);
+
+  --fg:      #F4F6FA;
+  --fg-mid:  #9BA6B8;
+  --fg-low:  #6B7688;
+
+  --accent:  #A855F7;
+
+  --step--1: clamp(.83rem, .81rem + .1vw, .9rem);
+  --step-0:  clamp(1.03rem, 1rem + .16vw, 1.14rem);
+  --step-1:  clamp(1.2rem, 1.12rem + .38vw, 1.45rem);
+  --step-2:  clamp(1.7rem, 1.42rem + 1.3vw, 2.6rem);
+  --step-3:  clamp(2.4rem, 1.8rem + 2.9vw, 4.2rem);
+  --step-4:  clamp(2.5rem, 1.6rem + 3.4vw, 4.4rem);
+
+  --measure: 36rem;
+  --ease: cubic-bezier(.32,.72,0,1);
+}
+
+/* Helles Theme: bewusst gestaltet, nicht invertiert.
+   Die Farbdramaturgie bleibt, nur die Grundwerte kippen. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:        #F7F8FA;
+    --surface:   #FFFFFF;
+    --surface-2: #F0F2F6;
+    --line:      rgba(11,14,20,.12);
+    --line-soft: rgba(11,14,20,.07);
+    --fg:        #10141C;
+    --fg-mid:    #4B5566;
+    --fg-low:    #78838F;
+    --accent:    #8A2BE2;
+    --c1: #D93A40; --c2: #C97A08; --c3: #1F6FD4; --c4: #7425c9; --c5: #8A2BE2;
+  }
+}
+:root[data-theme="light"] {
+  --bg:        #F7F8FA;
+  --surface:   #FFFFFF;
+  --surface-2: #F0F2F6;
+  --line:      rgba(11,14,20,.12);
+  --line-soft: rgba(11,14,20,.07);
+  --fg:        #10141C;
+  --fg-mid:    #4B5566;
+  --fg-low:    #78838F;
+  --accent:    #8A2BE2;
+  --c1: #D93A40; --c2: #C97A08; --c3: #1F6FD4; --c4: #7425c9; --c5: #8A2BE2;
+}
+:root[data-theme="dark"] {
+  --bg:        #0B0E14;
+  --surface:   #141924;
+  --surface-2: #1B2130;
+  --line:      rgba(255,255,255,.09);
+  --line-soft: rgba(255,255,255,.055);
+  --fg:        #F4F6FA;
+  --fg-mid:    #9BA6B8;
+  --fg-low:    #6B7688;
+  --accent:    #A855F7;
+  --c1: #F0555A; --c2: #F5A524; --c3: #4C97F5; --c4: #8A2BE2; --c5: #B455F5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--step-0);
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .fig-num, .live-word, .pull, .closing-line, .kicker {
+  font-family: 'Clash Display', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.wrap { width: min(70rem, 100% - 2.5rem); margin-inline: auto; }
+.wrap.narrow { width: min(var(--measure), 100% - 2.5rem); }
+
+/* ---------- Fortschrittsbalken ---------- */
+.progress {
+  position: fixed; inset: 0 0 auto; height: 2px;
+  background: var(--line-soft); z-index: 100;
+}
+.progress span {
+  display: block; height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--c1), var(--c2) 30%, var(--c3) 55%, var(--c4) 78%, var(--c5));
+  transition: width .1s linear;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  min-height: 100svh;
+  overflow: hidden;
+  display: flex; align-items: center;
+  padding: 6rem 0 3rem;
+  position: relative;
+}
+.hero::after {
+  content: ''; position: absolute; inset: auto 0 0; height: 1px;
+  background: var(--line-soft);
+}
+.kicker {
+  font-size: var(--step--1);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 1.8rem;
+}
+h1 {
+  font-size: var(--step-4);
+  font-weight: 600;
+  line-height: .98;
+  letter-spacing: -.03em;
+}
+.lede {
+  margin: 1.9rem 0 0;
+  max-width: var(--measure);
+  font-size: var(--step-1);
+  color: var(--fg-mid);
+  line-height: 1.48;
+}
+
+/* ---------- Live-Kachel ---------- */
+.live {
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  max-width: 32rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.5rem 1.6rem 1.6rem;
+}
+.live-top { display: flex; align-items: center; gap: .55rem; margin-bottom: 1.1rem; }
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--fg-low);
+  box-shadow: 0 0 0 0 transparent;
+  transition: background .7s var(--ease), box-shadow .7s var(--ease);
+}
+.live[data-state="ok"] .live-dot {
+  background: var(--live-color, var(--accent));
+  box-shadow: 0 0 12px 1px var(--live-color, var(--accent));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live[data-state="ok"] .live-dot { animation: pulse 3.4s var(--ease) infinite; }
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+
+.live-label {
+  font-size: .74rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--fg-low); font-weight: 500;
+}
+.live-word {
+  font-size: var(--step-2);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  color: var(--live-color, var(--fg));
+  transition: color .9s var(--ease);
+  margin-bottom: 1.4rem;
+}
+.scale { position: relative; height: 1.4rem; }
+.scale-track {
+  position: absolute; inset: .5rem 0 auto; height: .3rem; border-radius: 999px;
+  background: linear-gradient(90deg, var(--c1), var(--c2) 27%, var(--c3) 52%, var(--c4) 76%, var(--c5));
+  opacity: .55;
+}
+.scale-pin {
+  position: absolute; top: .05rem; left: 50%;
+  width: 3px; height: 1.2rem; border-radius: 2px;
+  background: var(--fg);
+  transform: translateX(-1.5px) scaleY(0);
+  transform-origin: center;
+  transition: left 1.1s var(--ease), transform .5s var(--ease);
+}
+.live[data-state="ok"] .scale-pin { transform: translateX(-1.5px) scaleY(1); }
+.live-note { margin: 1.1rem 0 0; font-size: var(--step--1); color: var(--fg-low); }
+
+.scroll-hint {
+  display: inline-flex; align-items: center; gap: .6rem;
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  color: var(--fg-low);
+  text-decoration: none;
+  font-size: var(--step--1);
+  letter-spacing: .04em;
+  transition: color .2s var(--ease);
+}
+.scroll-hint:hover { color: var(--fg); }
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-hint svg { animation: nudge 2.6s var(--ease) infinite; }
+}
+@keyframes nudge { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+/* ---------- Kapitel: von dunkel nach hell ---------- */
+.chapter { padding: clamp(4.5rem, 11vw, 9rem) 0; position: relative; }
+.chapter + .chapter { border-top: 1px solid var(--line-soft); }
+.chapter { background: transparent; }
+
+.chapter-mark {
+  font-size: .74rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--fg-low); font-weight: 600; margin: 0 0 1.1rem;
+}
+.chapter h2 {
+  font-size: var(--step-3);
+  font-weight: 600;
+  letter-spacing: -.028em;
+  line-height: 1.03;
+  margin-bottom: 1.7rem;
+  max-width: 18ch;
+}
+.chapter p { margin: 0 0 1.1rem; color: var(--fg-mid); max-width: var(--measure); }
+.chapter p:last-child { margin-bottom: 0; }
+.chapter-lede { font-size: var(--step-1); line-height: 1.5; }
+
+/* ---------- Zahlen ---------- */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: clamp(2rem, 4vw, 3.5rem);
+  margin: clamp(2.8rem, 6vw, 4.5rem) 0;
+}
+.fig { border-top: 1px solid var(--line); padding-top: 1.4rem; }
+.fig-q {
+  font-size: var(--step--1);
+  color: var(--fg-low) !important;
+  margin-bottom: 1rem !important;
+  min-height: 2.8em;
+}
+.fig-num {
+  font-size: var(--step-3);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.04em;
+  margin-bottom: 1rem;
+}
+.fig-num span { font-size: .42em; letter-spacing: 0; margin-left: .1em; }
+.fig-num.dim { color: var(--fg-low); }
+.fig-num.bright {
+  color: var(--c5);
+  text-shadow: 0 0 26px color-mix(in srgb, var(--c5) 45%, transparent);
+}
+.fig-a { font-size: var(--step--1); line-height: 1.58; }
+.chapter-close { max-width: var(--measure); }
+
+/* ---------- Zitat ---------- */
+.pull {
+  font-size: var(--step-2);
+  font-weight: 500;
+  line-height: 1.22;
+  letter-spacing: -.02em;
+  color: var(--fg);
+  margin: 2.8rem 0 0;
+  padding-left: 1.4rem;
+  border-left: 2px solid var(--accent);
+  max-width: none;
+}
+
+/* ---------- Ablauf ---------- */
+.steps {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: clamp(1.6rem, 3vw, 2.6rem);
+  counter-reset: s;
+}
+.steps li { counter-increment: s; }
+.steps li::before {
+  content: counter(s, decimal-leading-zero);
+  display: block;
+  font-family: 'Clash Display', sans-serif;
+  font-size: .78rem; letter-spacing: .1em;
+  color: var(--accent);
+  border-top: 1px solid var(--line);
+  padding-top: .8rem; margin-bottom: .9rem;
+}
+.steps h3 { font-size: var(--step-1); font-weight: 600; margin-bottom: .5rem; letter-spacing: -.015em; }
+.steps p { font-size: var(--step--1); line-height: 1.58; }
+
+/* ---------- Schluss ---------- */
+.closing { text-align: center; padding-block: clamp(5rem, 12vw, 10rem); }
+.closing-line {
+  font-size: var(--step-3);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -.03em;
+  max-width: none !important;
+  margin-bottom: 1.2rem !important;
+  color: var(--fg) !important;
+}
+.closing-sub { font-size: var(--step-1); color: var(--fg-mid) !important; max-width: none !important; }
+.closing-meta {
+  margin-top: 3rem !important;
+  font-size: var(--step--1);
+  color: var(--fg-low) !important;
+  max-width: none !important;
+}
+.closing-meta a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.closing-meta a:hover { color: var(--fg); }
+
+/* ---------- Einblenden ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal { opacity: 0; transform: translateY(18px); }
+  .reveal.seen {
+    opacity: 1; transform: none;
+    transition: opacity .7s var(--ease), transform .7s var(--ease);
+  }
+}
+
+a:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+/* ================= Lampe (Canvas) ================= */
+.lamp {
+  display: block;
+  width: 100%; max-width: 190px;
+  height: auto;
+  margin: .2rem auto 1.4rem;
+  opacity: 0;
+  transition: opacity 1.2s var(--ease);
+}
+.live[data-state="ok"] .lamp { opacity: 1; }
+
+.live-time {
+  margin-left: auto;
+  font-size: .72rem;
+  color: var(--fg-low);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ================= Zwei Werte in der Live-Kachel ================= */
+.values {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 1.5rem;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.value { background: var(--surface); padding: .9rem 1rem 1rem; }
+.value-label {
+  font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--fg-low); margin: 0 0 .45rem; font-weight: 600;
+}
+.value-num {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 1.65rem; font-weight: 600; line-height: 1;
+  letter-spacing: -.02em; margin: 0 0 .4rem;
+  color: var(--fg);
+}
+.value-num.accent { color: var(--live-color, var(--accent)); transition: color .9s var(--ease); }
+.value-hint { font-size: .72rem; color: var(--fg-low); margin: 0; line-height: 1.35; }
+.values-note {
+  margin: .9rem 0 0; font-size: var(--step--1);
+  color: var(--fg-mid); line-height: 1.5;
+}
+
+/* ================= Vergleichs-Kapitel ================= */
+
+.compare {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  margin: clamp(2.5rem, 5vw, 3.5rem) 0;
+}
+.cmp {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.5rem 1.6rem 1.7rem;
+}
+.cmp-rel { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.cmp-kind {
+  font-size: .7rem; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--fg-low) !important; font-weight: 600; margin: 0 0 1rem !important;
+}
+.cmp-big {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(2.6rem, 5vw, 3.6rem); font-weight: 600;
+  line-height: 1; letter-spacing: -.035em;
+  margin: 0 0 .35rem !important; color: var(--fg) !important;
+}
+.cmp-big.accent {
+  color: var(--live-color, var(--accent)) !important;
+  transition: color .9s var(--ease);
+}
+.cmp-cat {
+  font-size: var(--step-0); font-weight: 500;
+  margin: 0 0 1.3rem !important; color: var(--fg-mid) !important;
+}
+.cmp-bar { position: relative; height: 1.1rem; margin-bottom: .5rem; }
+.cmp-bar-track {
+  position: absolute; inset: .4rem 0 auto; height: .28rem; border-radius: 999px;
+}
+.cmp-bar-track.abs {
+  background: linear-gradient(90deg, var(--c1), var(--c2) 35%, var(--fg-low) 50%, var(--c4) 72%, var(--c5));
+  opacity: .38;
+}
+.cmp-bar-track.rel {
+  background: linear-gradient(90deg, var(--c1), var(--c2) 27%, var(--c3) 52%, var(--c4) 76%, var(--c5));
+  opacity: .55;
+}
+.cmp-bar-zero {
+  position: absolute; top: .18rem; left: 50%; width: 1px; height: .72rem;
+  background: var(--fg-low); opacity: .5;
+}
+.cmp-bar-pin {
+  position: absolute; top: .05rem; left: 50%;
+  width: 3px; height: 1rem; border-radius: 2px;
+  background: var(--fg);
+  transform: translateX(-1.5px) scaleY(0);
+  transition: left 1.1s var(--ease), transform .5s var(--ease) .2s;
+}
+.compare.ready .cmp-bar-pin { transform: translateX(-1.5px) scaleY(1); }
+.cmp-scale {
+  display: flex; justify-content: space-between;
+  font-size: .68rem; color: var(--fg-low) !important;
+  margin: 0 0 1.1rem !important;
+  font-variant-numeric: tabular-nums;
+}
+.cmp-text { font-size: var(--step--1) !important; line-height: 1.55; margin: 0 !important; }
+
+
+
+@media (max-width: 30rem) {
+  .values { grid-template-columns: 1fr; }
+}
+
+/* ================= Aura: die ganze Seite ist der Lichtkoerper =================
+   Zwei ueberlagerte Lichtwolken hinter allem. Sie tragen die aktuelle Farbe
+   der Lampe und werden beim Scrollen staerker: oben ist die Welt schwarz,
+   unten ist sie licht. Der Verlauf ist das Argument. */
+.aura {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  overflow: hidden;
+  /* --lift wird beim Scrollen von 0 auf 1 gefahren */
+  --lift: 0;
+}
+.aura-a, .aura-b {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  will-change: transform, opacity;
+  transition: background 1.6s var(--ease);
+}
+.aura-a {
+  width: 115vmax; height: 115vmax;
+  left: 50%; top: -42vmax;
+  transform: translateX(-50%) scale(calc(.62 + var(--lift) * .5));
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--live-color, var(--accent)) 62%, transparent),
+    transparent 72%);
+  opacity: calc(.12 + var(--lift) * .5);
+}
+.aura-b {
+  width: 90vmax; height: 90vmax;
+  left: 8%; bottom: -46vmax;
+  transform: scale(calc(.55 + var(--lift) * .75));
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--c5) 55%, transparent),
+    transparent 70%);
+  opacity: calc(.05 + var(--lift) * .45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .aura-a { animation: drift-a 26s ease-in-out infinite alternate; }
+  .aura-b { animation: drift-b 34s ease-in-out infinite alternate; }
+}
+@keyframes drift-a {
+  from { margin-left: -4vw; margin-top: -2vh; }
+  to   { margin-left:  4vw; margin-top:  3vh; }
+}
+@keyframes drift-b {
+  from { margin-left: -3vw; }
+  to   { margin-left:  6vw; }
+}
+
+/* Der Grund selbst hellt sich mit auf */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--live-color, var(--accent)) 6%, transparent) 100%);
+  opacity: var(--lift-body, 0);
+  transition: opacity .4s linear;
+}
+
+/* Inhalt liegt ueber der Aura */
+.progress, .hero, main { position: relative; z-index: 1; }
+
+/* Kacheln bleiben lesbar: leicht durchscheinend statt deckend */
+.live, .cmp {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.values { background: var(--line); }
+.value { background: color-mix(in srgb, var(--surface) 90%, transparent); }
+
+/* ================= Hero: Text links, Live-Kachel rechts ================= */
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: center;
+}
+.hero-text { min-width: 0; }
+.hero-grid .live { margin-top: 0; max-width: none; }
+.hero-grid .scroll-hint { margin-top: 2.6rem; }
+
+@media (max-width: 60rem) {
+  .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .hero-grid .scroll-hint { display: none; }
+  .hero-grid .live { max-width: 32rem; }
+}
+
+/* ================= Selber bauen ================= */
+.c5 { background: transparent; }
+
+.parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1px;
+  margin: clamp(2.5rem, 5vw, 3.5rem) 0;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.part {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 1.4rem 1.3rem 1.5rem;
+}
+.part-name {
+  font-family: 'Clash Display', sans-serif;
+  font-size: var(--step-1); font-weight: 600;
+  margin: 0 0 .45rem !important; color: var(--fg) !important;
+  letter-spacing: -.015em;
+}
+.part-spec {
+  font-size: var(--step--1); line-height: 1.45;
+  margin: 0 0 .9rem !important; color: var(--fg-mid) !important;
+}
+.part-price {
+  font-size: .8rem; color: var(--accent) !important;
+  margin: 0 !important; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.wiring {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.6rem 1.7rem 1.7rem;
+  margin-bottom: clamp(2.5rem, 5vw, 3.5rem);
+}
+.wiring h3 {
+  font-size: var(--step-1); font-weight: 600;
+  margin: 0 0 1.2rem; letter-spacing: -.015em;
+}
+.wire-table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--step--1);
+  margin-bottom: 1.1rem;
+}
+.wire-table th {
+  text-align: left; font-weight: 600;
+  color: var(--fg-low); font-size: .72rem;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: 0 0 .7rem; border-bottom: 1px solid var(--line);
+}
+.wire-table td {
+  padding: .62rem 0; border-bottom: 1px solid var(--line-soft);
+  color: var(--fg-mid);
+}
+.wire-table tr:last-child td { border-bottom: none; }
+.wire-table code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .92em; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: .12em .45em; border-radius: 4px;
+}
+.wire-note {
+  font-size: var(--step--1) !important; line-height: 1.55;
+  margin: 0 !important; color: var(--fg-low) !important;
+}
+
+.steps-diy {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: clamp(1.6rem, 3vw, 2.6rem);
+  margin-bottom: clamp(2.5rem, 5vw, 3.5rem);
+}
+.step-diy { min-width: 0; }
+.step-num {
+  font-family: 'Clash Display', sans-serif;
+  font-size: .78rem; letter-spacing: .1em;
+  color: var(--accent) !important;
+  border-top: 1px solid var(--line);
+  padding-top: .8rem; margin: 0 0 .8rem !important;
+}
+.step-diy h3 {
+  font-size: var(--step-1); font-weight: 600;
+  margin: 0 0 .5rem; letter-spacing: -.015em;
+}
+.step-diy p {
+  font-size: var(--step--1) !important; line-height: 1.6;
+  margin: 0 !important;
+}
+.step-diy code, .repo-version code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .9em; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: .12em .4em; border-radius: 4px;
+}
+
+.repo { text-align: center; }
+.repo-link {
+  display: inline-flex; align-items: center; gap: .95rem;
+  padding: 1.05rem 1.7rem;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 12px;
+  color: var(--fg); text-decoration: none;
+  text-align: left;
+  transition: background .2s var(--ease), border-color .2s var(--ease), transform .2s var(--ease);
+}
+.repo-link:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.repo-link svg { color: var(--accent); flex-shrink: 0; }
+.repo-link strong {
+  display: block; font-size: var(--step-0);
+  font-weight: 600; margin-bottom: .12rem;
+}
+.repo-link em {
+  display: block; font-style: normal;
+  font-size: var(--step--1); color: var(--fg-mid);
+}
+.repo-version {
+  margin: 1.3rem 0 0 !important;
+  font-size: var(--step--1); color: var(--fg-low) !important;
+  max-width: none !important;
+}
+.repo-version a { color: var(--fg-mid); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.repo-version a:hover { color: var(--accent); }
+.repo-version .sep { margin: 0 .5rem; opacity: .5; }
+
+/* ================= Der Aufhellungsverlauf =================
+   Der eigentliche Gedanke: Wir beginnen im Dunkeln — so, wie sich die Welt
+   nach einer Stunde Nachrichten anfuehlt. Beim Scrollen wird es hell. Nicht
+   als Effekt, sondern als Aussage: es ist heller, als man dachte.
+
+   Umgesetzt ueber --lift (0 oben, 1 unten), das per Scroll gesetzt wird.
+   Alle Farbtokens interpolieren zwischen Nacht- und Tagwert. */
+:root {
+  --lift: 0;
+
+  --night-bg:      #0B0E14;
+  --night-surface: #161A21;
+  --night-fg:      #F4F6FA;
+  --night-fg-mid:  #9BA6B8;
+  --night-fg-low:  #6B7688;
+  --night-line:    rgba(255,255,255,.09);
+
+  --day-bg:        #F6F3FB;
+  --day-surface:   #FFFFFF;
+  --day-fg:        #16101F;
+  --day-fg-mid:    #4B4459;
+  --day-fg-low:    #7B7389;
+  --day-line:      rgba(22,16,31,.13);
+}
+
+body {
+  background: color-mix(in srgb, var(--day-bg) calc(var(--lift) * 100%), var(--night-bg));
+  color: color-mix(in srgb, var(--day-fg) calc(var(--lift) * 100%), var(--night-fg));
+  transition: background .35s linear, color .35s linear;
+}
+
+/* Tokens folgen dem Verlauf — Komponenten bleiben unveraendert,
+   weil sie ausschliesslich ueber die Tokens gestylt sind */
+body {
+  --bg:        color-mix(in srgb, var(--day-bg) calc(var(--lift) * 100%), var(--night-bg));
+  --surface:   color-mix(in srgb, var(--day-surface) calc(var(--lift) * 100%), var(--night-surface));
+  --surface-2: color-mix(in srgb, var(--day-surface) calc(var(--lift) * 100%), var(--night-surface));
+  --fg:        color-mix(in srgb, var(--day-fg) calc(var(--lift) * 100%), var(--night-fg));
+  --fg-mid:    color-mix(in srgb, var(--day-fg-mid) calc(var(--lift) * 100%), var(--night-fg-mid));
+  --fg-low:    color-mix(in srgb, var(--day-fg-low) calc(var(--lift) * 100%), var(--night-fg-low));
+  --line:      color-mix(in srgb, var(--day-line) calc(var(--lift) * 100%), var(--night-line));
+  --line-soft: color-mix(in srgb, var(--day-line) calc(var(--lift) * 60%), var(--night-line));
+}
+
+/* Im hellen Grund braucht der Akzent mehr Tiefe, sonst blendet er */
+body {
+  --accent: color-mix(in srgb, #7C22CE calc(var(--lift) * 100%), #A855F7);
+}
+
+/* Die Aura wird nach unten hin zur warmen Aufhellung statt zum Farbnebel */
+.aura-a { mix-blend-mode: screen; }
+.aura-b { mix-blend-mode: screen; }
+@media (prefers-color-scheme: light) {
+  .aura-a, .aura-b { mix-blend-mode: multiply; opacity: calc(.06 + var(--lift) * .22); }
+}
+
+/* Kein zusaetzlicher Overlay-Verlauf mehr — der Grund selbst hellt auf */
+body::before { content: none; }
+
+/* ---- Lesbarkeit im Umschlag ----
+   Grund und Text duerfen nicht gemeinsam durch die Mitte wandern, sonst
+   treffen sie sich bei aehnlicher Helligkeit und der Kontrast bricht auf ~1.7
+   ein. Loesung: der Grund verlaeuft weich, die Textfarbe kippt hart bei 50 %.
+   --textlift wird per Script auf 0 oder 1 gesetzt, nie dazwischen. */
+body {
+  --fg:     color-mix(in srgb, var(--day-fg)     calc(var(--textlift, 0) * 100%), var(--night-fg));
+  --fg-mid: color-mix(in srgb, var(--day-fg-mid) calc(var(--textlift, 0) * 100%), var(--night-fg-mid));
+  --fg-low: color-mix(in srgb, var(--day-fg-low) calc(var(--textlift, 0) * 100%), var(--night-fg-low));
+  color: var(--fg);
+  transition: background .35s linear, color .28s ease;
+}
+
+/* ---- Grund folgt dem Text, nicht umgekehrt ----
+   Der Grund darf erst aufhellen, wenn die Textfarbe bereits gekippt ist.
+   Sonst wandern beide gleichzeitig durch die Mitte und der Kontrast bricht ein.
+   --bglift wird per Script gesetzt: bis zur Textschwelle 0, danach 0..1. */
+body {
+  --bg:        color-mix(in srgb, var(--day-bg)      calc(var(--bglift, 0) * 100%), var(--night-bg));
+  --surface:   color-mix(in srgb, var(--day-surface) calc(var(--bglift, 0) * 100%), var(--night-surface));
+  --surface-2: color-mix(in srgb, var(--day-surface) calc(var(--bglift, 0) * 100%), var(--night-surface));
+  --line:      color-mix(in srgb, var(--day-line)    calc(var(--bglift, 0) * 100%), var(--night-line));
+  --line-soft: color-mix(in srgb, var(--day-line)    calc(var(--bglift, 0) * 60%),  var(--night-line));
+  --accent:    color-mix(in srgb, #7C22CE            calc(var(--bglift, 0) * 100%), #A855F7);
+  background: var(--bg);
+}
+
+/* ---- Harter Umschlag, weich animiert ----
+   Die Tokens springen an einem Punkt, aber die CSS-Transition laesst den
+   Wechsel in ~450 ms als bewussten Moment ablaufen statt als Ruck. */
+body {
+  transition: background-color .45s ease, color .45s ease;
+}
+.live, .cmp, .part, .wiring, .value, .parts, .values {
+  transition: background-color .45s ease, border-color .45s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  body, .live, .cmp, .part, .wiring, .value, .parts, .values { transition: none; }
+}
+
+/* Quellenangabe im Schluss */
+.sources {
+  margin: 1.6rem auto 0 !important;
+  max-width: 40rem !important;
+  font-size: .78rem !important;
+  line-height: 1.6;
+  color: var(--fg-low) !important;
+}
+.sources a { color: var(--fg-mid); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.sources a:hover { color: var(--accent); }
