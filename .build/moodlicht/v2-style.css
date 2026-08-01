@@ -1227,3 +1227,23 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
       transparent 68%) !important;
   filter: blur(6px);
 }
+
+/* ================= FINAL FINAL: kein Blend-Mode, kein Flackern =================
+   mix-blend-mode (screen/plus-lighter) verursachte Flackern und
+   Verschwinden — der Browser komponiert die Ebene bei jeder Bewegung neu.
+   Der Glow ist jetzt ein schlichtes Overlay ohne Blend-Mode, der Text
+   darunter bleibt unangetastet sichtbar. */
+.torch-glow {
+  mix-blend-mode: normal !important;
+  filter: none !important;
+  opacity: 1 !important;
+  inset: -30% -15% !important;
+  z-index: 0;
+  background: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      color-mix(in srgb, var(--live-color, var(--accent)) 30%, transparent) 0%,
+      color-mix(in srgb, var(--live-color, var(--accent)) 12%, transparent) 45%,
+      transparent 70%) !important;
+}
+/* Text ueber dem Glow, damit er nie verdeckt wird */
+.torch-mark, .torch-play { position: relative; z-index: 1; }
+.torch-mark { color: color-mix(in srgb, var(--fg) 55%, transparent) !important; }
