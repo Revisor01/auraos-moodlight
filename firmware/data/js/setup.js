@@ -68,16 +68,6 @@ function pageInit() {
     // "wifi", nicht "about" — vorher wurde die Version nie geladen).
     loadSystemInfo();
 
-    // Direktsprung per Hash: /setup#ui-update landet gleich im Update-Tab.
-    // Der Update-Hinweis auf der Startseite verlinkt so direkt dorthin.
-    const hash = (window.location.hash || '').replace('#', '');
-    if (hash) {
-        const target = document.querySelector('.tab-link[data-tab="' + hash + '"]');
-        if (target) {
-            target.click();
-        }
-    }
-
     // Initialen Tab laden (falls benötigt)
     const activeTab = document.querySelector('.tab-link.active');
     if (activeTab) {
@@ -801,3 +791,35 @@ function toggleMqttSettings(enabled) {
         mqttSettings.classList.toggle('hidden', !enabled);
     }
 }
+
+// Direktsprung per Hash: /setup#ui-update landet gleich im Update-Tab.
+//
+// Bewusst NICHT in pageInit(): das haengt an window.onload und wartet damit auf
+// alle Ressourcen, auch die Icons vom CDN. Haengt eins davon, bliebe der
+// Tab-Wechsel aus — genau dann, wenn man vom Update-Banner herkommt und den
+// Update-Tab sehen will. DOMContentLoaded reicht, die Tabs stehen im HTML.
+function applyTabFromHash() {
+    const hash = (window.location.hash || '').replace('#', '');
+    if (!hash) return;
+
+    const target = document.querySelector('.tab-link[data-tab="' + hash + '"]');
+    if (!target) return;
+
+    // Tab direkt umschalten statt click() — der Klick-Handler wird erst in
+    // pageInit() registriert und existiert hier moeglicherweise noch nicht
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const pane = document.getElementById(hash + '-tab');
+    if (pane) pane.classList.add('active');
+    document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+    target.classList.add('active');
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyTabFromHash);
+} else {
+    applyTabFromHash();
+}
+
+// Wechselt der Hash bei bereits offener Seite (zweiter Klick aufs Banner),
+// muss der Tab trotzdem folgen
+window.addEventListener('hashchange', applyTabFromHash);
