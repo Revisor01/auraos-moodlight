@@ -173,20 +173,27 @@ script = r"""
     })
     .catch(function () { /* der statische Wert im Markup bleibt stehen */ });
 
-  // Taschenlampe auf der Wortmarke: der Lichtkegel folgt dem Zeiger und
-  // legt den Schriftzug frei. Ohne Bewegung bleibt er im Dunkeln — man muss
-  // hinsehen, um ihn zu sehen.
+  // Taschenlampe auf dem Hero: der Lichtkegel folgt dem Zeiger und legt
+  // Wortmarke, Wortspiel und Headline frei. Gleichzeitig kippt die Schrift
+  // leicht gegen die Zeigerrichtung — das erzeugt Tiefe, ohne aufdringlich
+  // zu wirken. Man muss hinsehen, um zu sehen.
   (function () {
     var torch = document.getElementById('torch');
     if (!torch) return;
-    if (window.matchMedia('(hover: none)').matches) return;  // Touch: dauerhaft sichtbar
+    if (window.matchMedia('(hover: none)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    var RADIUS = 130;
-    var pending = false, px = 0, py = 0;
+    var RADIUS = 300;      // Groesse des Lichtkegels
+    var KIPP  = 7;         // maximaler Kippwinkel in Grad
+    var lagen = torch.querySelectorAll('.torch-layer');
+    var pending = false, px = 0, py = 0, rx = 0, ry = 0;
 
     function zeichne() {
       torch.style.setProperty('--tx', px + 'px');
       torch.style.setProperty('--ty', py + 'px');
+      for (var i = 0; i < lagen.length; i++) {
+        lagen[i].style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
+      }
       pending = false;
     }
 
@@ -194,6 +201,13 @@ script = r"""
       var r = torch.getBoundingClientRect();
       px = e.clientX - r.left;
       py = e.clientY - r.top;
+
+      // Kippen: Zeiger links -> Schrift dreht nach rechts weg
+      var nx = (px / r.width) * 2 - 1;    // -1 .. 1
+      var ny = (py / r.height) * 2 - 1;
+      ry = nx * KIPP;
+      rx = -ny * KIPP * 0.6;
+
       torch.style.setProperty('--tr', RADIUS + 'px');
       torch.classList.add('touched');
       if (!pending) { pending = true; requestAnimationFrame(zeichne); }
@@ -201,14 +215,16 @@ script = r"""
 
     torch.addEventListener('pointerleave', function () {
       torch.style.setProperty('--tr', '0px');
+      rx = 0; ry = 0;
+      for (var i = 0; i < lagen.length; i++) lagen[i].style.transform = '';
     });
 
-    // Beim ersten Laden kurz aufblitzen, damit die Marke sich zu erkennen gibt
-    var r = torch.getBoundingClientRect();
-    px = r.width * 0.5; py = r.height * 0.5;
+    // Beim Laden kurz aufblitzen, damit sich der Hero zu erkennen gibt
+    var r0 = torch.getBoundingClientRect();
+    px = r0.width * 0.5; py = r0.height * 0.42;
     zeichne();
-    setTimeout(function () { torch.style.setProperty('--tr', RADIUS * 1.5 + 'px'); }, 700);
-    setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2400);
+    setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.35) + 'px'); }, 600);
+    setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2800);
   })();
 
   // Fortschrittsbalken
