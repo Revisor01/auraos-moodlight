@@ -1247,3 +1247,31 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 /* Text ueber dem Glow, damit er nie verdeckt wird */
 .torch-mark, .torch-play { position: relative; z-index: 1; }
 .torch-mark { color: color-mix(in srgb, var(--fg) 55%, transparent) !important; }
+
+/* ================= NUR die Schrift faerbt sich =================
+   Kein Overlay, kein Leuchtfleck, kein Blend-Mode. Der Schriftzug steht grau
+   da und nimmt dort, wo der Zeiger ist, die Markenfarbe an — mehr nicht.
+   Umgesetzt ueber background-clip auf dem Text, aber mit deckendem Grau als
+   Basis, damit nie etwas verschwinden kann. */
+.torch-glow { display: none !important; }
+
+.torch-mark {
+  background-image: radial-gradient(circle var(--tr, 0px) at var(--tx, 50%) var(--ty, 45%),
+      var(--live-color, #A855F7) 0%,
+      var(--live-color, #A855F7) 35%,
+      color-mix(in srgb, var(--live-color, #A855F7) 55%, #6E7684) 60%,
+      #6E7684 85%) !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  background-attachment: scroll !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+}
+.torch-play {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: #6E7684 !important;
+}
+.torch-play span { color: var(--live-color, var(--accent)) !important; }
