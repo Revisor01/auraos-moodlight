@@ -88,7 +88,33 @@ script = r"""
 
       // ---- beide Werte, in der Kachel und im Vergleichs-Kapitel ----
       var roh = typeof d.raw_score === 'number' ? d.raw_score : null;
-      var pct = typeof d.percentile === 'number' ? Math.round(d.percentile * 100) : null;
+      // ACHTUNG: d.percentile ist eine LINEARE Interpolation zwischen min und
+      // max des 7-Tage-Fensters — kein Rang. Bei schiefer Verteilung (Median
+      // -0.46, Max +0.44) ergibt das irrefuehrende Werte: Score -0.59 lag bei
+      // "16 %", war aber nur knapp besser als das schlechteste Fuenftel.
+      // Der Rang wird deshalb aus den Perzentil-Schwellen interpoliert, die
+      // dieselbe Quelle wie die Farbstufe sind — Wort und Zahl passen dann
+      // zwangslaeufig zusammen.
+      var pct = null;
+      if (d.thresholds && typeof d.raw_score === 'number') {
+        var T = d.thresholds, sc = d.raw_score;
+        var punkte = [
+          [d.historical ? d.historical.min : sc, 0],
+          [T.p20, 20], [T.p40, 40], [T.p60, 60], [T.p80, 80],
+          [d.historical ? d.historical.max : sc, 100]
+        ];
+        for (var q = 0; q < punkte.length - 1; q++) {
+          var a = punkte[q], b = punkte[q + 1];
+          if (sc <= b[0] || q === punkte.length - 2) {
+            var spanne = b[0] - a[0];
+            var anteil = spanne > 0 ? (sc - a[0]) / spanne : 0;
+            anteil = Math.max(0, Math.min(1, anteil));
+            pct = Math.round(a[1] + anteil * (b[1] - a[1]));
+            break;
+          }
+        }
+      }
+      if (pct === null && typeof d.percentile === 'number') pct = Math.round(d.percentile * 100);
 
       if (roh !== null) {
         document.getElementById('valRaw').textContent = fmt(roh);
