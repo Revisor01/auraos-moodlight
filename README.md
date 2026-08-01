@@ -2,9 +2,9 @@
 
 <div align="center">
 
-![AuraOS Version](https://img.shields.io/badge/AuraOS-v9.0-blue)
+![AuraOS Version](https://img.shields.io/badge/AuraOS-v9.14-blue)
 ![Platform](https://img.shields.io/badge/Platform-ESP32-green)
-![Backend](https://img.shields.io/badge/Backend-Python%203.11-yellow)
+![Backend](https://img.shields.io/badge/Backend-Python%203.12-yellow)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 
 *Ein intelligentes IoT-Stimmungslicht, das die Weltlage durch KI-gestützte Sentiment-Analyse visualisiert*
@@ -34,6 +34,7 @@ auraos-moodlight/
 │   └── index.html
 │
 ├── build-release.sh      # Release Build Script
+├── CHANGELOG.md          # Versionshistorie (Keep a Changelog)
 └── README.md            # Diese Datei
 ```
 
@@ -44,16 +45,22 @@ auraos-moodlight/
 AuraOS ist ein **selbst-hostbares** Smart Home System bestehend aus:
 
 1. **ESP32 Moodlight** - Visualisiert Weltstimmung durch LEDs
-2. **Sentiment API** - Analysiert News mit OpenAI GPT-4o-mini
+2. **Sentiment API** - Analysiert News mit Anthropic Claude Haiku
 3. **Home Assistant Integration** - MQTT & Auto-Discovery
 
-### Was ist neu in v9.0?
+Der ESP32 ist ein dünner Client: Er pollt den vom Backend vorberechneten
+Sentiment-Score und stellt ihn als LED-Farbe dar. Die gesamte Analyse
+(RSS-Abruf, Claude-Bewertung, Historie) läuft im Backend.
 
-- ✅ **Backend-First Architektur** - Alle Daten zentral verwaltet
-- ✅ **97% Kostensenkung** - Von $150/Monat auf $5/Monat
-- ✅ **Keine lokale CSV-Speicherung** - PostgreSQL statt ESP32 Flash
-- ✅ **Keine Device-seitige RSS-Config** - Zentral im Backend
-- ✅ **Optimierte API-Endpoints** - `/api/moodlight/current` mit Cache
+### Architektur in Kürze
+
+- **Backend-First** - Alle Daten zentral in PostgreSQL, keine CSV-Speicherung auf dem ESP32
+- **RSS-Konfiguration** im Backend, nicht auf dem Gerät
+- **Redis-Cache** vor den Geräte-Endpoints (`/api/moodlight/current`)
+- **Background Worker** analysiert alle 30 Minuten; das Gerät synchronisiert
+  seinen Poll seit v9.14 auf diesen Analyse-Takt
+
+Die vollständige Versionshistorie steht in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -69,8 +76,8 @@ cd auraos-moodlight
 # 2. Backend starten
 cd sentiment-api
 cp .env.example .env
-# Bearbeite .env und setze OPENAI_API_KEY
-docker-compose up -d
+# Bearbeite .env und setze ANTHROPIC_API_KEY und POSTGRES_PASSWORD
+docker compose up -d
 
 # 3. Firmware flashen
 cd ../firmware
@@ -93,14 +100,14 @@ pio run --target upload
 ### Moodlight (ESP32)
 
 - ✅ **5-stufige Farbskala** - Rot (negativ) bis Violett (positiv)
-- ✅ **Web-Interface** - Setup, Statistiken, Diagnostics
+- ✅ **Web-Interface** - Dashboard, Weltlage-Statistiken, Einstellungen (inkl. Update- und Info-Tab)
 - ✅ **MQTT Integration** - Home Assistant Auto-Discovery
 - ✅ **DHT22 Support** - Temperatur & Luftfeuchtigkeit
-- ✅ **OTA Updates** - Over-The-Air Firmware/UI Updates
+- ✅ **OTA Updates** - Over-The-Air Firmware/UI Updates über den Update-Tab
 
 ### Sentiment API
 
-- ✅ **Sentiment-Analyse** - OpenAI GPT-4o-mini
+- ✅ **Sentiment-Analyse** - Anthropic Claude Haiku
 - ✅ **12 deutsche Nachrichtenquellen**
 - ✅ **PostgreSQL** - Unbegrenzte Historie
 - ✅ **Redis Cache** - 5-Min TTL
@@ -110,28 +117,57 @@ pio run --target upload
 
 ## 🚀 Deployment
 
-Siehe vollständige Dokumentation:
-- **Firmware:** `firmware/README.md`
-- **Backend:** `sentiment-api/README.md`
-- **Release Building:** `./build-release.sh`
+### Backend
+
+Push nach `main` genügt — es gibt keinen SSH-Pull-Workflow:
+
+1. Änderungen in `sentiment-api/` committen und nach `main` pushen
+2. GitHub Actions baut das Docker-Image und pusht es nach GHCR
+3. Ein Portainer-Webhook deployt den Container `moodlight-analyzer` neu
+
+Produktiv läuft das Backend unter `https://analyse.godsapp.de` mit
+gunicorn (`-w 1 --threads 4`) — ein Worker-Prozess, damit der Background
+Worker genau einmal läuft.
+
+### Firmware
+
+```bash
+./build-release.sh        # erzeugt Firmware-.bin + UI-.tgz in releases/vX.Y/
+```
+
+Installation am Gerät über `http://<geraete-ip>/setup` → Tab „Update":
+erst die UI-`.tgz`, dann die Firmware-`.bin` hochladen. Alternativ per USB
+mit `pio run -t upload` und `pio run -t uploadfs`.
+
+Weitere Details: `firmware/README.md` und `sentiment-api/README.md`.
 
 ---
 
 ## 🏠 Home Assistant Integration
 
-Auto-Discovery mit MQTT:
-- `sensor.auraos_sentiment` - Weltlage Score
-- `sensor.auraos_temperature` - Temperatur
-- `light.auraos_moodlight` - LED Steuerung
+Auto-Discovery über MQTT. Angelegte Entitäten:
+
+| Entität | Beschreibung |
+|---|---|
+| Moodlight (Light) | LED-Steuerung: an/aus, Farbe, Helligkeit |
+| Weltlage Score | Sentiment-Score (−1.0 bis +1.0) |
+| Weltlage Kategorie | sehr negativ … sehr positiv |
+| Weltlage Perzentil | Einordnung im 7-Tage-Fenster (0–100 %) |
+| Temperatur / Luftfeuchtigkeit | DHT22-Sensorwerte |
+| Betriebsmodus | Auto oder Manuell |
+| Stimmung/Sensor Update Intervall | Poll-Intervalle in Sekunden |
+| Weltlage aktualisieren | Button für sofortigen Abruf |
+| Uptime / WiFi Signal / Status | Diagnose-Sensoren |
 
 ---
 
-## 📊 Performance (v9.0)
+## 📊 Eigenschaften
 
-- **Kosten:** $5/Monat (war: $150/Monat)
-- **Ersparnis:** 97%
-- **Response Time:** <10ms (gecacht)
-- **Skalierung:** 1000+ Geräte
+- **Response Time:** <10 ms für gecachte Geräte-Endpoints (Redis, 5 min TTL)
+- **Analyse-Takt:** alle 30 Minuten durch den Background Worker
+- **Geräte-Poll:** synchronisiert auf den Analyse-Takt (seit v9.14),
+  Anzeige maximal ~2 Minuten hinter der aktuellen Analyse
+- **Skalierung:** Der Cache entkoppelt die Gerätezahl von der Analyse-Last
 
 ---
 
@@ -139,8 +175,9 @@ Auto-Discovery mit MQTT:
 
 - **[Firmware Details](firmware/)** - ESP32 Code & Web-UI
 - **[Backend API](sentiment-api/README.md)** - Sentiment Service
+- **[CHANGELOG](CHANGELOG.md)** - Versionshistorie
 - **[Website](https://revisor01.github.io/auraos-moodlight)** - Live Demo & Docs
-- **[Releases](releases/)** - Fertige Binaries
+- **[Releases](https://github.com/Revisor01/auraos-moodlight/releases)** - Fertige Binaries
 
 ---
 
