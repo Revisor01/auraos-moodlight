@@ -1,0 +1,138 @@
+name: Release Firmware
+
+# Baut Firmware-BIN und UI-TGZ und haengt sie an das GitHub-Release.
+# Ausgeloest durch einen Versions-Tag (v9.15, v10.0, ...).
+#
+# Ablauf lokal:
+#   ./build-release.sh minor    # bumpt config.h, baut lokal, committet
+#   git push origin main
+#   git tag v9.15 && git push origin v9.15
+#
+# Die CI baut danach unabhaengig neu und legt die Artefakte ans Release.
+# Der Build ist reproduzierbar: die Version kommt aus config.h, nicht aus dem Tag.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Bestehender Tag, fuer den gebaut werden soll (z.B. v9.15)'
+        required: true
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Version aus config.h lesen und gegen den Tag pruefen
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(grep '^#define MOODLIGHT_VERSION' firmware/src/config.h | cut -d'"' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "FEHLER: MOODLIGHT_VERSION nicht in firmware/src/config.h gefunden"
+            exit 1
+          fi
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "FEHLER: Tag $TAG passt nicht zu MOODLIGHT_VERSION $VERSION in config.h."
+            echo "Der Tag muss der Firmware-Version entsprechen (Tag v9.15 => config.h 9.15)."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Baue Version $VERSION (Tag $TAG)"
+
+      - name: Firmware kompilieren
+        working-directory: firmware
+        run: pio run
+
+      - name: Release-Dateien erstellen
+        id: artifacts
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          OUT="release-artifacts"
+          mkdir -p "$OUT"
+
+          BIN="firmware/.pio/build/esp32dev/firmware.bin"
+          if [ ! -f "$BIN" ]; then
+            echo "FEHLER: $BIN nicht gefunden nach dem Build"
+            exit 1
+          fi
+          cp "$BIN" "$OUT/Firmware-${VERSION}-AuraOS.bin"
+
+          # UI-TGZ — gleiche Dateiliste wie build-release.sh
+          (cd firmware/data && tar -czf "../../$OUT/UI-${VERSION}-AuraOS.tgz" \
+              --exclude="*.tmp.*" --exclude="*.tgz" --exclude="*.tar" --exclude=".DS_Store" \
+              index.html setup.html mood.html js/ css/)
+
+          # Verifizieren: die beiden Kernseiten muessen im Archiv liegen
+          CONTENTS=$(tar -tzf "$OUT/UI-${VERSION}-AuraOS.tgz")
+          for f in index.html setup.html mood.html; do
+            echo "$CONTENTS" | grep -q "$f" || { echo "FEHLER: $f fehlt im UI-TGZ"; exit 1; }
+          done
+
+          # Firmware-Binary plausibilisieren: ESP32-Images beginnen mit 0xE9
+          MAGIC=$(head -c 1 "$OUT/Firmware-${VERSION}-AuraOS.bin" | xxd -p)
+          if [ "$MAGIC" != "e9" ]; then
+            echo "FEHLER: Firmware-Binary hat kein ESP32-Magic-Byte (0xE9), gefunden: 0x$MAGIC"
+            exit 1
+          fi
+
+          ls -lh "$OUT"
+
+      - name: Release-Notes aus dem CHANGELOG schneiden
+        id: notes
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          NOTES_FILE="release-notes.md"
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\["v"\\]" {p=1; next}
+            /^## \[/ {if (p) exit}
+            p
+          ' CHANGELOG.md > "$NOTES_FILE"
+
+          if [ ! -s "$NOTES_FILE" ]; then
+            echo "Kein CHANGELOG-Abschnitt fuer $VERSION gefunden — Release wird ohne Notes erstellt."
+            echo "Siehe CHANGELOG.md" > "$NOTES_FILE"
+          fi
+          cat "$NOTES_FILE"
+
+      - name: GitHub-Release anlegen oder aktualisieren
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: AuraOS v${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          files: |
+            release-artifacts/Firmware-${{ steps.version.outputs.version }}-AuraOS.bin
+            release-artifacts/UI-${{ steps.version.outputs.version }}-AuraOS.tgz
