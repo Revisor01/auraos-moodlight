@@ -29,18 +29,18 @@ script = r"""
   var API = 'https://analyse.godsapp.de/api/moodlight';
 
   var WORTE = [
-    'schwerer als sonst',
-    'etwas schwerer',
-    'so wie meistens',
-    'leichter als sonst',
-    'so leicht wie selten'
+    'deutlich schlechter',
+    'etwas schlechter',
+    'wie meistens',
+    'etwas besser',
+    'deutlich besser'
   ];
   var VERGLEICH = [
-    'Dunkler als der Großteil der vergangenen Woche.',
-    'Etwas dunkler als in den Tagen davor.',
+    'Schlechter als der Großteil der vergangenen Woche.',
+    'Etwas schlechter als in den Tagen davor.',
     'Ungefähr so wie die vergangene Woche im Schnitt.',
-    'Heller als an den meisten Tagen dieser Woche.',
-    'So hell wie selten in den letzten sieben Tagen.'
+    'Besser als an den meisten Tagen dieser Woche.',
+    'So gut wie selten in den letzten sieben Tagen.'
   ];
   var FARBVARS = ['--c1', '--c2', '--c3', '--c4', '--c5'];
 
@@ -103,7 +103,7 @@ script = r"""
         document.getElementById('valPct').textContent = pct + ' %';
         document.getElementById('cmpPct').textContent = pct + ' %';
         document.getElementById('cmpPctPin').style.left = pct + '%';
-        document.getElementById('valPctHint').textContent = 'heller als ' + pct + ' % der Woche';
+        document.getElementById('valPctHint').textContent = 'Platz im 7-Tage-Fenster';
         document.getElementById('cmpPctCat').textContent = WORTE[idx];
       }
       if (d.historical) {
@@ -121,7 +121,7 @@ script = r"""
           'Isoliert betrachtet fällt diese Messung in die Kategorie „' + d.category +
           '“. Das ist die Lesart eines Nachrichtentickers.';
         document.getElementById('cmpPctText').textContent =
-          'Derselbe Wert liegt über ' + pct + ' % der Messungen dieser Woche — ' +
+          'Nur ' + pct + ' % der Messungen dieser Woche waren schlechter — ' +
           'deshalb leuchtet die Lampe gerade ' + WORTE[idx] + '.';
       }
       document.getElementById('compare').classList.add('ready');
