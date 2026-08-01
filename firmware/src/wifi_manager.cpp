@@ -325,6 +325,19 @@ void checkAndReconnectWifi()
 
         setStatusLED(0);
     }
+
+    // Selbstheilung: Die Rueckstellung oben liegt in einem else-if-Zweig und
+    // greift nur beim Wechsel getrennt -> verbunden. War wifiWasConnected schon
+    // true (z.B. nach einem OTA-Reboot mit sofort stehender Verbindung), lief
+    // sie nie — die blaue Status-LED blinkte dann dauerhaft weiter, obwohl
+    // WiFi laengst verbunden war. Fuer den Nutzer sieht das nach einem Defekt
+    // aus. Deshalb hier bei jedem Check aufraeumen.
+    if (WiFi.status() == WL_CONNECTED && appState.statusLedMode == 1) {
+        setStatusLED(0);
+        appState.disconnectStartMs = 0;
+        debug(F("Status-LED zurueckgesetzt: WiFi ist verbunden"));
+    }
+
     yield();
     delay(1);
 }
