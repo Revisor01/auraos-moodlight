@@ -799,3 +799,32 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   body, .live, .cmp, .part, .wiring, .value, .parts, .values, .repo-link,
   h1, h2, h3, p, a, code { transition: none; }
 }
+
+/* ================= Wortmarke im Hero =================
+   "Moodlicht" bekommt einen eigenen Auftritt statt einer kleinen Kicker-Zeile,
+   direkt gefolgt vom Wortspiel, das den Namen erklaert. */
+.wordmark {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1;
+  margin: 0 0 .55rem;
+  color: var(--accent);
+}
+.wordplay {
+  font-size: var(--step--1);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--fg-low);
+  margin: 0 0 1.9rem;
+}
+.wordplay span {
+  color: var(--fg-mid);
+  font-weight: 600;
+}
+.pull em {
+  font-style: normal;
+  color: var(--accent);
+}
