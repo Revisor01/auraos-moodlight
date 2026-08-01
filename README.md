@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![AuraOS Version](https://img.shields.io/badge/AuraOS-v9.14-blue)
+![AuraOS Version](https://img.shields.io/badge/AuraOS-v9.15-blue)
 ![Platform](https://img.shields.io/badge/Platform-ESP32-green)
 ![Backend](https://img.shields.io/badge/Backend-Python%203.12-yellow)
 ![License](https://img.shields.io/badge/License-MIT-orange)
