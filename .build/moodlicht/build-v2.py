@@ -183,7 +183,7 @@ script = r"""
     if (window.matchMedia('(hover: none)').matches) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    var RADIUS = 300;      // Groesse des Lichtkegels
+    var RADIUS = 380;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
     var lagen = torch.querySelectorAll('.torch-3d');
     var pending = false, px = 0, py = 0, rx = 0, ry = 0;
@@ -198,9 +198,9 @@ script = r"""
     }
 
     torch.addEventListener('pointermove', function (e) {
-      // background-attachment: fixed -> Koordinaten relativ zum Viewport
-      px = e.clientX;
-      py = e.clientY;
+      var rr = torch.getBoundingClientRect();
+      px = e.clientX - rr.left;
+      py = e.clientY - rr.top;
 
       // Kippen: Zeiger links -> Schrift dreht nach rechts weg
       var r = torch.getBoundingClientRect();
@@ -222,7 +222,7 @@ script = r"""
 
     // Beim Laden kurz aufblitzen, damit sich der Hero zu erkennen gibt
     var r0 = torch.getBoundingClientRect();
-    px = r0.left + r0.width * 0.5; py = r0.top + r0.height * 0.42;
+    px = r0.width * 0.5; py = r0.height * 0.42;
     zeichne();
     setTimeout(function () { torch.style.setProperty('--tr', (RADIUS * 1.35) + 'px'); }, 600);
     setTimeout(function () { torch.style.setProperty('--tr', '0px'); }, 2800);
