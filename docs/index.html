@@ -844,124 +844,41 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   color: var(--accent);
 }
 
-/* ================= Taschenlampen-Wortmarke =================
-   Der Schriftzug liegt fast unsichtbar im Dunkeln. Ein Lichtkegel folgt der
-   Maus (oder der Beruehrung) und legt ihn frei — man muss hinsehen, um ihn
-   zu sehen. Genau das ist die Idee des Geraets.
-
-   Technik: zwei identische Schriftzuege uebereinander. Der untere ist
-   angedeutet dunkel, der obere leuchtet in der Markenfarbe und wird per
-   radialer Maske auf den Lichtkegel beschnitten. */
+/* ================= Hero: Taschenlampe =================
+   Zwei identische Textebenen liegen in derselben Grid-Zelle und sind dadurch
+   pixelgenau deckungsgleich. Die untere ist nur zu ahnen, die obere leuchtet
+   und wird per radialer Maske auf den Lichtkegel beschnitten, der dem Zeiger
+   folgt. Beide kippen leicht in 3D — man muss hinsehen, um zu sehen. */
 .torch {
-  position: relative;
-  display: inline-block;
-  margin-bottom: .7rem;
-  cursor: default;
-  --tx: 50%;
-  --ty: 50%;
-  --tr: 0px;          /* Radius des Kegels: 0 = aus */
-}
-.torch-word {
-  display: block;
-  font-family: 'Clash Display', sans-serif;
-  font-size: clamp(2.6rem, 1.6rem + 4.6vw, 5.4rem);
-  font-weight: 600;
-  letter-spacing: -.035em;
-  line-height: .95;
-  white-space: nowrap;
-  user-select: none;
-}
-/* Grundzustand: nur zu ahnen */
-.torch-word:not(.torch-lit) {
-  color: color-mix(in srgb, var(--fg) 13%, transparent);
-}
-/* Der beleuchtete Zwilling */
-.torch-lit {
-  position: absolute;
-  inset: 0;
-  color: var(--live-color, var(--accent));
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--live-color, var(--accent)) 70%, transparent),
-    0 0 46px color-mix(in srgb, var(--live-color, var(--accent)) 45%, transparent);
-  -webkit-mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 42%, rgba(0,0,0,.35) 68%, transparent 100%);
-          mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 42%, rgba(0,0,0,.35) 68%, transparent 100%);
-  transition: opacity .3s ease;
-}
-.torch-hint {
-  display: block;
-  margin-top: .5rem;
-  font-size: .72rem;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--fg-low);
-  opacity: .75;
-  transition: opacity .4s ease;
-}
-.torch.touched .torch-hint { opacity: 0; }
-
-/* Ohne Zeigegeraet (Touch) waere die Marke unlesbar — dort wird sie
-   dauerhaft gezeigt, ergaenzt um eine langsam wandernde Lichtbewegung. */
-@media (hover: none) {
-  .torch-word:not(.torch-lit) { color: color-mix(in srgb, var(--fg) 30%, transparent); }
-  .torch-lit {
-    -webkit-mask-image: none;
-            mask-image: none;
-    opacity: .92;
-  }
-  .torch-hint { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .torch-lit { transition: none; }
-}
-
-/* Der Radius wird animierbar gemacht, damit das Aufblitzen beim Laden und
-   das Ausblenden beim Verlassen weich laufen statt zu springen. */
-@property --tr {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: 0px;
-}
-.torch { transition: --tr .9s cubic-bezier(.4,0,.2,1); }
-
-/* ================= Hero als Taschenlampe (zentriert, gross) =================
-   Der komplette Hero-Text liegt im Dunkeln. Ein Lichtkegel folgt dem Zeiger
-   und legt ihn frei; gleichzeitig kippt die Schrift leicht in die
-   Gegenrichtung, was Tiefe erzeugt. */
-.hero { display: block; text-align: center; }
-.hero-grid { display: block; }        /* alte Zweispaltigkeit aufheben */
-
-.torch {
-  position: relative;
+  display: grid;
+  grid-template-rows: auto auto;
   width: min(60rem, 100% - 2.5rem);
-  margin: 0 auto;
-  padding: clamp(2rem, 6vw, 4.5rem) 0 clamp(1.5rem, 3vw, 2.5rem);
+  margin-inline: auto;
+  padding-block: clamp(2rem, 6vw, 4.5rem) clamp(1.5rem, 3vw, 2.5rem);
   perspective: 900px;
   cursor: default;
   --tx: 50%;
   --ty: 45%;
   --tr: 0px;
-  --rx: 0deg;
-  --ry: 0deg;
+  transition: --tr .9s cubic-bezier(.4,0,.2,1);
 }
+
+/* Beide Ebenen: identische Zelle, identische Abmessungen */
 .torch-layer {
+  grid-area: 1 / 1;
   transform-style: preserve-3d;
-  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition: transform .25s cubic-bezier(.22,.61,.36,1);
   will-change: transform;
 }
 .torch-lit {
-  position: absolute;
-  inset: clamp(2rem, 6vw, 4.5rem) 0 clamp(1.5rem, 3vw, 2.5rem);
   -webkit-mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 38%, rgba(0,0,0,.4) 66%, transparent 100%);
+                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%);
           mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 38%, rgba(0,0,0,.4) 66%, transparent 100%);
+                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%);
   pointer-events: none;
 }
 
-/* Wortmarke */
 .torch-mark {
   font-family: 'Clash Display', sans-serif;
   font-size: clamp(3.4rem, 2rem + 7vw, 8.5rem);
@@ -972,28 +889,17 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   transform: translateZ(60px);
 }
 .torch-play {
-  font-size: clamp(.78rem, .7rem + .3vw, .95rem);
-  letter-spacing: .18em;
+  font-size: clamp(1rem, .8rem + .9vw, 1.6rem);
+  letter-spacing: .14em;
   text-transform: uppercase;
   font-weight: 600;
-  margin: 0 0 clamp(1.8rem, 4vw, 3rem);
+  margin: 0;
   transform: translateZ(35px);
 }
-.torch-head {
-  font-size: clamp(1.9rem, 1.2rem + 3vw, 3.6rem);
-  font-weight: 600;
-  line-height: 1.04;
-  letter-spacing: -.028em;
-  margin: 0;
-  transform: translateZ(15px);
-}
 
-/* Dunkle Ebene: nur zu ahnen */
 .torch-dark .torch-mark { color: color-mix(in srgb, var(--fg) 11%, transparent); }
 .torch-dark .torch-play { color: color-mix(in srgb, var(--fg) 9%, transparent); }
-.torch-dark .torch-head { color: color-mix(in srgb, var(--fg) 13%, transparent); }
 
-/* Beleuchtete Ebene */
 .torch-lit .torch-mark {
   color: var(--live-color, var(--accent));
   text-shadow:
@@ -1002,12 +908,9 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 }
 .torch-lit .torch-play { color: var(--fg-mid); }
 .torch-lit .torch-play span { color: var(--live-color, var(--accent)); }
-.torch-lit .torch-head {
-  color: var(--fg);
-  text-shadow: 0 0 40px color-mix(in srgb, var(--live-color, var(--accent)) 30%, transparent);
-}
 
 .torch-hint {
+  grid-area: 2 / 1;
   margin: 1.6rem 0 0;
   font-size: .72rem;
   letter-spacing: .14em;
@@ -1018,76 +921,73 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 }
 .torch.touched .torch-hint { opacity: 0; }
 
+@property --tr {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+/* Ohne Zeigegeraet gaebe es nichts freizulegen */
+@media (hover: none) {
+  .torch-dark { visibility: hidden; }
+  .torch-lit { -webkit-mask-image: none; mask-image: none; }
+  .torch-layer { transform: none; }
+  .torch-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .torch-layer { transition: none; transform: none; }
+  .torch { transition: none; }
+}
+
+/* ---- Subclaim und Hero-Text ---- */
+.hero { display: block; text-align: center; }
+.hero-grid { display: block; }
+
+/* ================= Taschenlampen-Wortmarke =================
+   Der Schriftzug liegt fast unsichtbar im Dunkeln. Ein Lichtkegel folgt der
+   Maus (oder der Beruehrung) und legt ihn frei — man muss hinsehen, um ihn
+   zu sehen. Genau das ist die Idee des Geraets.
+
+   Technik: zwei identische Schriftzuege uebereinander. Der untere ist
+   angedeutet dunkel, der obere leuchtet in der Markenfarbe und wird per
+   radialer Maske auf den Lichtkegel beschnitten. */
+/* Grundzustand: nur zu ahnen */
+/* Der beleuchtete Zwilling */
+/* Ohne Zeigegeraet (Touch) waere die Marke unlesbar — dort wird sie
+   dauerhaft gezeigt, ergaenzt um eine langsam wandernde Lichtbewegung. */
+/* Der Radius wird animierbar gemacht, damit das Aufblitzen beim Laden und
+   das Ausblenden beim Verlassen weich laufen statt zu springen. */
+@property --tr {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+/* ================= Hero als Taschenlampe (zentriert, gross) =================
+   Der komplette Hero-Text liegt im Dunkeln. Ein Lichtkegel folgt dem Zeiger
+   und legt ihn frei; gleichzeitig kippt die Schrift leicht in die
+   Gegenrichtung, was Tiefe erzeugt. */
+.hero { display: block; text-align: center; }
+.hero-grid { display: block; }        /* alte Zweispaltigkeit aufheben */
+
+/* Wortmarke */
+/* Dunkle Ebene: nur zu ahnen */
+/* Beleuchtete Ebene */
 .hero-below { margin-top: clamp(2.5rem, 5vw, 4rem); text-align: left; }
 .hero-below .lede { margin-inline: auto; text-align: center; }
 .hero-below .live { margin-inline: auto; }
 .hero-below .scroll-hint { display: inline-flex; margin-top: 2.6rem; }
 .hero-below { display: flex; flex-direction: column; align-items: center; }
 
-@media (hover: none) {
-  .torch-dark { display: none; }
-  .torch-lit {
-    position: static;
-    -webkit-mask-image: none;
-            mask-image: none;
-  }
-  .torch-layer { transform: none; }
-  .torch-hint { display: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .torch-layer { transition: none; transform: none; }
-}
-
 /* ---- Deckungsgleichheit der beiden Textebenen ----
    Die beleuchtete Ebene war absolut positioniert, die dunkle lag im Fluss —
    dadurch verschoben sie sich um die Paddings. Jetzt liegen beide absolut
    im selben Kasten; ein unsichtbarer Platzhalter haelt die Hoehe. */
-.torch { display: grid; }
-.torch-layer {
-  grid-area: 1 / 1;
-  position: static;
-  inset: auto;
-}
-.torch-lit {
-  position: absolute;
-  inset: clamp(2rem, 6vw, 4.5rem) 0 clamp(1.5rem, 3vw, 2.5rem);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-}
-.torch-dark { position: relative; }
-
 /* Beide Ebenen brauchen identische Innenabstaende, sonst driften sie */
-.torch-layer .torch-mark,
-.torch-layer .torch-play,
-.torch-layer .torch-head { margin-inline: 0; }
-
-.torch-hint { grid-area: 2 / 1; }
-
 /* ---- Sauber: beide Ebenen im selben Grid-Feld ----
    Kein Mischen von absolut und im Fluss mehr. Beide Ebenen belegen dieselbe
    Grid-Zelle und sind dadurch pixelgenau deckungsgleich; die dunkle bestimmt
    die Hoehe, die beleuchtete legt sich exakt darueber. */
-.torch {
-  display: grid;
-  grid-template-rows: auto auto;
-  justify-items: center;
-}
-.torch-layer {
-  grid-area: 1 / 1;
-  position: static !important;
-  inset: auto !important;
-  width: 100%;
-  display: block;
-}
-.torch-hint { grid-area: 2 / 1; }
-
 /* ---- Wortspiel groesser ---- */
-.torch-play {
-  font-size: clamp(1rem, .8rem + .9vw, 1.6rem) !important;
-  letter-spacing: .14em;
-}
-
 /* ---- Lede und Live-Kachel nebeneinander ---- */
 .hero-cols {
   display: grid;
@@ -1110,32 +1010,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
    Ueber die Iterationen haben sich widerspruechliche Positionsregeln
    angesammelt (absolut vs. Grid, mehrere inset-Werte). Diese Sektion setzt
    den Zustand abschliessend und gewinnt durch ihre Position am Dateiende. */
-.torch {
-  display: grid !important;
-  grid-template-rows: auto auto;
-  justify-items: stretch;
-}
-.torch-layer,
-.torch-dark,
-.torch-lit {
-  grid-area: 1 / 1 !important;
-  position: static !important;
-  inset: auto !important;
-  width: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: block !important;
-}
 /* Die Maske gehoert nur auf die beleuchtete Ebene */
-.torch-lit {
-  -webkit-mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%) !important;
-          mask-image: radial-gradient(circle var(--tr) at var(--tx) var(--ty),
-                #000 0%, #000 40%, rgba(0,0,0,.45) 70%, transparent 100%) !important;
-  pointer-events: none;
-}
-.torch-hint { grid-area: 2 / 1 !important; }
-
 /* ---- Subclaim unter dem Hero ----
    Die Headline liegt nicht mehr im Lichtkegel — dort steht nur noch die
    Wortmarke. Als Subclaim traegt sie die Aussage in normaler Lesbarkeit. */
@@ -1155,6 +1030,28 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   font-size: var(--step-0) !important;
   line-height: 1.6;
   color: var(--fg-mid) !important;
+}
+
+/* ---- Claim-Block: Ueberschrift + Fliesstext, linksbuendig, ohne Flaeche ---- */
+.claim-block { text-align: left; }
+.claim-block .subclaim {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(1.6rem, 1.1rem + 2.1vw, 2.8rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -.03em;
+  text-align: left;
+  text-wrap: balance;
+  margin: 0 0 1.1rem;
+  color: var(--fg);
+}
+.claim-block .lede {
+  font-size: var(--step-0);
+  line-height: 1.6;
+  color: var(--fg-mid);
+  margin: 0;
+  max-width: 30rem;
+  text-align: left;
 }
 
 </style>
@@ -1184,13 +1081,14 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   </div>
 
   <div class="wrap hero-below">
-    <h1 class="subclaim">Die Welt ist öfter hell,<br>als die Nachrichten glauben machen.</h1>
-
    <div class="hero-cols">
-    <p class="lede">
-      Eine Lampe, die alle 30 Minuten die Schlagzeilen liest — und sie nicht an
-      einem Ideal misst, sondern an der Woche, die tatsächlich war.
-    </p>
+    <div class="claim-block">
+      <h1 class="subclaim">Die Welt ist öfter hell,<br>als die Nachrichten glauben machen.</h1>
+      <p class="lede">
+        Eine Lampe, die alle 30 Minuten die Schlagzeilen liest — und sie nicht an
+        einem Ideal misst, sondern an der Woche, die tatsächlich war.
+      </p>
+    </div>
 
     <div class="live" id="live" data-state="loading">
       <div class="live-top">
