@@ -6,27 +6,29 @@
 <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
 
 <header class="hero" id="top">
-  <div class="wrap hero-grid">
-   <div class="hero-text">
-    <div class="torch" id="torch">
-      <span class="torch-word" aria-label="Moodlicht">Moodlicht</span>
-      <span class="torch-word torch-lit" aria-hidden="true">Moodlicht</span>
-      <span class="torch-hint">mit der Maus darüberfahren</span>
+  <div class="glow" aria-hidden="true"></div>
+
+  <!-- Der ganze Hero ist der Lichtkegel: Wortmarke, Wortspiel und Headline
+       liegen im Dunkeln und werden vom Zeiger freigelegt. -->
+  <div class="torch" id="torch">
+    <div class="torch-layer torch-dark">
+      <p class="torch-mark">Moodlicht</p>
+      <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      <h1 class="torch-head">Die Welt ist öfter hell,<br>als die Nachrichten<br>glauben machen.</h1>
     </div>
-    <p class="wordplay"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
-    <h1>Die Welt ist öfter hell,<br>als die Nachrichten<br>glauben machen.</h1>
+    <div class="torch-layer torch-lit" aria-hidden="true">
+      <p class="torch-mark">Moodlicht</p>
+      <p class="torch-play"><span>Mood</span> der Welt. <span>Mut</span> im Raum.</p>
+      <h1 class="torch-head">Die Welt ist öfter hell,<br>als die Nachrichten<br>glauben machen.</h1>
+    </div>
+    <p class="torch-hint">mit der Maus darüberfahren</p>
+  </div>
+
+  <div class="wrap hero-below">
     <p class="lede">
       Eine Lampe, die alle 30 Minuten die Schlagzeilen liest — und sie nicht an
       einem Ideal misst, sondern an der Woche, die tatsächlich war.
     </p>
-
-    <a class="scroll-hint" href="#selberbauen">
-      <span>Selber bauen</span>
-      <svg width="14" height="20" viewBox="0 0 14 20" fill="none" aria-hidden="true">
-        <path d="M7 1v17m0 0 5-5m-5 5-5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </a>
-   </div>
 
     <div class="live" id="live" data-state="loading">
       <div class="live-top">
@@ -52,11 +54,18 @@
         <div class="value">
           <p class="value-label">Im Wochenvergleich</p>
           <p class="value-num accent" id="valPct">–</p>
-          <p class="value-hint" id="valPctHint">Position im 7-Tage-Fenster</p>
+          <p class="value-hint" id="valPctHint">Platz im 7-Tage-Fenster</p>
         </div>
       </div>
       <p class="values-note" id="valuesNote"></p>
     </div>
+
+    <a class="scroll-hint" href="#selberbauen">
+      <span>Selber bauen</span>
+      <svg width="14" height="20" viewBox="0 0 14 20" fill="none" aria-hidden="true">
+        <path d="M7 1v17m0 0 5-5m-5 5-5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
   </div>
 </header>
 
