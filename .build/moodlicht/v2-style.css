@@ -1022,3 +1022,71 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 @media (prefers-reduced-motion: reduce) {
   .torch-layer { transition: none; transform: none; }
 }
+
+/* ---- Deckungsgleichheit der beiden Textebenen ----
+   Die beleuchtete Ebene war absolut positioniert, die dunkle lag im Fluss —
+   dadurch verschoben sie sich um die Paddings. Jetzt liegen beide absolut
+   im selben Kasten; ein unsichtbarer Platzhalter haelt die Hoehe. */
+.torch { display: grid; }
+.torch-layer {
+  grid-area: 1 / 1;
+  position: static;
+  inset: auto;
+}
+.torch-lit {
+  position: absolute;
+  inset: clamp(2rem, 6vw, 4.5rem) 0 clamp(1.5rem, 3vw, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.torch-dark { position: relative; }
+
+/* Beide Ebenen brauchen identische Innenabstaende, sonst driften sie */
+.torch-layer .torch-mark,
+.torch-layer .torch-play,
+.torch-layer .torch-head { margin-inline: 0; }
+
+.torch-hint { grid-area: 2 / 1; }
+
+/* ---- Sauber: beide Ebenen im selben Grid-Feld ----
+   Kein Mischen von absolut und im Fluss mehr. Beide Ebenen belegen dieselbe
+   Grid-Zelle und sind dadurch pixelgenau deckungsgleich; die dunkle bestimmt
+   die Hoehe, die beleuchtete legt sich exakt darueber. */
+.torch {
+  display: grid;
+  grid-template-rows: auto auto;
+  justify-items: center;
+}
+.torch-layer {
+  grid-area: 1 / 1;
+  position: static !important;
+  inset: auto !important;
+  width: 100%;
+  display: block;
+}
+.torch-hint { grid-area: 2 / 1; }
+
+/* ---- Wortspiel groesser ---- */
+.torch-play {
+  font-size: clamp(1rem, .8rem + .9vw, 1.6rem) !important;
+  letter-spacing: .14em;
+}
+
+/* ---- Lede und Live-Kachel nebeneinander ---- */
+.hero-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: clamp(1.8rem, 4vw, 3.5rem);
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+.hero-cols .lede { margin: 0; text-align: left; max-width: 26rem; }
+.hero-cols .live { margin: 0; max-width: none; }
+
+@media (max-width: 56rem) {
+  .hero-cols { grid-template-columns: 1fr; gap: 2rem; }
+  .hero-cols .lede { text-align: center; margin-inline: auto; }
+  .hero-cols .live { max-width: 32rem; margin-inline: auto; }
+}
