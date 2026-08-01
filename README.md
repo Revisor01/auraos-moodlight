@@ -132,12 +132,28 @@ Worker genau einmal läuft.
 ### Firmware
 
 ```bash
-./build-release.sh        # erzeugt Firmware-.bin + UI-.tgz in releases/vX.Y/
+./build-release.sh minor    # bumpt config.h, baut lokal, committet den Bump
+git push origin main
+git tag v9.15 && git push origin v9.15
 ```
 
+Der Tag-Push startet den Workflow `release-firmware.yml`: Er baut Firmware
+und UI in der CI, prüft das Ergebnis (UI-Archiv vollständig, ESP32-Magic-Byte
+im Binary) und legt beide Dateien ans GitHub-Release. Die Release-Notes
+kommen aus dem passenden CHANGELOG-Abschnitt. Der Tag muss zur
+`MOODLIGHT_VERSION` in `firmware/src/config.h` passen, sonst bricht der
+Workflow ab.
+
 Installation am Gerät über `http://<geraete-ip>/setup` → Tab „Update":
-erst die UI-`.tgz`, dann die Firmware-`.bin` hochladen. Alternativ per USB
-mit `pio run -t upload` und `pio run -t uploadfs`.
+erst die UI-`.tgz`, dann die Firmware-`.bin` hochladen — beide liegen am
+Release. Alternativ per USB mit `pio run -t upload` und `pio run -t uploadfs`.
+
+### Regel für neue Versionen
+
+Jeder Push, der eine neue Version darstellt, bekommt im selben Arbeitsgang:
+CHANGELOG-Eintrag, Tag `vX.Y` und GitHub-Release mit dem CHANGELOG-Abschnitt
+als Notes. Zwischen-Commits ohne Versionssprung sammeln sich unter
+`[Unreleased]`.
 
 Weitere Details: `firmware/README.md` und `sentiment-api/README.md`.
 

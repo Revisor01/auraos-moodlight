@@ -20,6 +20,13 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 - Codebase-Analyse-Dokumente unter `.planning/codebase/` (Architektur, Konventionen,
   Struktur, Stack, Integrationen, Testing, Concerns)
 - CHANGELOG.md (dieses Dokument), rückwirkend aus der Git-History rekonstruiert
+- Release-Workflow `.github/workflows/release-firmware.yml`: Ein Tag-Push (`v9.15`)
+  baut Firmware und UI in der CI und hängt beide ans GitHub-Release, mit dem
+  passenden CHANGELOG-Abschnitt als Release-Notes. Prüft Tag gegen
+  `MOODLIGHT_VERSION`, das UI-Archiv auf Vollständigkeit und das Binary auf das
+  ESP32-Magic-Byte
+- Tags und GitHub-Releases für v9.2 sowie v9.5–v9.11 und v9.13 rückwirkend nachgezogen
+  (bestanden nur für v9.12 und v9.14)
 
 ### Geändert
 - Meilenstein-Audits nach `.planning/milestones/` verschoben
