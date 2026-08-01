@@ -30,6 +30,7 @@ bool saveSettingsToFile() {
     doc["moodInterval"] = appState.moodUpdateInterval;
     doc["dhtInterval"] = appState.dhtUpdateInterval;
     doc["autoMode"] = appState.autoMode;
+    doc["updateCheck"] = appState.updateCheckEnabled;
     doc["lightOn"] = appState.lightOn;
     doc["manBright"] = appState.manualBrightness;
     doc["manColor"] = appState.manualColor;
@@ -88,6 +89,7 @@ bool loadSettingsFromFile() {
     appState.dhtUpdateInterval = doc["dhtInterval"] | DEFAULT_DHT_READ_INTERVAL;
     // v9.0: headlinesPS removed
     appState.autoMode = doc["autoMode"] | true;
+    appState.updateCheckEnabled = doc["updateCheck"] | true;
     appState.lightOn = doc["lightOn"] | true;
     appState.manualBrightness = doc["manBright"] | DEFAULT_LED_BRIGHTNESS;
     appState.manualColor = doc["manColor"] | pixels.Color(255, 255, 255);
@@ -150,6 +152,7 @@ void saveSettings()
     preferences.putULong("moodInterval", appState.moodUpdateInterval);
     preferences.putULong("dhtInterval", appState.dhtUpdateInterval);
     preferences.putBool("autoMode", appState.autoMode);
+    preferences.putBool("updateCheck", appState.updateCheckEnabled);
     preferences.putBool("lightOn", appState.lightOn);
     preferences.putUChar("manBright", appState.manualBrightness);
     preferences.putUInt("manColor", appState.manualColor);
@@ -200,6 +203,7 @@ void loadSettings()
         appState.dhtUpdateInterval = preferences.getULong("dhtInterval", DEFAULT_DHT_READ_INTERVAL);
         // v9.0: headlines_per_source removed
         appState.autoMode = preferences.getBool("autoMode", true);
+        appState.updateCheckEnabled = preferences.getBool("updateCheck", true);
         appState.lightOn = preferences.getBool("lightOn", true);
         appState.manualBrightness = preferences.getUChar("manBright", DEFAULT_LED_BRIGHTNESS);
         appState.manualColor = preferences.getUInt("manColor", pixels.Color(255, 255, 255));

@@ -1224,6 +1224,22 @@
       <div class="settings-msg" id="passwordMsg"></div>
     </div>
 
+    <!-- Sektion: Firmware-Freigabe -->
+    <div class="settings-section">
+      <h2>📦 Firmware-Freigabe</h2>
+      <span class="hint">
+        Neue Releases werden automatisch von GitHub gespiegelt, aber nicht ausgeliefert.
+        Erst die Freigabe macht eine Version für die Geräte sichtbar — so lässt sich
+        vorher an einem Gerät testen.
+      </span>
+
+      <div id="firmwareList" style="margin-top:16px">
+        <span class="hint">Lade…</span>
+      </div>
+
+      <div class="settings-msg" id="firmwareMsg"></div>
+    </div>
+
   </div>
 
   <!-- ===== TAB: FEED-TRENDS (VIS-01/02/03) ===== -->
@@ -1931,9 +1947,97 @@ function switchWindow(days) {
   loadFeedTrends(days);
 }
 
+// ===== FIRMWARE-FREIGABE =====
+
+function formatBytes(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+async function loadFirmwareVersions() {
+  const listEl = document.getElementById('firmwareList');
+  if (!listEl) return;
+
+  try {
+    const resp = await fetch('/api/firmware/mirrored');
+    if (!resp.ok) {
+      listEl.innerHTML = '<span class="hint">Firmware-Liste nicht abrufbar.</span>';
+      return;
+    }
+    const data = await resp.json();
+    const versions = data.versions || [];
+
+    if (versions.length === 0) {
+      listEl.innerHTML = '<span class="hint">Noch keine Version gespiegelt. ' +
+        'Nach dem nächsten Release-Build erscheint sie hier.</span>';
+      return;
+    }
+
+    listEl.innerHTML = versions.map(function(v) {
+      const isReleased = v.released;
+      const badge = isReleased
+        ? '<span class="feed-badge" style="background:#2d7d46">freigegeben</span>'
+        : '<span class="feed-badge">nur gespiegelt</span>';
+      const notes = v.release_url
+        ? ' · <a href="' + escapeHtml(v.release_url) + '" target="_blank" rel="noopener">Notes</a>'
+        : '';
+      const button = isReleased
+        ? '<button class="btn-edit-key" onclick="setFirmwareRelease(null)">Zurückziehen</button>'
+        : '<button class="btn-save" onclick="setFirmwareRelease(\'' +
+          escapeHtml(v.version) + '\')">Freigeben</button>';
+
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;' +
+             'border-bottom:1px solid rgba(128,128,128,.2)">' +
+               '<strong style="min-width:60px">' + escapeHtml(v.version) + '</strong>' +
+               badge +
+               '<span class="hint" style="flex:1">' + formatBytes(v.firmware_size) +
+                 (v.has_ui ? ' + UI' : ' (ohne UI)') + notes + '</span>' +
+               button +
+             '</div>';
+    }).join('');
+
+  } catch (e) {
+    listEl.innerHTML = '<span class="hint">Netzwerkfehler beim Laden der Firmware-Liste.</span>';
+    console.error('Fehler beim Laden der Firmware-Versionen:', e);
+  }
+}
+
+async function setFirmwareRelease(version) {
+  const msgEl = document.getElementById('firmwareMsg');
+
+  const question = version
+    ? 'Version ' + version + ' für alle Geräte freigeben?'
+    : 'Freigabe zurückziehen? Geräte erhalten dann keine Updates mehr.';
+  if (!confirm(question)) return;
+
+  try {
+    const resp = await fetch('/api/firmware/release', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ version: version })
+    });
+    const data = await resp.json();
+
+    if (msgEl) {
+      msgEl.textContent = data.message || '';
+      msgEl.style.color = resp.ok ? '' : '#c0392b';
+    }
+    await loadFirmwareVersions();
+
+  } catch (e) {
+    if (msgEl) {
+      msgEl.textContent = 'Netzwerkfehler — Freigabe nicht geändert.';
+      msgEl.style.color = '#c0392b';
+    }
+    console.error('Fehler bei der Firmware-Freigabe:', e);
+  }
+}
+
 // ===== INITIALISIERUNG =====
 // Übersicht sofort beim Laden der Seite befüllen (erster Tab aktiv)
 loadOverview();
+loadFirmwareVersions();
 </script>
 
 </body>

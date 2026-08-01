@@ -80,6 +80,48 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
+## [9.17] – 2026-08-01
+
+### Hinzugefügt
+- **Automatische Update-Suche.** Das Gerät fragt stündlich beim Backend nach, ob
+  eine neuere Firmware freigegeben ist, und meldet sie im Update-Tab. Installiert
+  wird ausschließlich auf Klick — ein Update, das sich von selbst einspielt,
+  könnte das Licht mitten am Abend neu starten und im Fehlerfall ein Gerät
+  zurücklassen, an das niemand mehr herankommt. Die Suche lässt sich abschalten.
+- Die Release-Notes zeigt das Gerät nicht selbst an, sondern verlinkt auf die
+  GitHub-Release-Seite. Spart RAM auf dem ESP32, und die Notes bleiben
+  vollständig lesbar statt nach 200 Zeichen mitten im Satz abzubrechen
+- Backend spiegelt die GitHub-Releases (`firmware_mirror.py`): Die Lampe kommt an
+  GitHub nicht heran — dort liegt alles hinter HTTPS mit zwei Redirects über
+  wechselnde Hosts und signierten URLs von mehreren hundert Zeichen. Jeder
+  TLS-Handshake wäre eine Fehlerquelle in genau dem Pfad, der ein defektes Gerät
+  retten soll. Das Backend lädt einmal herunter, die Geräte holen per einfachem
+  HTTP
+- **Freigabe im Admin-Dashboard.** Ein gespiegeltes Release ist zunächst nur
+  vorhanden, nicht ausgeliefert: Erst die Freigabe macht es für die Geräte
+  sichtbar. So lässt sich eine Version an einem Gerät testen, bevor sie auf alle
+  geht — und per Klick wieder zurückziehen
+- Der Release-Workflow stößt die Spiegelung nach dem Build automatisch an
+  (`continue-on-error`, damit ein nicht erreichbarer Spiegel kein Release kippt)
+
+### Sicherheit
+- Vor dem Flashen prüft das Gerät: genug freier Heap (sonst geht der Speicher
+  mitten im Schreibvorgang aus), plausible Dateigröße, ESP32-Magic-Byte `0xE9`
+  als erstes Byte und vollständiger Empfang. Eine abgebrochene Übertragung wird
+  verworfen statt als gültige Firmware durchgewinkt — sonst startet das Gerät
+  mit einer halben Firmware neu und kommt nicht wieder
+- `/api/firmware/sync` ist über ein Token abgesichert, das mit
+  `secrets.compare_digest` verglichen wird; die Antwortzeit verrät damit nicht,
+  wie viele Zeichen stimmen. Freigabe und Versionsliste erfordern Admin-Login
+- Versionsangaben werden gegen `^\d+\.\d+$` geprüft, bevor daraus Dateipfade
+  entstehen — `../../etc/passwd` als Version läuft ins Leere
+- Nur die freigegebene Version ist herunterladbar. Ein Gerät, das die alte URL
+  noch kennt, kann eine zurückgezogene Version nicht nachladen
+
+### Behoben
+- `.env.example` nannte `OPENAI_API_KEY`, obwohl das Backend seit v9.0 Anthropic
+  Claude Haiku nutzt; `ADMIN_PASSWORD` und `SECRET_KEY` fehlten ganz
+
 ## [9.16] – 2026-08-01
 
 ### Behoben

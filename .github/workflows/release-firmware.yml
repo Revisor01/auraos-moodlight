@@ -136,3 +136,45 @@ jobs:
           files: |
             release-artifacts/Firmware-${{ steps.version.outputs.version }}-AuraOS.bin
             release-artifacts/UI-${{ steps.version.outputs.version }}-AuraOS.tgz
+
+      # Backend anstossen, das frische Release zu spiegeln. Die Geraete koennen
+      # GitHub nicht selbst erreichen (HTTPS, Redirects, Zertifikate) und holen
+      # ihre Updates deshalb vom Spiegel.
+      #
+      # Gespiegelt heisst noch nicht ausgeliefert: Die Version muss im Admin
+      # freigegeben werden, vorher sieht sie kein Geraet. So laesst sich erst an
+      # einem Geraet testen, bevor sie auf alle geht.
+      - name: Firmware-Spiegel benachrichtigen
+        if: success()
+        continue-on-error: true   # Ein fehlender Spiegel darf das Release nicht kippen
+        env:
+          SYNC_URL: ${{ secrets.FIRMWARE_SYNC_URL }}
+          SYNC_TOKEN: ${{ secrets.FIRMWARE_SYNC_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -uo pipefail
+          if [ -z "${SYNC_URL:-}" ] || [ -z "${SYNC_TOKEN:-}" ]; then
+            echo "FIRMWARE_SYNC_URL/-TOKEN nicht gesetzt — Spiegel wird uebersprungen."
+            echo "Das Release ist trotzdem fertig; die Geraete sehen es nur nicht automatisch."
+            exit 0
+          fi
+
+          # Kurz warten: die Assets brauchen einen Moment, bis GitHub sie ausliefert
+          sleep 15
+
+          HTTP_CODE=$(curl -sS -o sync-response.json -w '%{http_code}' \
+            --max-time 120 --retry 3 --retry-delay 10 --retry-all-errors \
+            -X POST "$SYNC_URL" \
+            -H "X-Sync-Token: $SYNC_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d "{\"version\":\"$VERSION\"}") || true
+
+          echo "Spiegel antwortete mit HTTP ${HTTP_CODE:-(keine Antwort)}"
+          cat sync-response.json 2>/dev/null || true
+          echo
+
+          if [ "${HTTP_CODE:-000}" = "200" ]; then
+            echo "Version $VERSION ist gespiegelt. Freigabe im Admin nicht vergessen."
+          else
+            echo "Spiegelung fehlgeschlagen — Version $VERSION laesst sich im Admin manuell nachziehen."
+          fi

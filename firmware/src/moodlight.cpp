@@ -23,6 +23,7 @@
 #include "sensor_manager.h"
 #include "mqtt_handler.h"
 #include "web_server.h"
+#include "update_checker.h"
 
 // Zentrale AppState-Instanz
 AppState appState;
@@ -202,6 +203,11 @@ void loop() {
         }
         readAndPublishDHT();
         watchdog.feed();  // WDT nach DHT-Lesung fuettern
+
+        // Stuendlich beim Backend nach freigegebener Firmware fragen.
+        // Installiert wird nichts von selbst — nur auf Klick in der WebUI.
+        handleUpdateCheck();
+        watchdog.feed();
     }
 
     updateStatusLED();

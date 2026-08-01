@@ -619,10 +619,12 @@ def get_total_sentiment():
 
 # ===== MOODLIGHT EXTENSIONS =====
 from moodlight_extensions import register_moodlight_endpoints
+from firmware_mirror import register_firmware_endpoints
 from background_worker import start_background_worker
 
 # Neue Endpunkte registrieren
 register_moodlight_endpoints(app)
+register_firmware_endpoints(app)
 
 # ===== LOGIN RATE-LIMITING (B-HOCH-4) =====
 # In-Memory-Rate-Limit ohne neue Dependency: {ip: (fail_count, locked_until_timestamp)}.
