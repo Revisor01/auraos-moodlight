@@ -270,14 +270,9 @@ void initFS() {
         }
     }
 
-    if (!LittleFS.exists("/firmware-version.txt")) {
-        debug(F("Creating firmware-version.txt..."));
-        File versionFile = LittleFS.open("/firmware-version.txt", "w");
-        if (versionFile) {
-            versionFile.print(SOFTWARE_VERSION);
-            versionFile.close();
-        }
-    }
+    // /firmware-version.txt wird nicht mehr angelegt: die Firmware-Version kommt
+    // ausschliesslich aus SOFTWARE_VERSION. Eine Datei im Flash ueberlebt einen
+    // USB-Flash und meldet danach eine veraltete Version.
 }
 
 // ===== Versions-Abfragen =====
@@ -298,18 +293,12 @@ String getCurrentUiVersion() {
 }
 
 String getCurrentFirmwareVersion() {
-    // First, check if version file exists
-    if (LittleFS.exists("/firmware-version.txt")) {
-        File versionFile = LittleFS.open("/firmware-version.txt", "r");
-        if (versionFile) {
-            String version = versionFile.readString();
-            versionFile.close();
-            version.trim();
-            return version;
-        }
-    }
-
-    // Default to the SOFTWARE_VERSION if file doesn't exist
+    // Immer die einkompilierte Version melden — sie ist die einzige Quelle, die
+    // nicht veralten kann. Zuvor wurde /firmware-version.txt aus dem Flash
+    // gelesen; diese Datei wird aber nur beim OTA-Update geschrieben und blieb
+    // nach einem USB-Flash auf dem alten Stand. Ergebnis: /api/firmware-version
+    // meldete 9.14, waehrend /api/status (das SOFTWARE_VERSION nutzt) korrekt
+    // 9.15 auswies.
     return String(SOFTWARE_VERSION);
 }
 

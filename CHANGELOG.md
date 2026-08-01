@@ -84,6 +84,11 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 - Wurde `pixels.show()` durch `ledSafeToShow` oder `wifiReconnectActive`
   blockiert, war `ledUpdatePending` bereits zurückgesetzt — das Update ging
   verloren. Es wird jetzt erneut versucht.
+- `/api/firmware-version` meldete eine veraltete Version: Der Wert wurde aus
+  `/firmware-version.txt` im Flash gelesen, die aber nur beim OTA-Update
+  geschrieben wird und einen USB-Flash unverändert überlebt. Die UI zeigte
+  dadurch 9.14, während `/api/status` korrekt 9.15 auswies. Die Version kommt
+  jetzt ausschließlich aus der einkompilierten `SOFTWARE_VERSION`.
 
 ## [9.14] – 2026-07-31
 
