@@ -212,6 +212,7 @@ script = r"""
     var RADIUS = 380;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
     var lagen = torch.querySelectorAll('.torch-3d');
+    var spans = torch.querySelectorAll('.torch-play span');
     var pending = false, px = 0, py = 0, rx = 0, ry = 0;
 
     function zeichne() {
@@ -238,9 +239,13 @@ script = r"""
 
       torch.style.setProperty('--tr', RADIUS + 'px');
       torch.classList.add('touched');
-      // Viewport-Koordinaten fuer die Spans (background-attachment: fixed)
-      torch.style.setProperty('--gx', e.clientX + 'px');
-      torch.style.setProperty('--gy', e.clientY + 'px');
+      // Jeder Span braucht Koordinaten relativ zu seinem EIGENEN Kasten —
+      // ein Verlauf bezieht sich immer auf das Element, auf dem er liegt.
+      for (var s = 0; s < spans.length; s++) {
+        var sr = spans[s].getBoundingClientRect();
+        spans[s].style.setProperty('--sx', (e.clientX - sr.left) + 'px');
+        spans[s].style.setProperty('--sy', (e.clientY - sr.top) + 'px');
+      }
       if (!pending) { pending = true; requestAnimationFrame(zeichne); }
     });
 
