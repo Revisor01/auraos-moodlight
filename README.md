@@ -103,7 +103,8 @@ pio run --target upload
 - ✅ **Web-Interface** - Dashboard, Weltlage-Statistiken, Einstellungen (inkl. Update- und Info-Tab)
 - ✅ **MQTT Integration** - Home Assistant Auto-Discovery
 - ✅ **DHT22 Support** - Temperatur & Luftfeuchtigkeit
-- ✅ **OTA Updates** - Over-The-Air Firmware/UI Updates über den Update-Tab
+- ✅ **Online-Update** - Gerät findet freigegebene Firmware selbst und installiert sie auf Klick
+- ✅ **Manuelles OTA** - Firmware/UI alternativ per Datei-Upload im Update-Tab
 
 ### Sentiment API
 
@@ -144,7 +145,27 @@ kommen aus dem passenden CHANGELOG-Abschnitt. Der Tag muss zur
 `MOODLIGHT_VERSION` in `firmware/src/config.h` passen, sonst bricht der
 Workflow ab.
 
-Installation am Gerät über `http://<geraete-ip>/setup` → Tab „Update":
+#### Update über das Gerät
+
+Seit Firmware 9.17 hält sich das Gerät selbst aktuell:
+
+1. Der Release-Workflow stößt nach dem Build die Spiegelung ins Backend an
+   (`continue-on-error` — ein nicht erreichbarer Spiegel kippt kein Release).
+2. Ein gespiegeltes Release ist zunächst nur vorhanden, nicht ausgeliefert:
+   Erst die Freigabe im Admin-Dashboard macht es für die Geräte sichtbar. So
+   lässt sich eine Version an einem Gerät testen, bevor sie auf alle geht —
+   und per Klick wieder zurückziehen.
+3. Das Gerät fragt stündlich beim Backend nach freigegebenen Versionen (die
+   Suche lässt sich abschalten). Steht eine bereit, zeigt die Startseite ein
+   Banner mit Versionsnummer und Link zu den Release-Notes; der Knopf springt
+   direkt in den Update-Tab (`/setup#ui-update`).
+4. Installiert wird ausschließlich auf Klick — ein Update, das sich von
+   selbst einspielt, könnte das Licht mitten am Abend neu starten und im
+   Fehlerfall ein Gerät zurücklassen, an das niemand mehr herankommt. Vor dem
+   Flashen prüft das Gerät freien Heap, plausible Dateigröße, das
+   ESP32-Magic-Byte `0xE9` und vollständigen Empfang.
+
+Manuell geht es weiterhin über `http://<geraete-ip>/setup` → Tab „Update":
 erst die UI-`.tgz`, dann die Firmware-`.bin` hochladen — beide liegen am
 Release. Alternativ per USB mit `pio run -t upload` und `pio run -t uploadfs`.
 
