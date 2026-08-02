@@ -51,9 +51,8 @@ Web-Interface: `http://moodlight.local/setup`
 ## Web-Interface
 
 - **`/`** - Dashboard mit Live-Anzeige
-- **`/setup`** - Konfiguration
+- **`/setup`** - Konfiguration (inkl. Update- und Info-Tab)
 - **`/mood`** - Statistiken
-- **`/diagnostics`** - System-Diagnose & OTA Updates
 
 ## API Endpoints (ESP32)
 
