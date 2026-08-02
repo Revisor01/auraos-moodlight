@@ -113,6 +113,7 @@ pio run --target upload
 - ✅ **PostgreSQL** - Unbegrenzte Historie
 - ✅ **Redis Cache** - 5-Min TTL
 - ✅ **Background Worker** - 30-Min Updates
+- ✅ **Firmware-Spiegel** - spiegelt GitHub-Releases für die Geräte, Freigabe im Admin-Dashboard
 
 ---
 
