@@ -431,17 +431,9 @@ void checkAndReconnectMQTT() {
             if (currentMillis - appState.lastMqttReconnectAttempt > mqttReconnectBackoff) {
                 debug(F("MQTT nicht verbunden. Versuche Reconnect..."));
 
-                // Update status LED indicator without direct LED update
+                // Zentrale Status-LED-Funktion nutzen (loggt AN/AUS-Wechsel selbst)
                 if (appState.statusLedMode != 4) {
-                    appState.statusLedMode = 4; // MQTT mode
-                    appState.statusLedBlinkStart = currentMillis;
-                    appState.statusLedState = true;
-
-                    if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-                        appState.ledColors[appState.statusLedIndex] = pixels.Color(0, 255, 255); // Cyan
-                        appState.ledUpdatePending = true;
-                        xSemaphoreGive(appState.ledMutex);
-                    }
+                    setStatusLED(4); // MQTT mode
                 }
 
                 // Ensure we're not in an interrupt context
@@ -470,10 +462,8 @@ void checkAndReconnectMQTT() {
             // Status-LED nur zuruecksetzen wenn sie zuvor MQTT-Reconnect (4) anzeigte —
             // API-Fehler-Anzeige (2) darf durch MQTT-Erfolg nicht geloescht werden
             if (appState.statusLedMode == 4) {
-                appState.statusLedMode = 0; // Normal mode
-            }
-
-            if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
+                setStatusLED(0); // Normal mode — fordert selbst das volle LED-Update an
+            } else if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
                 appState.ledUpdatePending = true; // Request full LED update
                 xSemaphoreGive(appState.ledMutex);
             }

@@ -105,7 +105,38 @@ void updateLEDs() {
 }
 
 // === Status-LED Funktionen ===
+static const char* statusLedModeName(int mode) {
+    switch (mode) {
+        case 1: return "WLAN-Verbindung (blau)";
+        case 2: return "API-Fehler (rot)";
+        case 3: return "Update (grün)";
+        case 4: return "MQTT-Verbindung (cyan)";
+        case 5: return "AP-Modus (gelb)";
+        default: return "Normal";
+    }
+}
+
 void setStatusLED(int mode) {
+    int prevMode = appState.statusLedMode;
+    if (mode != prevMode) {
+        char logBuffer[112];
+        unsigned long activeSecs = (millis() - appState.statusLedModeSince) / 1000UL;
+        if (prevMode == 0) {
+            snprintf(logBuffer, sizeof(logBuffer),
+                     "Status-LED: Blinken AN — %s", statusLedModeName(mode));
+        } else if (mode == 0) {
+            snprintf(logBuffer, sizeof(logBuffer),
+                     "Status-LED: Blinken AUS (war: %s, Dauer %lus)",
+                     statusLedModeName(prevMode), activeSecs);
+        } else {
+            snprintf(logBuffer, sizeof(logBuffer),
+                     "Status-LED: Wechsel %s → %s (nach %lus)",
+                     statusLedModeName(prevMode), statusLedModeName(mode), activeSecs);
+        }
+        debug(logBuffer);
+        appState.statusLedModeSince = millis();
+    }
+
     appState.statusLedMode = mode;
     appState.statusLedBlinkStart = millis();
     appState.statusLedState = true;

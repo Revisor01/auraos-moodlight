@@ -53,6 +53,9 @@ struct AppState {
     bool ledSafeToShow = false;  // Wird erst true nach WiFi-Init + NeoPixel-Init
     int statusLedIndex = DEFAULT_NUM_LEDS - 1;
     unsigned long statusLedBlinkStart = 0;
+    // Seit wann der aktuelle Modus aktiv ist — statusLedBlinkStart taugt dafür
+    // nicht, der wird in updateStatusLED() bei jedem Blink-Toggle neu gesetzt
+    unsigned long statusLedModeSince = 0;
     bool statusLedState = false;
     int statusLedMode = 0; // 0=Normal, 1=WiFi-Verbindung, 2=API-Fehler, 3=Update, 4=MQTT-Verbindung, 5=AP-Modus
 
