@@ -424,6 +424,10 @@ void checkAndReconnectMQTT() {
     // Reconnect-Logik
     if (WiFi.status() == WL_CONNECTED) {
         if (!mqtt.isConnected()) {
+            // Abriss registrieren — sonst feuert der Wiederverbunden-Zweig unten nach
+            // einem Reconnect nie (Status-LED bliebe dauerhaft im MQTT-Modus 4)
+            appState.mqttWasConnected = false;
+
             if (currentMillis - appState.lastMqttReconnectAttempt > mqttReconnectBackoff) {
                 debug(F("MQTT nicht verbunden. Versuche Reconnect..."));
 
