@@ -99,6 +99,9 @@ struct AppState {
     bool sendingInitialStates = false;
     bool mqttRefreshPending = false;        // Force-Refresh aus HA-Callback, wird in loop() ausgeführt
     bool mqttInitialStatesPending = false;  // Initiale Zustände nach MQTT-Reconnect senden
+    // Angezeigte Farbe/Helligkeit hat sich geaendert — loop() meldet sie an HA
+    // (syncHaLightState). Farbe/Helligkeit nur ueber dieses Flag melden.
+    bool haLightStateDirty = false;
 
     // =========================================================
     // DHT/Sensor-Gruppe

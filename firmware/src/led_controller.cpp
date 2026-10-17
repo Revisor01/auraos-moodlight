@@ -49,8 +49,19 @@ ColorDefinition getColorDefinition(int index)
     return uint32ToColorDef(appState.customColors[index]);
 }
 
+// Angezeigte Farbe/Helligkeit — eine Quelle fuer LEDs und Home Assistant
+ShownLight currentShownLight() {
+    return computeShownLight(appState.autoMode, appState.currentLedIndex, appState.customColors,
+                             appState.manualColor, appState.manualBrightness,
+                             DEFAULT_LED_BRIGHTNESS);
+}
+
 // === Aktualisiere die LEDs ===
 void updateLEDs() {
+    // HA soll sehen, was angezeigt wird. updateLEDs() laeuft u.a. im
+    // MQTT-Callback-Kontext — daher nur Flag setzen, gesendet wird in loop().
+    appState.haLightStateDirty = true;
+
     if (!appState.lightOn) {
         // Just set the clear flag and return
         if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
@@ -62,18 +73,10 @@ void updateLEDs() {
     }
 
     // Licht soll an sein
-    uint32_t colorToShow;
-    uint8_t brightnessToShow;
-
-    if (appState.autoMode) {
-        appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
-        ColorDefinition color = getColorDefinition(appState.currentLedIndex);
-        colorToShow = pixels.Color(color.r, color.g, color.b);
-        brightnessToShow = DEFAULT_LED_BRIGHTNESS;
-    } else {
-        colorToShow = appState.manualColor;
-        brightnessToShow = appState.manualBrightness;
-    }
+    appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
+    ShownLight shown = currentShownLight();
+    uint32_t colorToShow = shown.color;
+    uint8_t brightnessToShow = shown.brightness;
 
     // Instead of directly updating LEDs, store the values safely
     if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {

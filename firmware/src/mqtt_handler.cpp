@@ -69,13 +69,16 @@ void onBrightnessCommand(uint8_t brightness, HALight *sender)
 
     if (brightness == appState.manualBrightness)
         return;
+    // Helligkeit schaltet den Modus bewusst NICHT um. Im Auto-Modus wird der Wert
+    // fuer Manual gemerkt; HA zeigt weiter die tatsaechlich angezeigte Helligkeit.
     appState.manualBrightness = brightness;
     debug(F("HA Brightness Command"));
     if (!appState.autoMode && appState.lightOn)
     {
         updateLEDs();
     }
-    sender->setBrightness(brightness);
+    // Rueckmeldung an HA ueber loop() (syncHaLightState) statt Echo des Befehls
+    appState.haLightStateDirty = true;
 
     // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
     appState.settingsNeedSaving = true;
@@ -91,15 +94,29 @@ void onRGBColorCommand(HALight::RGBColor color, HALight *sender)
     }
 
     uint32_t newColor = ((uint32_t)color.red << 16) | ((uint32_t)color.green << 8) | color.blue;
-    if (newColor == appState.manualColor)
+    ColorCommandAction action = decideColorCommand(appState.autoMode, appState.initialStartupPhase,
+                                                   newColor, appState.manualColor);
+    if (action == ColorCommandAction::Ignore)
         return;
     appState.manualColor = newColor;
-    debug(F("HA RGB Command"));
+    if (action == ColorCommandAction::SwitchToManualAndApply)
+    {
+        // Wer eine Farbe waehlt, will sie sehen — Auto verlassen
+        appState.autoMode = false;
+        haMode.setState(1);
+        debug(F("HA RGB Command im Auto-Modus — wechsle auf Manual"));
+    }
+    else
+    {
+        debug(F("HA RGB Command"));
+    }
     if (!appState.autoMode && appState.lightOn)
     {
         updateLEDs();
     }
-    sender->setRGBColor(color);
+    // Rueckmeldung an HA ueber loop() (syncHaLightState) statt Echo des Befehls —
+    // bei StoreOnly bleibt HA so bei der tatsaechlich angezeigten Auto-Farbe
+    appState.haLightStateDirty = true;
 
     // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
     appState.settingsNeedSaving = true;
@@ -121,6 +138,8 @@ void onModeCommand(int8_t index, HASelect *sender) {
     if (appState.lightOn) {
         updateLEDs();
     }
+    // Auch bei ausgeschaltetem Licht die Farbe des neuen Modus an HA melden
+    appState.haLightStateDirty = true;
     sender->setState(index);
 
     // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
@@ -345,6 +364,39 @@ void setupHA()
 }
 
 // ============================================================
+// Angezeigte Farbe/Helligkeit an HA melden
+// ============================================================
+
+// Publiziert, was die LEDs bei eingeschaltetem Licht zeigen. HALight sendet nur
+// bei Aenderung und liefert false, wenn nicht gesendet werden konnte.
+static bool publishShownLight()
+{
+    ShownLight shown = currentShownLight();
+    // Konstruktor mit Werten verwenden: der Standardkonstruktor setzt isSet=false,
+    // und HALight::publishRGBColor() verwirft solche Farben ohne Fehlermeldung
+    HALight::RGBColor color((shown.color >> 16) & 0xFF, (shown.color >> 8) & 0xFF,
+                            shown.color & 0xFF);
+    bool colorOk = haLight.setRGBColor(color);
+    bool brightnessOk = haLight.setBrightness(shown.brightness);
+    return colorOk && brightnessOk;
+}
+
+// Aus loop() aufrufen: meldet eine geaenderte Anzeige (Flag haLightStateDirty)
+// an HA — nie aus Callback-Kontext publizieren.
+void syncHaLightState()
+{
+    if (!appState.haLightStateDirty)
+        return;
+    if (!appState.mqttEnabled || appState.sendingInitialStates || !mqtt.isConnected())
+        return; // Flag bleibt gesetzt — nach Reconnect sendet sendInitialStates() ohnehin alles
+
+    if (publishShownLight())
+    {
+        appState.haLightStateDirty = false;
+    }
+}
+
+// ============================================================
 // Initiale Zustände
 // ============================================================
 
@@ -364,15 +416,9 @@ void sendInitialStates()
 
     // Licht & Modus (aus globalen Variablen)
     haLight.setState(appState.lightOn);
-    haLight.setBrightness(appState.manualBrightness);
-    // Farbe direkt aus customColors lesen — ohne pixels.Color() (vermeidet Crash bei uninitialisiertem NeoPixel)
-    int safeIndex = constrain(appState.currentLedIndex, 0, 4);
-    uint32_t initialColor = appState.autoMode ? appState.customColors[safeIndex] : appState.manualColor;
-    HALight::RGBColor color;
-    color.red = (initialColor >> 16) & 0xFF;
-    color.green = (initialColor >> 8) & 0xFF;
-    color.blue = initialColor & 0xFF;
-    haLight.setRGBColor(color);
+    // Angezeigte Farbe/Helligkeit (Auto: Weltlage-Farbe, Manual: manuelle Werte) —
+    // reine Berechnung ohne pixels.Color() (vermeidet Crash bei uninitialisiertem NeoPixel)
+    publishShownLight();
     haMode.setState(appState.autoMode ? 0 : 1);
 
     // Intervalle (aus globalen Variablen)
@@ -395,6 +441,9 @@ void sendInitialStates()
     sendHeartbeat();
 
     debug(F("Initiale Zustände gesendet."));
+
+    // Anzeige ist gemeldet
+    appState.haLightStateDirty = false;
 
     // Flag zurücksetzen - Callbacks sind jetzt wieder aktiv
     appState.sendingInitialStates = false;

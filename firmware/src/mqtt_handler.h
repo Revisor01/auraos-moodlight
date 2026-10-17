@@ -28,5 +28,8 @@ void sendInitialStates();
 void sendHeartbeat();
 void checkAndReconnectMQTT();
 
+// Geaenderte Farbe/Helligkeit (appState.haLightStateDirty) an HA melden — nur aus loop()
+void syncHaLightState();
+
 // MQTT beim Start einmalig verbinden (mit 5s Timeout)
 void connectMQTTOnStartup();

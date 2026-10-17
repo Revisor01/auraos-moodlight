@@ -80,6 +80,27 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
+## [9.23] – 2026-10-17
+
+### Behoben
+- Home Assistant zeigte im Auto-Modus die Farbe des manuellen Modus statt der
+  Farbe der aktuellen Weltlage — etwa Warmweiß, während die Lampe rot leuchtete.
+  Das Licht meldet jetzt immer die Farbe und Helligkeit, die es tatsächlich
+  zeigt, auch nach einer neuen Weltlage und nach einem Moduswechsel
+- Eine Farbwahl in Home Assistant oder im Dashboard blieb im Auto-Modus
+  wirkungslos und wurde erst nach einem Wechsel auf Manuell sichtbar. Wer eine
+  Farbe wählt, schaltet die Lampe jetzt auf Manuell und sieht die Farbe sofort —
+  auch dann, wenn es dieselbe Farbe ist wie die zuletzt manuell gewählte.
+  Helligkeit und Ein/Aus wechseln den Modus weiterhin nicht
+
+### Geändert
+- Im Auto-Modus zeigt Home Assistant die feste Auto-Helligkeit (100 %) statt
+  des manuellen Werts. Eine im Auto-Modus gesetzte Helligkeit wird für den
+  manuellen Modus gemerkt und gilt, sobald man dorthin wechselt
+
+### Sonstiges
+- Automatische Tests für die Farb- und Moduslogik
+
 ## [9.20] – 2026-08-02
 
 ### Behoben
