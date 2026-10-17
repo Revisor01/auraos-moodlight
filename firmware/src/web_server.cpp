@@ -1346,6 +1346,13 @@ void setupWebServer() {
                 appState.customColors[i] = tempColors[i];
             }
 
+            // Neue Farben sofort zeigen statt erst beim naechsten Abruf (im Auto-Modus
+            // aendert sich die Anzeige, im Manual-Modus bleibt sie gleich). updateLEDs()
+            // setzt auch haLightStateDirty — HA bekommt die neue Farbe ueber loop().
+            if (appState.lightOn) {
+                updateLEDs();
+            }
+
             // Einstellungen speichern
             appState.settingsNeedSaving = true;
             appState.lastSettingsSaved = millis();

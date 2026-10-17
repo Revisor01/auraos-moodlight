@@ -1,6 +1,7 @@
 #include "mqtt_handler.h"
 #include "led_controller.h"
 #include "sensor_manager.h"
+#include "relative_level_logic.h"
 #include "debug.h"
 #include "MoodlightUtils.h"
 #include <WiFi.h>
@@ -25,6 +26,10 @@ HASensor haSentimentPercentile("sentiment_percentile", HASensor::PrecisionP0);
 HASensor haUptime("uptime");
 HASensor haWifiSignal("wifi_signal");
 HASensor haSystemStatus("system_status");
+// Seit 9.24: Stufe der Lampenfarbe relativ zur Woche (Wort + Zahl).
+// Neue unique_ids — bestehende Entitaeten bleiben unveraendert.
+HASensor haSentimentRelative("sentiment_relative");
+HASensor haSentimentLevel("sentiment_level");
 
 // === Extern-Deklarationen fuer abhaengige Globals ===
 extern AppState appState;
@@ -295,6 +300,18 @@ void setupHA()
     haSentimentPercentile.setIcon("mdi:chart-bell-curve-cumulative");
     haSentimentPercentile.setUnitOfMeasurement("%");
 
+    // Weltlage relativ zur Woche: genau die Stufe, aus der im Auto-Modus die
+    // LED-Farbe kommt (led_index des Backends). "Weltlage Kategorie" ist dagegen
+    // absolut aus dem Score — beide koennen verschieden lauten.
+    haSentimentRelative.setName("Weltlage relativ");
+    haSentimentRelative.setIcon("mdi:scale-balance");
+
+    // Dieselbe Stufe als Zahl 0-4 (0 = viel schlechter, 4 = viel besser) fuer
+    // Automationen und Verlauf; "None" (unbekannt), solange keine echte Stufe vorliegt
+    haSentimentLevel.setName("Weltlage Stufe");
+    haSentimentLevel.setIcon("mdi:stairs");
+    haSentimentLevel.setStateClass("measurement");
+
     if (appState.dhtEnabled)
     {
         // Temperatur Sensor
@@ -397,6 +414,44 @@ void syncHaLightState()
 }
 
 // ============================================================
+// Weltlage relativ (Wort + Stufe) an HA melden
+// ============================================================
+
+// Zuletzt an HA gemeldete Stufe; -2 = noch nie gemeldet
+static int publishedRelativeLevel = -2;
+
+static bool publishRelativeLevel()
+{
+    int level = appState.relativeLevel;
+    bool textOk = haSentimentRelative.setValue(relativeLevelText(level));
+    char number[4];
+    bool numberOk = relativeLevelNumber(level, number, sizeof(number))
+                        ? haSentimentLevel.setValue(number)
+                        : haSentimentLevel.setValue(nullptr); // "None" -> HA: unbekannt
+    if (textOk && numberOk)
+    {
+        publishedRelativeLevel = level;
+        return true;
+    }
+    return false;
+}
+
+// Aus loop() aufrufen: meldet eine geaenderte Stufe (getSentiment setzt
+// appState.relativeLevel) — nie aus Callback-Kontext publizieren.
+void syncHaRelativeLevel()
+{
+    if (appState.relativeLevel == publishedRelativeLevel)
+        return;
+    if (!appState.mqttEnabled || appState.sendingInitialStates || !mqtt.isConnected())
+        return; // nach Reconnect sendet sendInitialStates() ohnehin alles
+
+    if (publishRelativeLevel())
+    {
+        debug(String(F("HA Weltlage relativ: ")) + relativeLevelText(appState.relativeLevel));
+    }
+}
+
+// ============================================================
 // Initiale Zustände
 // ============================================================
 
@@ -436,6 +491,8 @@ void sendInitialStates()
     haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
     haSentimentCategory.setValue(appState.sentimentCategory.c_str());
     haSentimentPercentile.setValue(floatToString(appState.percentile * 100.0, 0).c_str());
+    // Weltlage relativ: vor dem ersten echten Wert "unbekannt"
+    publishRelativeLevel();
 
     // Initiale Heartbeat-Werte senden
     sendHeartbeat();
