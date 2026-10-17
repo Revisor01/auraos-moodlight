@@ -174,6 +174,11 @@ void loop() {
         }
     }
 
+    // Angezeigte Farbe/Helligkeit an HA melden (Flag aus updateLEDs()/Callbacks)
+    if (appState.mqttEnabled) {
+        syncHaLightState();
+    }
+
     // LED-Updates verarbeiten
     processLEDUpdates();
 

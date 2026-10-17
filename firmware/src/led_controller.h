@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app_state.h"
+#include "ha_light_logic.h"
 #include <Adafruit_NeoPixel.h>
 
 // Hardware-Instanz — in led_controller.cpp zur Laufzeit erzeugt.
@@ -30,6 +31,10 @@ extern const char *colorNames[5];
 // Hilfsfunktionen für Farbkonvertierung
 ColorDefinition uint32ToColorDef(uint32_t color);
 ColorDefinition getColorDefinition(int index);
+
+// Farbe/Helligkeit, die bei eingeschaltetem Licht angezeigt wird
+// (Auto: Farbe der Weltlage, Manual: manuelle Werte)
+ShownLight currentShownLight();
 
 // LED-Steuerungsfunktionen
 void updateLEDs();

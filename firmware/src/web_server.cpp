@@ -1610,6 +1610,8 @@ void setupWebServer() {
         if (appState.lightOn) {
             updateLEDs();
         }
+        // Farbe des neuen Modus an HA melden (loop() sendet), auch bei ausgeschaltetem Licht
+        appState.haLightStateDirty = true;
 
         // Einstellung speichern
         appState.settingsNeedSaving = true;
@@ -1639,26 +1641,33 @@ void setupWebServer() {
             uint8_t g = (rgb >> 8) & 0xFF;
             uint8_t b = rgb & 0xFF;
 
-            // Farbe setzen
-            appState.manualColor = pixels.Color(r, g, b);
+            // Gleiche Regel wie bei HA: Farbwahl im Auto-Modus schaltet auf Manual.
+            // Keine Startphasen-Sperre — ein Web-Klick ist immer eine bewusste Wahl.
+            uint32_t newColor = pixels.Color(r, g, b);
+            ColorCommandAction action = decideColorCommand(appState.autoMode, false,
+                                                           newColor, appState.manualColor);
+            if (action != ColorCommandAction::Ignore) {
+                appState.manualColor = newColor;
+                if (action == ColorCommandAction::SwitchToManualAndApply) {
+                    appState.autoMode = false;
+                    if (appState.mqttEnabled && mqtt.isConnected()) {
+                        haMode.setState(1);
+                    }
+                    debug(F("Farbwahl über Web im Auto-Modus — wechsle auf Manual"));
+                }
 
-            // LEDs aktualisieren, wenn im manuellen Modus und Licht an
-            if (!appState.autoMode && appState.lightOn) {
-                updateLEDs();
+                // LEDs aktualisieren, wenn im manuellen Modus und Licht an
+                if (!appState.autoMode && appState.lightOn) {
+                    updateLEDs();
+                }
+
+                // HA bekommt die angezeigte Farbe ueber loop() (syncHaLightState)
+                appState.haLightStateDirty = true;
+
+                // Einstellung speichern
+                appState.settingsNeedSaving = true;
+                appState.lastSettingsSaved = millis();
             }
-
-            // Home Assistant aktualisieren, wenn aktiviert
-            if (appState.mqttEnabled && mqtt.isConnected()) {
-                HALight::RGBColor color;
-                color.red = r;
-                color.green = g;
-                color.blue = b;
-                haLight.setRGBColor(color);
-            }
-
-            // Einstellung speichern
-            appState.settingsNeedSaving = true;
-            appState.lastSettingsSaved = millis();
 
             server.send(200, "text/plain", "OK");
             debug(String(F("Farbe über Web gesetzt: #")) + hexColor);
@@ -1679,10 +1688,9 @@ void setupWebServer() {
                 updateLEDs();
             }
 
-            // Home Assistant aktualisieren, wenn aktiviert
-            if (appState.mqttEnabled && mqtt.isConnected()) {
-                haLight.setBrightness(brightness);
-            }
+            // HA bekommt die angezeigte Helligkeit ueber loop() (syncHaLightState) —
+            // im Auto-Modus bleibt das die Auto-Helligkeit, der Modus wechselt nicht
+            appState.haLightStateDirty = true;
 
             // Einstellung speichern
             appState.settingsNeedSaving = true;
