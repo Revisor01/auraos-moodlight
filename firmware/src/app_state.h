@@ -85,6 +85,10 @@ struct AppState {
     float histMedian = 0.0;
     int histCount = 0;
     int headlinesAnalyzed = 0;
+    // Stufe 0-4 relativ zur Woche fuer HA ("Weltlage relativ"), -1 = unbekannt
+    // (vor dem ersten Abruf, ohne led_index, bei Fallback-Schwellwerten, nach API-Timeout).
+    // Bewusst getrennt von currentLedIndex, das immer einen Wert fuer die LEDs braucht.
+    int relativeLevel = -1;
 
     // =========================================================
     // MQTT-Gruppe

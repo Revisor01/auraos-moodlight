@@ -177,6 +177,7 @@ void loop() {
     // Angezeigte Farbe/Helligkeit an HA melden (Flag aus updateLEDs()/Callbacks)
     if (appState.mqttEnabled) {
         syncHaLightState();
+        syncHaRelativeLevel();
     }
 
     // LED-Updates verarbeiten
@@ -202,10 +203,10 @@ void loop() {
             appState.lastMoodUpdate = 0;
             debug(F("Force-Refresh: lastMoodUpdate zurueckgesetzt"));
         }
-        if (appState.autoMode) {
-            getSentiment();
-            watchdog.feed();  // WDT nach potentiell langem HTTP-Request fuettern
-        }
+        // Abruf auch im Manual-Modus: die Weltlage-Sensoren in HA sollen aktuell
+        // bleiben. getSentiment() faerbt die LEDs nur im Auto-Modus um.
+        getSentiment();
+        watchdog.feed();  // WDT nach potentiell langem HTTP-Request fuettern
         readAndPublishDHT();
         watchdog.feed();  // WDT nach DHT-Lesung fuettern
 

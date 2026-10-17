@@ -1,5 +1,6 @@
 #include "sensor_manager.h"
 #include "led_controller.h"
+#include "relative_level_logic.h"
 #include "debug.h"
 #include "MoodlightUtils.h"
 #include <ArduinoJson.h>
@@ -278,11 +279,18 @@ void getSentiment()
         handleSentiment(0.0);
         // LED-Index auf Neutral setzen, damit der "Neutral-Modus" auch die LEDs neutral faerbt
         appState.currentLedIndex = 2;
+        // Neutral ist hier ein Notbehelf, keine gelieferte Stufe — HA bekommt "unbekannt"
+        appState.relativeLevel = RELATIVE_LEVEL_UNKNOWN;
         if (appState.autoMode && appState.lightOn)
         {
             updateLEDs();
         }
-        setStatusLED(2);
+        // API-Fehler am Status-Pixel nur im Auto-Modus — im Manual-Modus haengt die
+        // Lampe nicht an der API (Abruf laeuft dort nur fuer die HA-Sensoren)
+        if (appState.autoMode)
+        {
+            setStatusLED(2);
+        }
     }
 
     // Avoid concurrent updates
@@ -316,7 +324,8 @@ void getSentiment()
         // Phase 18: led_index aus API-Response lesen (dynamische Skalierung)
         // Fallback auf mapSentimentToLED() wenn Feld fehlt (altes Backend)
         int apiLedIndex = -1;
-        if (doc["led_index"].is<int>())
+        bool hasApiLedIndex = doc["led_index"].is<int>();
+        if (hasApiLedIndex)
         {
             apiLedIndex = doc["led_index"].as<int>();
             apiLedIndex = constrain(apiLedIndex, 0, 4);
@@ -373,6 +382,11 @@ void getSentiment()
         debug(String(F("LED-Index setzen: ")) + String(apiLedIndex));
         appState.currentLedIndex = apiLedIndex;
         appState.lastLedIndex = apiLedIndex;
+        // Stufe fuer HA "Weltlage relativ" — nur ein echter Wochenvergleich zaehlt,
+        // gesendet wird in loop() (syncHaRelativeLevel)
+        appState.relativeLevel = relativeLevelFromResponse(hasApiLedIndex, apiLedIndex,
+                                                           doc["thresholds"]["fallback"] | false);
+        // LEDs nur im Auto-Modus — im Manual-Modus aktualisiert der Abruf nur die Sensoren
         if (appState.autoMode && appState.lightOn)
         {
             updateLEDs();
@@ -470,8 +484,14 @@ void getSentiment()
                     updateLEDs();
                 }
             }
+        }
 
-            // Set status LED to API error
+        // API-Fehler am Status-Pixel anzeigen — nur im Auto-Modus (im Manual-Modus
+        // haengt die Lampenfarbe nicht an der API). Nach einem Wechsel auf Auto
+        // erscheint die Anzeige beim naechsten fehlgeschlagenen Abruf; WLAN-/MQTT-/
+        // Update-Blinken (Modus != 0) wird nicht ueberschrieben.
+        if (!appState.sentimentAPIAvailable && appState.autoMode && appState.statusLedMode == 0)
+        {
             setStatusLED(2);
         }
 

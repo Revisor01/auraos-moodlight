@@ -191,6 +191,8 @@ Auto-Discovery über MQTT. Angelegte Entitäten:
 | Weltlage Score | Sentiment-Score (−1.0 bis +1.0) |
 | Weltlage Kategorie | sehr negativ … sehr positiv |
 | Weltlage Perzentil | Einordnung im 7-Tage-Fenster (0–100 %) |
+| Weltlage relativ | Farbstufe der Lampe in Worten, verglichen mit den letzten 7 Tagen („viel schlechter als die Woche" … „viel besser als die Woche", sonst „unbekannt") |
+| Weltlage Stufe | Dieselbe Stufe als Zahl 0–4 (unbekannt, solange keine Wochenstufe vorliegt) |
 | Temperatur / Luftfeuchtigkeit | DHT22-Sensorwerte |
 | Betriebsmodus | Auto oder Manuell |
 | Stimmung/Sensor Update Intervall | Poll-Intervalle in Sekunden |

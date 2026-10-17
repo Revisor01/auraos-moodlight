@@ -20,6 +20,8 @@ extern HANumber haDhtInterval;
 extern HASensor haUptime;
 extern HASensor haWifiSignal;
 extern HASensor haSystemStatus;
+extern HASensor haSentimentRelative;
+extern HASensor haSentimentLevel;
 
 // === MQTT/HA-Funktionen ===
 
@@ -30,6 +32,9 @@ void checkAndReconnectMQTT();
 
 // Geaenderte Farbe/Helligkeit (appState.haLightStateDirty) an HA melden — nur aus loop()
 void syncHaLightState();
+
+// Geaenderte Stufe "Weltlage relativ" (appState.relativeLevel) an HA melden — nur aus loop()
+void syncHaRelativeLevel();
 
 // MQTT beim Start einmalig verbinden (mit 5s Timeout)
 void connectMQTTOnStartup();

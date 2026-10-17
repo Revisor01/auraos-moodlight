@@ -80,6 +80,30 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
+## [9.24] – 2026-10-17
+
+### Hinzugefügt
+- Neuer Home-Assistant-Sensor „Weltlage relativ": sagt in Worten, welche Farbstufe
+  die Lampe im Auto-Modus zeigt — von „viel schlechter als die Woche" bis „viel
+  besser als die Woche". Anders als „Weltlage Kategorie", die die Lage absolut
+  einordnet, vergleicht er mit den letzten sieben Tagen und passt damit immer zur
+  Lampenfarbe
+- Dazu der Sensor „Weltlage Stufe" mit derselben Stufe als Zahl von 0 bis 4, für
+  Automationen und den Verlauf
+- Solange keine echte Wochenstufe vorliegt — vor dem ersten Abruf, nach einer
+  Stunde ohne Verbindung zum Server oder wenn dem Server noch zu wenig Verlauf
+  für einen Wochenvergleich vorliegt — melden beide Sensoren „unbekannt" statt
+  einer geratenen Stufe
+
+### Geändert
+- Die Weltlage wird auch im manuellen Modus abgerufen, damit die Weltlage-Sensoren
+  in Home Assistant aktuell bleiben. Die Lampe behält dabei ihre manuelle Farbe;
+  ein Fehler beim Abruf lässt das Status-Licht nur im Auto-Modus blinken
+
+### Behoben
+- Geänderte Farben aus den Einstellungen erscheinen sofort an der Lampe und in
+  Home Assistant, nicht erst beim nächsten Abruf der Weltlage
+
 ## [9.23] – 2026-10-17
 
 ### Behoben
