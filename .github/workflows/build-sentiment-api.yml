@@ -54,5 +54,6 @@ jobs:
 
       - name: Trigger Portainer Webhook
         if: success() && vars.PORTAINER_WEBHOOK_URL != ''
-        run: |
-          curl -X POST "${{ vars.PORTAINER_WEBHOOK_URL }}" || true
+        env:
+          WEBHOOK_URL: ${{ vars.PORTAINER_WEBHOOK_URL }}
+        run: curl -fsS -X POST "$WEBHOOK_URL"
