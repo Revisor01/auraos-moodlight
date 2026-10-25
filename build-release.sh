@@ -2,6 +2,7 @@
 # AuraOS Moodlight - Release Build Script
 # Erzeugt versionierte UI-TGZ + Firmware-BIN fuer OTA-Upload
 # Verwendung: ./build-release.sh [major|minor]
+# MOODLIGHT_HOST=<adresse> setzt die Adresse der Lampe in der Upload-Anleitung.
 
 set -e
 
@@ -126,7 +127,7 @@ echo "Version:  ${NEW_VERSION}"
 echo "Dateien:  ${RELEASE_DIR}/"
 ls -lh "$RELEASE_DIR"
 echo ""
-echo "Upload auf http://<geraete-ip>/setup -> Update Tab:"
+echo "Upload auf http://${MOODLIGHT_HOST:-<adresse-der-lampe>}/setup -> Update Tab:"
 echo "  1. UI-Datei:       ${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz"
 echo "  2. Firmware-Datei: ${RELEASE_DIR}/Firmware-${NEW_VERSION}-AuraOS.bin"
 echo "  3. 'Update starten' klicken"
