@@ -89,7 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_device_requests_endpoint ON device_requests(endpo
 --   FOREIGN KEY (device_id) REFERENCES device_statistics(device_id) ON DELETE CASCADE;
 
 -- ===== FEEDS TABLE =====
--- RSS-Feeds für Sentiment-Analyse — verwaltet via API (Phase 10)
+-- RSS-Feeds für Sentiment-Analyse — verwaltet via API
 CREATE TABLE IF NOT EXISTS feeds (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -110,7 +110,7 @@ COMMENT ON COLUMN feeds.active IS 'Inaktive Feeds werden vom Worker ignoriert';
 COMMENT ON COLUMN feeds.error_count IS 'Anzahl aufeinanderfolgender Fehler beim Feed-Abruf';
 
 -- ===== HEADLINES TABLE =====
--- Einzelne Headlines mit Einzel-Scores pro Sentiment-Analyse (Phase 12)
+-- Einzelne Headlines mit Einzel-Scores pro Sentiment-Analyse
 CREATE TABLE IF NOT EXISTS headlines (
     id SERIAL PRIMARY KEY,
     sentiment_history_id INTEGER NOT NULL REFERENCES sentiment_history(id) ON DELETE CASCADE,
@@ -133,7 +133,7 @@ COMMENT ON COLUMN headlines.feed_id IS 'FK zu feeds — NULLABLE falls Feed gel�
 COMMENT ON COLUMN headlines.strength IS 'Kategorie: sehr negativ, negativ, neutral, positiv, sehr positiv';
 
 -- ===== SETTINGS TABLE =====
--- Key-Value-Store für Backend-Konfiguration (Phase 19)
+-- Key-Value-Store für Backend-Konfiguration
 CREATE TABLE IF NOT EXISTS settings (
     key VARCHAR(100) PRIMARY KEY,
     value TEXT NOT NULL,
