@@ -41,7 +41,7 @@ Dieser Service analysiert deutsche Nachrichtenquellen (RSS-Feeds) mit OpenAI GPT
 
 ```bash
 cp .env.example .env
-# Bearbeite .env und setze OPENAI_API_KEY
+# Bearbeite .env und setze ANTHROPIC_API_KEY
 ```
 
 ### 2. Docker Compose starten
@@ -109,14 +109,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - POSTGRES_HOST=postgres
       - REDIS_HOST=redis
 ```
 
 ### RSS Quellen
 
-Konfiguriert in `app.py` (Zeile 55-68):
+Die Feed-Liste liegt in der Datenbank (Tabelle `feeds`); voreingestellt sind:
 - Tagesschau
 - ZDF
 - Spiegel Online
@@ -132,26 +132,9 @@ Konfiguriert in `app.py` (Zeile 55-68):
 
 ## Deployment
 
-### Produktionsserver
-
-```bash
-# SSH zum Server
-ssh root@server.godsapp.de
-
-# Zum Projekt navigieren
-cd /home/users/revisor/www/simon/news
-
-# Aktualisieren
-git pull
-docker-compose build
-docker-compose up -d
-```
-
-### Deployment-Skript
-
-```bash
-./deploy.sh
-```
+Ein Push nach `main` mit Änderungen in `sentiment-api/` baut das Image per
+GitHub Actions, legt es in die GitHub Container Registry und rollt es per
+Webhook aus. Einzelheiten im [Haupt-README](../README.md#-deployment).
 
 ## Entwicklung
 
@@ -166,7 +149,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Umgebungsvariablen
-export OPENAI_API_KEY="your-key"
+export ANTHROPIC_API_KEY="your-key"
 export POSTGRES_HOST="localhost"
 export REDIS_HOST="localhost"
 
@@ -226,7 +209,7 @@ TTL moodlight:current_sentiment
 
 ```bash
 docker-compose logs app
-# Prüfe OPENAI_API_KEY in .env
+# Prüfe ANTHROPIC_API_KEY in .env
 ```
 
 ### Datenbank-Fehler
