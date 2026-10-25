@@ -1,4 +1,4 @@
--- Migration: settings-Tabelle anlegen (Phase 19 — Einstellungs-Persistenz)
+-- Migration: settings-Tabelle anlegen (Einstellungs-Persistenz)
 -- Idempotent: kann mehrfach ausgefuehrt werden (IF NOT EXISTS, ON CONFLICT DO NOTHING)
 -- Ausfuehrung auf Produktions-DB:
 --   docker exec -i moodlight-postgres psql -U moodlight moodlight < migrate_settings.sql
