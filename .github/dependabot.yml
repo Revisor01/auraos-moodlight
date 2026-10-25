@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: pip
+    directory: /sentiment-api
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Berlin }
+    groups:
+      minor-und-patch:
+        update-types: [minor, patch]
+    commit-message: { prefix: chore, include: scope }
+
+  - package-ecosystem: docker
+    directory: /sentiment-api
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Berlin }
+    commit-message: { prefix: chore }
