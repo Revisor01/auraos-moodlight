@@ -1,236 +1,190 @@
-# AuraOS Moodlight - Monorepo
+<h1 align="center">AuraOS Moodlight</h1>
 
-<div align="center">
+<p align="center">
+  Ein Licht, das die Stimmung der Nachrichtenlage zeigt —<br>
+  ein ESP32 mit LED-Ring und ein kleiner Dienst, der Schlagzeilen auswertet.
+</p>
 
-![AuraOS Version](https://img.shields.io/badge/AuraOS-v9.15-blue)
-![Platform](https://img.shields.io/badge/Platform-ESP32-green)
-![Backend](https://img.shields.io/badge/Backend-Python%203.12-yellow)
-![License](https://img.shields.io/badge/License-MIT-orange)
+<p align="center">
+  <img src="https://img.shields.io/badge/Plattform-ESP32-green" alt="Plattform">
+  <img src="https://img.shields.io/badge/Backend-Python%203.12-yellow" alt="Backend">
+  <img src="https://img.shields.io/github/v/release/Revisor01/auraos-moodlight?label=Firmware" alt="Firmware-Version">
+  <img src="https://img.shields.io/github/license/Revisor01/auraos-moodlight" alt="Lizenz">
+</p>
 
-*Ein intelligentes IoT-Stimmungslicht, das die Weltlage durch KI-gestützte Sentiment-Analyse visualisiert*
+## Worum es geht
 
-[Features](#features) • [Quick Start](#quick-start) • [Architektur](#architektur) • [Deployment](#deployment)
+Nachrichten erzählen fast immer von dem, was schiefgeht. Ob die Lage heute
+tatsächlich schlechter ist als letzte Woche, sagt einem niemand.
 
-</div>
+Das Moodlight beantwortet genau das, ohne ein Wort: Ein Dienst liest
+regelmäßig die Schlagzeilen deutscher Nachrichtenquellen, lässt sie
+bewerten und ordnet das Ergebnis gegen die letzten sieben Tage ein. Die
+Lampe zeigt diese Einordnung als Farbe, von Rot (viel schlechter als die
+Woche) bis Violett (viel besser). Was gut oder schlecht war, muss man nicht
+lesen; man sieht es.
 
----
+Mehr zur Idee: **[revisor01.github.io/auraos-moodlight](https://revisor01.github.io/auraos-moodlight)**
 
-## 📁 Repository-Struktur
+## Funktionen
 
-```
-auraos-moodlight/
-├── firmware/              # ESP32 Firmware (C++/Arduino)
-│   ├── src/              # Hauptcode
-│   ├── data/             # Web-Interface (HTML/CSS/JS)
-│   └── platformio.ini    # Build-Konfiguration
-│
-├── sentiment-api/        # Python Backend Service
-│   ├── app.py           # Flask API
-│   ├── database.py      # PostgreSQL Interface
-│   ├── background_worker.py
-│   └── docker-compose.yaml
-│
-├── docs/                 # GitHub Pages Website
-│   └── index.html
-│
-├── build-release.sh      # Release Build Script
-├── CHANGELOG.md          # Versionshistorie (Keep a Changelog)
-└── README.md            # Diese Datei
-```
+**Die Lampe (ESP32)**
+- **Fünf Farbstufen** — die Weltlage im Vergleich zur letzten Woche
+- **Weboberfläche** — Startseite mit aktueller Lage und Verlauf,
+  Einstellungen für WLAN, Dienst-Adresse, MQTT, Pins und Farben
+- **Home Assistant** — per MQTT mit automatischer Erkennung (siehe unten)
+- **Temperatur und Luftfeuchte** — mit einem DHT22, wenn angeschlossen
+- **Updates auf Klick** — die Lampe meldet freigegebene Firmware und
+  installiert sie erst, wenn man es bestätigt
 
----
+**Der Dienst (Sentiment-API)**
+- **Bewertung der Schlagzeilen** — mit Anthropic Claude Haiku, alle
+  30 Minuten
+- **Quellen frei wählbar** — elf deutsche Nachrichtenquellen sind
+  voreingestellt, weitere lassen sich im Admin-Bereich anlegen
+- **Verlauf ohne Ende** — alle Messungen in PostgreSQL, die Antworten für die
+  Lampen aus einem Redis-Zwischenspeicher
+- **Firmware-Spiegel** — neue Releases kommen erst nach Freigabe im
+  Admin-Bereich bei den Lampen an
 
-## 🎯 Überblick
+## Installation
 
-AuraOS ist ein **selbst-hostbares** Smart Home System bestehend aus:
+**Lampe bauen.** Nötig sind ein ESP32-Entwicklungsboard, ein WS2812B-LED-Ring
+oder -Streifen (Standard: 12 LEDs an Pin 26), optional ein DHT22 (Pin 18) und
+ein 5-V-Netzteil mit mindestens 2 A.
 
-1. **ESP32 Moodlight** - Visualisiert Weltstimmung durch LEDs
-2. **Sentiment API** - Analysiert News mit Anthropic Claude Haiku
-3. **Home Assistant Integration** - MQTT & Auto-Discovery
-
-Der ESP32 ist ein dünner Client: Er pollt den vom Backend vorberechneten
-Sentiment-Score und stellt ihn als LED-Farbe dar. Die gesamte Analyse
-(RSS-Abruf, Claude-Bewertung, Historie) läuft im Backend.
-
-### Architektur in Kürze
-
-- **Backend-First** - Alle Daten zentral in PostgreSQL, keine CSV-Speicherung auf dem ESP32
-- **RSS-Konfiguration** im Backend, nicht auf dem Gerät
-- **Redis-Cache** vor den Geräte-Endpoints (`/api/moodlight/current`)
-- **Background Worker** analysiert alle 30 Minuten; das Gerät synchronisiert
-  seinen Poll seit v9.14 auf diesen Analyse-Takt
-
-Die vollständige Versionshistorie steht in [CHANGELOG.md](CHANGELOG.md).
-
----
-
-## ⚡ Quick Start
-
-### Option A: Komplettes Self-Hosting
+**Firmware aufspielen.** Fertige Dateien liegen an jedem
+[Release](https://github.com/Revisor01/auraos-moodlight/releases). Für den
+ersten Start per USB mit [PlatformIO](https://platformio.org):
 
 ```bash
-# 1. Repository klonen
-git clone https://github.com/revisor01/auraos-moodlight.git
-cd auraos-moodlight
-
-# 2. Backend starten
-cd sentiment-api
-cp .env.example .env
-# Bearbeite .env und setze ANTHROPIC_API_KEY und POSTGRES_PASSWORD
-docker compose up -d
-
-# 3. Firmware flashen
-cd ../firmware
-pio run --target uploadfs  # Web-UI
-pio run --target upload    # Firmware
+git clone https://github.com/Revisor01/auraos-moodlight.git
+cd auraos-moodlight/firmware
+pio run -e esp32dev --target uploadfs   # Weboberfläche
+pio run -e esp32dev --target upload     # Firmware
 ```
 
-### Option B: Nur Firmware (mit Public API)
+**Einrichten.** Beim ersten Start öffnet die Lampe das WLAN
+„Moodlight-Setup“. Damit verbinden, die Einrichtungsseite öffnet sich (sonst
+`http://192.168.4.1/setup`), dort das eigene WLAN eintragen. Danach ist die
+Lampe unter `http://moodlight.local/setup` erreichbar.
 
-```bash
-cd firmware
-pio run --target upload
-# Konfiguriere: https://analyse.godsapp.de als API-URL
-```
+Als Dienst-Adresse lässt sich der öffentliche Dienst
+`https://analyse.godsapp.de` eintragen, oder ein eigener (siehe unten).
 
----
+**Updates.** Die Lampe fragt stündlich nach freigegebenen Versionen und
+zeigt dann auf der Startseite einen Hinweis; installiert wird nur auf Klick.
+Von Hand geht es im Tab „Update“ der Einstellungen: erst die UI-Datei
+(`.tgz`), dann die Firmware (`.bin`) vom Release hochladen.
 
-## 🎨 Features
+## Home Assistant
 
-### Moodlight (ESP32)
+Die Lampe meldet sich per MQTT mit automatischer Erkennung an. Angelegt
+werden:
 
-- ✅ **5-stufige Farbskala** - Rot (negativ) bis Violett (positiv)
-- ✅ **Web-Interface** - Dashboard, Weltlage-Statistiken, Einstellungen (inkl. Update- und Info-Tab)
-- ✅ **MQTT Integration** - Home Assistant Auto-Discovery
-- ✅ **DHT22 Support** - Temperatur & Luftfeuchtigkeit
-- ✅ **Online-Update** - Gerät findet freigegebene Firmware selbst und installiert sie auf Klick
-- ✅ **Manuelles OTA** - Firmware/UI alternativ per Datei-Upload im Update-Tab
-
-### Sentiment API
-
-- ✅ **Sentiment-Analyse** - Anthropic Claude Haiku
-- ✅ **12 deutsche Nachrichtenquellen**
-- ✅ **PostgreSQL** - Unbegrenzte Historie
-- ✅ **Redis Cache** - 5-Min TTL
-- ✅ **Background Worker** - 30-Min Updates
-- ✅ **Firmware-Spiegel** - spiegelt GitHub-Releases für die Geräte, Freigabe im Admin-Dashboard
-
----
-
-## 🚀 Deployment
-
-### Backend
-
-Push nach `main` genügt — es gibt keinen SSH-Pull-Workflow:
-
-1. Änderungen in `sentiment-api/` committen und nach `main` pushen
-2. GitHub Actions baut das Docker-Image und pusht es nach GHCR
-3. Ein Portainer-Webhook deployt den Container `moodlight-analyzer` neu
-
-Produktiv läuft das Backend unter `https://analyse.godsapp.de` mit
-gunicorn (`-w 1 --threads 4`) — ein Worker-Prozess, damit der Background
-Worker genau einmal läuft.
-
-### Firmware
-
-```bash
-./build-release.sh minor    # bumpt config.h, baut lokal, committet den Bump
-git push origin main
-git tag v9.15 && git push origin v9.15
-```
-
-Der Tag-Push startet den Workflow `release-firmware.yml`: Er baut Firmware
-und UI in der CI, prüft das Ergebnis (UI-Archiv vollständig, ESP32-Magic-Byte
-im Binary) und legt beide Dateien ans GitHub-Release. Die Release-Notes
-kommen aus dem passenden CHANGELOG-Abschnitt. Der Tag muss zur
-`MOODLIGHT_VERSION` in `firmware/src/config.h` passen, sonst bricht der
-Workflow ab.
-
-#### Update über das Gerät
-
-Seit Firmware 9.17 hält sich das Gerät selbst aktuell:
-
-1. Der Release-Workflow stößt nach dem Build die Spiegelung ins Backend an
-   (`continue-on-error` — ein nicht erreichbarer Spiegel kippt kein Release).
-2. Ein gespiegeltes Release ist zunächst nur vorhanden, nicht ausgeliefert:
-   Erst die Freigabe im Admin-Dashboard macht es für die Geräte sichtbar. So
-   lässt sich eine Version an einem Gerät testen, bevor sie auf alle geht —
-   und per Klick wieder zurückziehen.
-3. Das Gerät fragt stündlich beim Backend nach freigegebenen Versionen (die
-   Suche lässt sich abschalten). Steht eine bereit, zeigt die Startseite ein
-   Banner mit Versionsnummer und Link zu den Release-Notes; der Knopf springt
-   direkt in den Update-Tab (`/setup#ui-update`).
-4. Installiert wird ausschließlich auf Klick — ein Update, das sich von
-   selbst einspielt, könnte das Licht mitten am Abend neu starten und im
-   Fehlerfall ein Gerät zurücklassen, an das niemand mehr herankommt. Vor dem
-   Flashen prüft das Gerät freien Heap, plausible Dateigröße, das
-   ESP32-Magic-Byte `0xE9` und vollständigen Empfang.
-
-Manuell geht es weiterhin über `http://<geraete-ip>/setup` → Tab „Update":
-erst die UI-`.tgz`, dann die Firmware-`.bin` hochladen — beide liegen am
-Release. Alternativ per USB mit `pio run -t upload` und `pio run -t uploadfs`.
-
-### Regel für neue Versionen
-
-Jeder Push, der eine neue Version darstellt, bekommt im selben Arbeitsgang:
-CHANGELOG-Eintrag, Tag `vX.Y` und GitHub-Release mit dem CHANGELOG-Abschnitt
-als Notes. Zwischen-Commits ohne Versionssprung sammeln sich unter
-`[Unreleased]`.
-
-Weitere Details: `firmware/README.md` und `sentiment-api/README.md`.
-
----
-
-## 🏠 Home Assistant Integration
-
-Auto-Discovery über MQTT. Angelegte Entitäten:
-
-| Entität | Beschreibung |
+| Entität | Bedeutung |
 |---|---|
-| Moodlight (Light) | LED-Steuerung: an/aus, Farbe, Helligkeit |
-| Weltlage Score | Sentiment-Score (−1.0 bis +1.0) |
+| Moodlight (Licht) | an/aus, Farbe, Helligkeit |
+| Weltlage Score | Bewertung von −1,0 bis +1,0 |
 | Weltlage Kategorie | sehr negativ … sehr positiv |
-| Weltlage Perzentil | Einordnung im 7-Tage-Fenster (0–100 %) |
-| Weltlage relativ | Farbstufe der Lampe in Worten, verglichen mit den letzten 7 Tagen („viel schlechter als die Woche" … „viel besser als die Woche", sonst „unbekannt") |
-| Weltlage Stufe | Dieselbe Stufe als Zahl 0–4 (unbekannt, solange keine Wochenstufe vorliegt) |
-| Temperatur / Luftfeuchtigkeit | DHT22-Sensorwerte |
+| Weltlage Perzentil | Einordnung in den letzten 7 Tagen (0–100 %) |
+| Weltlage relativ | die Farbstufe in Worten („viel schlechter als die Woche“ … „viel besser als die Woche“) |
+| Weltlage Stufe | dieselbe Stufe als Zahl 0–4 |
+| Temperatur, Luftfeuchtigkeit | Werte des DHT22 |
 | Betriebsmodus | Auto oder Manuell |
-| Stimmung/Sensor Update Intervall | Poll-Intervalle in Sekunden |
-| Weltlage aktualisieren | Button für sofortigen Abruf |
-| Uptime / WiFi Signal / Status | Diagnose-Sensoren |
+| Update-Intervalle | Abfragetakt in Sekunden |
+| Weltlage aktualisieren | Knopf für einen sofortigen Abruf |
+| Laufzeit, WLAN-Signal, Status | Diagnose |
 
----
+## Versionen
 
-## 📊 Eigenschaften
+Was sich wann geändert hat, steht in [CHANGELOG.md](CHANGELOG.md) — nach
+[Keep a Changelog](https://keepachangelog.com/de/1.1.0/), aus Sicht der
+Nutzer:innen geschrieben. Die
+[Releases](https://github.com/Revisor01/auraos-moodlight/releases) tragen je
+Version die fertige Firmware und Weboberfläche.
 
-- **Response Time:** <10 ms für gecachte Geräte-Endpoints (Redis, 5 min TTL)
-- **Analyse-Takt:** alle 30 Minuten durch den Background Worker
-- **Geräte-Poll:** synchronisiert auf den Analyse-Takt (seit v9.14),
-  Anzeige maximal ~2 Minuten hinter der aktuellen Analyse
-- **Skalierung:** Der Cache entkoppelt die Gerätezahl von der Analyse-Last
+## Selbst betreiben
 
----
+Der Dienst läuft als Docker-Stack aus API, PostgreSQL und Redis. Nötig sind
+Docker und ein API-Schlüssel von Anthropic.
 
-## 📖 Dokumentation
+```bash
+git clone https://github.com/Revisor01/auraos-moodlight.git
+cd auraos-moodlight/sentiment-api
+cp .env.example .env    # Werte eintragen, siehe Tabelle
+docker compose up -d
+# hört auf Port 6237
+```
 
-- **[Firmware Details](firmware/)** - ESP32 Code & Web-UI
-- **[Backend API](sentiment-api/README.md)** - Sentiment Service
-- **[CHANGELOG](CHANGELOG.md)** - Versionshistorie
-- **[Website](https://revisor01.github.io/auraos-moodlight)** - Live Demo & Docs
-- **[Releases](https://github.com/Revisor01/auraos-moodlight/releases)** - Fertige Binaries
+| Variable | Pflicht | Bedeutung |
+|----------|---------|-----------|
+| `ANTHROPIC_API_KEY` | ja | Schlüssel für die Bewertung der Schlagzeilen |
+| `POSTGRES_PASSWORD` | ja | Passwort der Datenbank |
+| `ADMIN_PASSWORD` | ja | Anmeldung im Admin-Bereich |
+| `SECRET_KEY` | ja | Sitzungsschlüssel, z. B. `openssl rand -hex 32` |
+| `FIRMWARE_SYNC_TOKEN` | nein | erlaubt einem Release-Workflow, Firmware in den Spiegel zu laden; ohne Wert bleibt das gesperrt |
 
----
+Das Datenbankschema samt voreingestellten Quellen legt `init.sql` beim ersten
+Start an. In den Einstellungen der Lampe dann die Adresse des eigenen
+Dienstes eintragen. Mehr zu Endpunkten und Admin-Bereich steht in
+[sentiment-api/README.md](sentiment-api/README.md), zur Firmware in
+[firmware/README.md](firmware/README.md).
 
-## 📄 Lizenz
+**Tests.**
 
-MIT License - Copyright (c) 2025 AuraOS Contributors
+```bash
+cd sentiment-api && pip install -r requirements.txt && python -m unittest discover -s tests
+cd firmware && pio test -e native
+```
 
----
+## Aufbau
 
-<div align="center">
+```
+auraos-moodlight
+├── firmware/        — ESP32 (C++/Arduino, PlatformIO)
+│   ├── src/         — Lampe, WLAN, MQTT, Updates
+│   ├── data/        — Weboberfläche der Lampe
+│   └── test/        — Tests, laufen auch ohne Gerät
+├── sentiment-api/   — Dienst (Python, Flask, PostgreSQL, Redis)
+│   ├── app.py               — API und Admin-Bereich
+│   ├── background_worker.py — Abruf und Bewertung alle 30 Minuten
+│   └── firmware_mirror.py   — Spiegel und Freigabe der Firmware
+├── docs/            — Projektseite (GitHub Pages)
+└── build-release.sh — lokaler Firmware-Build, Upload an eine Lampe
+```
 
-**Gebaut mit ❤️ für eine bessere Welt**
+**Worauf es beim Bauen ankommt:**
+- **Die Lampe ist ein dünner Client.** Sie holt einen fertig berechneten Wert
+  und zeigt ihn; Abruf, Bewertung und Verlauf liegen im Dienst.
+- **Relativ statt absolut.** Die Farbe ergibt sich aus dem Vergleich mit den
+  letzten sieben Tagen, nicht aus dem Rohwert.
+- **Kein Update ohne Klick.** Ein Update, das sich selbst einspielt, könnte
+  das Licht am Abend neu starten oder ein Gerät unerreichbar zurücklassen.
+- **Ein Worker-Prozess.** Der Dienst läuft mit genau einem Prozess, damit die
+  Hintergrundauswertung nur einmal läuft.
 
-[Website](https://revisor01.github.io/auraos-moodlight) • [Issues](https://github.com/revisor01/auraos-moodlight/issues)
+## Mitmachen
 
-</div>
+Fehlermeldungen und Vorschläge sind willkommen — gern als
+[Issue](https://github.com/Revisor01/auraos-moodlight/issues); die Vorlage
+fragt nach Firmware-Version und Hardware. Sicherheitslücken bitte vertraulich
+melden, wie in [SECURITY.md](SECURITY.md) beschrieben. Pull Requests laufen
+durch Tests und einen Secret-Scan; die Grundsätze für Beiträge stehen in
+[CLAUDE.md](CLAUDE.md).
+
+## Datenschutz
+
+Die Lampe schickt keine Daten über ihre Nutzer:innen. Sie fragt beim
+eingetragenen Dienst den aktuellen Wert und freigegebene Updates ab und
+spricht sonst nur mit dem eigenen MQTT-Broker. Der Dienst verarbeitet
+öffentliche Schlagzeilen, keine personenbezogenen Daten.
+
+## Lizenz
+
+[MIT](LICENSE)
+
+## Kontakt
+
+Pastor Simon Luthe · [mail@simonluthe.de](mailto:mail@simonluthe.de) ·
+[simonluthe.de](https://simonluthe.de)

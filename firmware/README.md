@@ -12,7 +12,7 @@ ESP32-basierte Firmware für das AuraOS Moodlight.
 **Standard-Pins:**
 ```cpp
 LED_PIN:  26
-DHT_PIN:  17
+DHT_PIN:  18
 NUM_LEDS: 12
 ```
 
