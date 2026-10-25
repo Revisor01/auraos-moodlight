@@ -240,13 +240,13 @@ void checkAndReconnectWifi()
         {
             debug(F("WiFi Verbindung verloren! Starte Reconnect-Prozess..."));
             appState.wifiWasConnected = false;
-            appState.wifiReconnectActive = true;  // LED-02: Unterdrueckt pixels.show() waehrend Reconnect
+            appState.wifiReconnectActive = true;  // Unterdrueckt pixels.show() waehrend Reconnect
             appState.wifiReconnectAttempts = 0;
             appState.wifiReconnectDelay = 5000;
-            appState.disconnectStartMs = millis();  // LED-03: Grace-Timer starten, KEIN setStatusLED(1) hier
+            appState.disconnectStartMs = millis();  // Grace-Timer starten, KEIN setStatusLED(1) hier
         }
 
-        // LED-03: Status-LED erst nach Grace Period aktivieren
+        // Status-LED erst nach Grace Period aktivieren
         if (appState.disconnectStartMs > 0 && (currentMillis - appState.disconnectStartMs > STATUS_LED_GRACE_MS)) {
             setStatusLED(1);
             appState.disconnectStartMs = 0;  // Einmalig setzen
@@ -286,8 +286,8 @@ void checkAndReconnectWifi()
                 {
                     debug(F("WiFi erfolgreich wieder verbunden!"));
                     appState.wifiWasConnected = true;
-                    appState.wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
-                    appState.disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
+                    appState.wifiReconnectActive = false;  // Reconnect beendet, LEDs wieder freigeben
+                    appState.disconnectStartMs = 0;         // Grace-Timer zuruecksetzen
                     appState.wifiReconnectAttempts = 0;
                     appState.wifiReconnectDelay = 5000;
                     appState.wifiConnectedSince = millis(); // Stabilitäts-Timer starten
@@ -316,8 +316,8 @@ void checkAndReconnectWifi()
         // WiFi is now connected but was disconnected before
         debug(F("WiFi ist wieder verbunden."));
         appState.wifiWasConnected = true;
-        appState.wifiReconnectActive = false;  // LED-02: Reconnect beendet, LEDs wieder freigeben
-        appState.disconnectStartMs = 0;         // LED-03: Grace-Timer zuruecksetzen
+        appState.wifiReconnectActive = false;  // Reconnect beendet, LEDs wieder freigeben
+        appState.disconnectStartMs = 0;         // Grace-Timer zuruecksetzen
         appState.wifiReconnectAttempts = 0;
         appState.wifiReconnectDelay = 5000;
         appState.wifiConnectedSince = millis(); // Stabilitäts-Timer starten

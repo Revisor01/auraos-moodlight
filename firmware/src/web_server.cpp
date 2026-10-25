@@ -259,8 +259,6 @@ void initFS() {
         }
     }
 
-    // REMOVED v9.0: RSS feeds now managed in backend
-    // REMOVED v9.0: Stats now managed in backend, no local CSV needed
 
     if (!LittleFS.exists("/ui-version.txt")) {
         debug(F("Creating ui-version.txt..."));
@@ -642,7 +640,6 @@ void handleApiStatus() {
     doc["mode"] = appState.autoMode ? "Auto" : "Manual";
     doc["lightOn"] = appState.lightOn;
     doc["brightness"] = appState.manualBrightness;
-    // v9.0: headlines removed
     doc["version"] = SOFTWARE_VERSION;
 
     // LED-Farbe als Hex
@@ -730,7 +727,6 @@ void handleApiStorageInfo() {
     doc["free"] = freeBytes;
     doc["percentUsed"] = (totalBytes > 0) ? ((float)usedBytes / totalBytes * 100) : 0;
 
-    // v9.0: Stats and archives managed in backend, no local record count needed
     doc["recordCount"] = 0;
 
     char* jsonBuffer = jsonPool.acquire();
@@ -945,12 +941,10 @@ void setupWebServer() {
     // API-Endpunkte für dynamische Daten
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/stats", HTTP_GET, handleApiStats);
-    // REMOVED v9.0: RSS feeds now managed in backend
     // server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
     // server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
 
     server.on("/api/storage", HTTP_GET, handleApiStorageInfo);
-    // v9.0: Archive endpoints disabled - data managed in backend
     // setupArchiveEndpoints();
 
     // Additional common files
@@ -1000,7 +994,6 @@ void setupWebServer() {
         jsonPool.release(jsonBuffer);
     });
 
-    // v9.0: CSV export removed - stats managed in backend
     // A-NIEDRIG: /api/export/settings entfernt — verwaist, keine UI-Referenz
 
     // Neue API-Endpunkte für Einstellungen
@@ -1010,7 +1003,6 @@ void setupWebServer() {
         doc["apiUrl"] = appState.apiUrl;
         doc["moodInterval"] = appState.moodUpdateInterval / 1000;
         doc["dhtInterval"] = appState.dhtUpdateInterval / 1000;
-        // v9.0: headlinesPerSource removed
         doc["dhtEnabled"] = appState.dhtEnabled;
 
         char* jsonBuffer = jsonPool.acquire();
@@ -1257,7 +1249,6 @@ void setupWebServer() {
                 debug(String(F("DHT Enabled geändert zu: ")) + (appState.dhtEnabled ? "ja" : "nein"));
             }
         }
-        // v9.0: headlinesPerSource removed - only for legacy API endpoints
 
         // NEU: DHT Intervall hier verarbeiten
         if (doc["dhtInterval"].is<float>()) {
@@ -1283,7 +1274,6 @@ void setupWebServer() {
                 haUpdateInterval.setState(float(appState.moodUpdateInterval / 1000.0));
                 debug(String(F("  HA: haUpdateInterval auf ")) + String(appState.moodUpdateInterval / 1000.0) + F("s gesetzt."));
 
-                // v9.0: haHeadlinesPerSource removed
 
                 // DHT Update Interval
                 haDhtInterval.setState(float(appState.dhtUpdateInterval / 1000.0));
@@ -1378,7 +1368,6 @@ void setupWebServer() {
 
         // Werte aus JSON extrahieren
         String testApiUrl = doc["apiUrl"].as<String>();
-        // v9.0: headlinesPerSource removed - not needed for new API endpoints
 
         // API testen
         HTTPClient http;
@@ -1548,7 +1537,6 @@ void setupWebServer() {
         appState.ledPin = DEFAULT_LED_PIN;
         appState.dhtPin = DEFAULT_DHT_PIN;
         appState.numLeds = DEFAULT_NUM_LEDS;
-        // v9.0: headlines_per_source removed
 
         // Reboot planen
         appState.rebootNeeded = true;
@@ -1710,7 +1698,6 @@ void setupWebServer() {
         }
     });
 
-    // v9.0: set-headlines endpoint removed - parameter not used anymore
 
     server.on("/api/settings/all", HTTP_GET, []() {
         JsonDocument doc;
@@ -1727,7 +1714,6 @@ void setupWebServer() {
         snprintf(hexColor, sizeof(hexColor), "#%06X", appState.manualColor & 0xFFFFFF);
         doc["manColor"] = hexColor;
 
-        // v9.0: headlinesPS removed
 
         // WiFi-Einstellungen (Passwort maskiert)
         doc["wifiSSID"] = appState.wifiSSID;
@@ -1758,8 +1744,8 @@ void setupWebServer() {
             doc["fsTotal"] = totalBytes;
             doc["fsUsed"] = usedBytes;
             doc["hasSettings"] = LittleFS.exists("/data/settings.json");
-            doc["hasStats"] = false; // v9.0: stats managed in backend
-            doc["hasFeeds"] = false; // v9.0: feeds managed in backend
+            doc["hasStats"] = false; // stats managed in backend
+            doc["hasFeeds"] = false; // feeds managed in backend
         }
 
         char* jsonBuffer = jsonPool.acquire();

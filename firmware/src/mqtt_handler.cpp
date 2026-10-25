@@ -174,7 +174,6 @@ void onUpdateIntervalCommand(HANumeric value, HANumber *sender)
     appState.lastSettingsSaved = millis();
 }
 
-// v9.0: onHeadlinesCommand() removed - headlines_per_source not used anymore
 
 void onDHTIntervalCommand(HANumeric value, HANumber *sender)
 {
@@ -364,7 +363,6 @@ void setupHA()
     haRefreshSentiment.setIcon("mdi:refresh");
     haRefreshSentiment.onCommand(onRefreshButtonPressed);
 
-    // v9.0: haHeadlinesPerSource setup removed - parameter not used anymore
 
     // Heartbeat Sensoren
     haUptime.setName("Moodlight Uptime");

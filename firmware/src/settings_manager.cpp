@@ -34,7 +34,6 @@ bool saveSettingsToFile() {
     doc["lightOn"] = appState.lightOn;
     doc["manBright"] = appState.manualBrightness;
     doc["manColor"] = appState.manualColor;
-    // v9.0: headlinesPS removed - only for legacy API endpoints
 
     // WiFi-Einstellungen
     doc["wifiSSID"] = appState.wifiSSID;
@@ -87,7 +86,6 @@ bool loadSettingsFromFile() {
     // Einstellungen aus JSON extrahieren
     appState.moodUpdateInterval = doc["moodInterval"] | DEFAULT_MOOD_UPDATE_INTERVAL;
     appState.dhtUpdateInterval = doc["dhtInterval"] | DEFAULT_DHT_READ_INTERVAL;
-    // v9.0: headlinesPS removed
     appState.autoMode = doc["autoMode"] | true;
     appState.updateCheckEnabled = doc["updateCheck"] | true;
     appState.lightOn = doc["lightOn"] | true;
@@ -156,7 +154,6 @@ void saveSettings()
     preferences.putBool("lightOn", appState.lightOn);
     preferences.putUChar("manBright", appState.manualBrightness);
     preferences.putUInt("manColor", appState.manualColor);
-    // v9.0: headlinesPS removed
 
     // Speichere WiFi-Einstellungen
     preferences.putString("wifiSSID", appState.wifiSSID);
@@ -201,7 +198,6 @@ void loadSettings()
         // wenn bereits Werte in Preferences existieren)
         appState.moodUpdateInterval = preferences.getULong("moodInterval", DEFAULT_MOOD_UPDATE_INTERVAL);
         appState.dhtUpdateInterval = preferences.getULong("dhtInterval", DEFAULT_DHT_READ_INTERVAL);
-        // v9.0: headlines_per_source removed
         appState.autoMode = preferences.getBool("autoMode", true);
         appState.updateCheckEnabled = preferences.getBool("updateCheck", true);
         appState.lightOn = preferences.getBool("lightOn", true);
@@ -243,7 +239,6 @@ void loadSettings()
     debug("  Mood Interval: " + String(appState.moodUpdateInterval / 1000) + "s");
     debug("  DHT Interval: " + String(appState.dhtUpdateInterval / 1000) + "s");
     debug(String(F("  DHT Enabled: ")) + (appState.dhtEnabled ? "ja" : "nein"));
-    // v9.0: Headlines debugging removed
     debug(String(F("  AutoMode: ")) + (appState.autoMode ? "true" : "false"));
     debug(String(F("  LightOn: ")) + (appState.lightOn ? "true" : "false"));
     debug(String(F("  WiFi konfiguriert: ")) + (appState.wifiConfigured ? "ja" : "nein"));

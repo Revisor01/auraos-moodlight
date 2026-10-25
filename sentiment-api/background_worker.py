@@ -48,10 +48,10 @@ class SentimentUpdateWorker:
         self.headlines_per_source = 1  # dynamisch via reconfigure() änderbar
         self.running = False
         self.thread = None
-        # B5: Event statt time.sleep() — stop()/reconfigure() wirken sofort statt
+        # Event statt time.sleep() — stop()/reconfigure() wirken sofort statt
         # erst nach Ablauf des aktuellen (ggf. sehr langen) Sleep-Intervalls
         self._wake_event = Event()
-        # B5: Lock zwischen trigger() (manueller Dashboard-Trigger) und _perform_update()
+        # Lock zwischen trigger() (manueller Dashboard-Trigger) und _perform_update()
         # (periodischer Worker-Lauf) — verhindert parallele Anthropic-Analysen
         # (doppelte API-Kosten, konkurrierende DB-Writes)
         self._update_lock = Lock()
@@ -89,7 +89,7 @@ class SentimentUpdateWorker:
             self.interval_seconds = interval_seconds
             logger.info(f"Worker-Intervall geändert: {old_interval}s → {interval_seconds}s")
             # Loop sofort aufwecken, damit das neue Intervall ab jetzt gilt statt
-            # erst nach Ablauf des alten (ggf. sehr langen) Wartezeitraums (B5)
+            # erst nach Ablauf des alten (ggf. sehr langen) Wartezeitraums
             self._wake_event.set()
 
         if headlines_per_source is not None and headlines_per_source > 0:
@@ -266,7 +266,7 @@ class SentimentUpdateWorker:
             logger.info(f"Headlines gesammelt: {len(headlines)}")
 
             # 2. Sentiment analysieren (nutzt die bestehende analyze_function)
-            # None = Anthropic API-Fehler oder Teilparse (B2) — Zyklus OHNE DB-Write
+            # None = Anthropic API-Fehler oder Teilparse — Zyklus OHNE DB-Write
             # überspringen, sonst wird der Fehler als Sentiment 0.0 gespeichert
             # (Ursache der frueheren 30-Tage-Nullserie)
             analysis_result = self.analyze_function(headlines)

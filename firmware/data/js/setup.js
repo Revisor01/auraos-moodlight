@@ -1,4 +1,4 @@
-// v9.0: Default API URL (moodlight endpoint with caching)
+// Default API URL (moodlight endpoint with caching)
 const DEFAULT_NEWS_API_URL = 'http://analyse.godsapp.de/api/moodlight/current';
 
 // RSS-Feed Verwaltung (REMOVED in v9.0)
@@ -93,10 +93,6 @@ function pageInit() {
             }
         }
     });
-    // v9.0: initImportForms() removed - import/export managed in backend
-    // C8: tote UI-/Firmware-Upload-Formular-Handler (ui-upload-form, firmware-upload-form)
-    // entfernt — die entsprechenden Formulare existieren nicht mehr in setup.html.
-    // Der Update-Tab nutzt stattdessen startFullUpdate()/doUpload() (siehe setup.html).
 }
 
 // C-NIEDRIG: #wifi-status-info mit aktueller SSID befuellen (war zuvor leeres Element)
@@ -129,9 +125,6 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleMqttSettings(this.checked);
         });
     }
-    // C8: tote (doppelte) UI-Upload-Formular-Handler entfernt — Formular
-    // 'ui-upload-form' existiert nicht mehr, Update-Tab nutzt startFullUpdate()
-    // in setup.html.
 });
 
 function formatFileSize(bytes) {
@@ -159,7 +152,6 @@ function loadApiSettings() {
         if (data.dhtInterval) {
             document.getElementById('dht-interval').value = data.dhtInterval;
         }
-        // v9.0: headlinesPerSource removed - managed in backend
         if (data.dhtEnabled !== undefined) {
             document.getElementById('dht-enabled').checked = data.dhtEnabled;
         }
@@ -223,7 +215,6 @@ function loadStorageInfo2() {
         const storageTotal = document.getElementById('storage-total');
         const storageFree = document.getElementById('storage-free');
         const storagePercent = document.getElementById('storage-percent');
-        // v9.0: statsRecords and statsSize removed - stats managed in backend
 
         if (storageBar) {
             storageBar.style.width = data.percentUsed.toFixed(1) + '%';
@@ -234,7 +225,6 @@ function loadStorageInfo2() {
         if (storageTotal) storageTotal.textContent = formatFileSize(data.total);
         if (storageFree) storageFree.textContent = formatFileSize(data.free);
         if (storagePercent) storagePercent.textContent = data.percentUsed.toFixed(1);
-        // v9.0: statsRecords and statsSize display removed
         
         // Mood dashboard storage info
         const moodStorageBar = document.getElementById('mood-storage-bar');
@@ -390,7 +380,7 @@ function saveWiFiSettings() {
     });
 }
 
-// WLAN-Einstellungen zurücksetzen (C1) — Button in setup.html war bisher ohne Implementierung
+// WLAN-Einstellungen zurücksetzen (Button in setup.html)
 function resetWiFi() {
     if (!confirm('WLAN-Einstellungen wirklich zurücksetzen? Das Gerät startet danach im Access-Point-Modus neu.')) {
         return;
@@ -459,14 +449,12 @@ function saveAPISettings() {
     const moodInterval = parseInt(document.getElementById('mood-interval').value);
     const dhtEnabled = document.getElementById('dht-enabled').checked;
     const dhtInterval = parseInt(document.getElementById('dht-interval').value);
-    // v9.0: headlinesPerSource removed - managed in backend
 
     const data = {
         apiUrl: apiUrl || DEFAULT_NEWS_API_URL,
         moodInterval: moodInterval || 1800,
         dhtEnabled: dhtEnabled,
         dhtInterval: dhtInterval || 300
-        // v9.0: headlinesPerSource removed
     };
     
     fetch('/saveapi', {
@@ -495,7 +483,6 @@ function saveAPISettings() {
 // Test API connection
 function testAPI() {
     const apiUrl = document.getElementById('api-url').value.trim();
-    // v9.0: headlinesPerSource removed - managed in backend
 
     if (!apiUrl) {
         alert('Bitte API URL eingeben');
@@ -508,7 +495,6 @@ function testAPI() {
 
     const data = {
         apiUrl: apiUrl
-        // v9.0: headlinesPerSource removed
     };
     
     fetch('/testapi', {

@@ -87,7 +87,7 @@ function isSameOrAfter(a, b) {
     return a.getTime() >= b.getTime();
 }
 
-// C2: aktuell gewählter Zeitraum (Stunden) — Auto-Refresh nutzt diesen Wert statt
+// aktuell gewählter Zeitraum (Stunden) — Auto-Refresh nutzt diesen Wert statt
 // immer den 720h-Default zu laden und damit z.B. die "Letzte Woche"-Ansicht
 // (168h) beim nächsten automatischen Reload zu überschreiben
 let currentHours = 720;
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Automatisches Neuladen alle 5 Minuten — nutzt den zuletzt gewählten Zeitraum (C2)
+    // Automatisches Neuladen alle 5 Minuten — nutzt den zuletzt gewählten Zeitraum
     setInterval(function() { loadData(currentHours); }, 300000);
 });
 
@@ -140,7 +140,7 @@ function setupTabs() {
             const hours = this.getAttribute('data-hours');
             if (hours) {
                 const hoursInt = parseInt(hours);
-                currentHours = hoursInt; // C2: fuer Auto-Refresh merken
+                currentHours = hoursInt; // fuer Auto-Refresh merken
 
                 if (!loadedHoursSet.has(hoursInt)) {
                     document.getElementById('loading-message').textContent = 'Lade Daten...';
@@ -174,7 +174,7 @@ const BACKEND_HISTORY_URL = 'https://analyse.godsapp.de/api/moodlight/history';
 // /api/stats (geclampte, langsamere Backend-Proxy-Route) bei Fetch-Fehler
 function loadData(hours) {
     hours = hours || 720; // Default: Gesamter Zeitraum (30 Tage)
-    currentHours = hours; // C2: für Auto-Refresh merken, welcher Zeitraum zuletzt geladen wurde
+    currentHours = hours; // für Auto-Refresh merken, welcher Zeitraum zuletzt geladen wurde
     document.getElementById('loading-message').textContent = 'Lade Daten...';
 
     return fetch(BACKEND_HISTORY_URL + '?hours=' + hours)

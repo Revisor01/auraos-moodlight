@@ -283,7 +283,7 @@ def register_moodlight_endpoints(app):
             hours_param = request.args.get('hours', type=int)
             from_param = request.args.get('from')
             to_param = request.args.get('to')
-            # limit deckeln (B8) — verhindert übermäßig große Result-Sets/Speicherverbrauch
+            # limit deckeln — verhindert übermäßig große Result-Sets/Speicherverbrauch
             limit = min(request.args.get('limit', 50000, type=int), 50000)
 
             # Zeitstempel konvertieren (timezone-aware UTC statt naiver datetime.utcnow(), B8)

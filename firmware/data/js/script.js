@@ -31,7 +31,7 @@ function refreshLog() {
     .catch(err => console.error('Log error:', err));
 }
 
-// In-Flight-Guard gegen überlappende Requests (C3) — verhindert, dass ein
+// In-Flight-Guard gegen überlappende Requests — verhindert, dass ein
 // langsamer Request von einem später gestarteten überholt wird und die UI
 // mit veralteten Daten überschreibt
 let refreshStatusInFlight = false;
@@ -424,7 +424,7 @@ function updateSwitches(data) {
 }
 
 // Control functions
-// Alle vier Steuerfunktionen: .catch() ergänzt (C4) — bei Netzwerkfehlern wird
+// Alle vier Steuerfunktionen: .catch() ergänzt — bei Netzwerkfehlern wird
 // refreshStatus() trotzdem aufgerufen, damit die UI den tatsächlichen Geräte-
 // Zustand zeigt statt eines optimistisch angenommenen (Rollback bei Fehlschlag).
 function toggleLight() {
@@ -474,9 +474,8 @@ window.onload = function() {
     if (themeBtn) themeBtn.innerHTML = '☀️';
   }
   
-  // Status-Polling nur starten, wenn die Dashboard-Elemente tatsächlich existieren
-  // (C3) — script.js wird auch von mood.html mitgeladen, das kein #leds-Element hat
-  // und daher nicht unnötig alle 2s /api/status pollen soll
+  // Status-Polling nur auf dem Dashboard: script.js wird auch von mood.html
+  // mitgeladen, das kein #leds-Element hat und /api/status nicht braucht.
   const isDashboard = document.getElementById('leds') !== null;
 
   clearInterval(refreshStatusInterval);
@@ -488,7 +487,7 @@ window.onload = function() {
 
   if (isDashboard) {
     refreshStatus();
-    // Intervall von 2000ms auf 5000ms erhöht (C3) — reduziert Serverlast
+    // Alle 5 s, damit die Lampe nicht unnötig mit Anfragen belastet wird
     refreshStatusInterval = setInterval(refreshStatus, 5000);
 
     // Update-Banner getrennt vom Status-Polling: /api/update/status liest den
