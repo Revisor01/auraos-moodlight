@@ -60,7 +60,7 @@ int mapSentimentToLED(float sentimentScore)
 // Aktualisiert nur MQTT/HA-Werte — LED-Steuerung erfolgt über led_index aus der API
 // apiCategory: von der API gelieferte Kategorie (falls vorhanden), sonst leer für lokale Berechnung.
 // Wichtig: appState.sentimentCategory wird HIER (nach dem Alt-Wert-Vergleich) gesetzt,
-// nicht vom Aufrufer VOR dem Aufruf — sonst ist der Änderungsvergleich unten immer false (A4).
+// nicht vom Aufrufer VOR dem Aufruf — sonst ist der Änderungsvergleich unten immer false.
 void handleSentiment(float sentimentScore, const String &apiCategory)
 {
     sentimentScore = constrain(sentimentScore, -1.0, 1.0);
@@ -304,7 +304,6 @@ void getSentiment()
     debug(F("Starte Sentiment-Abruf..."));
     isUpdating = true;
 
-    // v9.0: headlines_per_source parameter removed - not used by new /api/moodlight/* endpoints
 
     // Use static document to avoid heap fragmentation
     static JsonDocument doc;
@@ -347,7 +346,7 @@ void getSentiment()
 
         // Kategorie aus API-Response lesen (für MQTT/HA) — Zuweisung an
         // appState.sentimentCategory erfolgt INNERHALB handleSentiment(),
-        // damit der Änderungsvergleich dort gegen den alten Wert läuft (A4)
+        // damit der Änderungsvergleich dort gegen den alten Wert läuft
         String apiCategory = doc["category"].is<const char*>() ? doc["category"].as<String>() : String();
 
         // handleSentiment() für MQTT/HA-Werte (Score + Kategorie)
@@ -457,7 +456,6 @@ void getSentiment()
             setStatusLED(0);
         }
 
-        // v9.0: CSV stats removed - data managed in backend
     }
     else
     {

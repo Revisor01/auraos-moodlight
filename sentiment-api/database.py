@@ -197,7 +197,7 @@ class Database:
                 logger.info(f"Sentiment-Daten gespeichert: ID={result_id}, Score={sentiment_score}")
                 return result_id
         except Exception as e:
-            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
+            # Commit/Rollback übernimmt get_cursor() automatisch
             logger.error(f"Fehler beim Speichern der Sentiment-Daten: {e}")
             raise
 
@@ -243,7 +243,7 @@ class Database:
                 logger.info(f"Headlines gespeichert: {len(rows)} Einträge für sentiment_history_id={sentiment_history_id}")
                 return len(rows)
         except Exception as e:
-            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
+            # Commit/Rollback übernimmt get_cursor() automatisch
             logger.error(f"Fehler beim Speichern der Headlines: {e}")
             raise
 
@@ -379,7 +379,7 @@ class Database:
                 logger.debug(f"Gerät registriert/aktualisiert: {device_id}")
                 return True
         except Exception as e:
-            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
+            # Commit/Rollback übernimmt get_cursor() automatisch
             logger.error(f"Fehler beim Registrieren des Geräts {device_id}: {e}")
             return False
 
@@ -563,7 +563,7 @@ class Database:
                 logger.info(f"Neuer Feed angelegt: {name} ({url})")
                 return dict(result)
         except psycopg2.errors.UniqueViolation:
-            # Rollback übernimmt get_cursor() automatisch, bevor die Exception hier ankommt (B4)
+            # Rollback übernimmt get_cursor() automatisch, bevor die Exception hier ankommt
             raise ValueError(f"Feed-URL bereits vorhanden: {url}")
         except Exception as e:
             logger.error(f"Fehler beim Anlegen des Feeds: {e}")
@@ -595,7 +595,7 @@ class Database:
                     logger.warning(f"Feed nicht gefunden: ID={feed_id}")
                     return False
         except Exception as e:
-            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
+            # Commit/Rollback übernimmt get_cursor() automatisch
             logger.error(f"Fehler beim Löschen des Feeds {feed_id}: {e}")
             raise
 
@@ -809,7 +809,7 @@ class Database:
                 logger.info(f"Einstellung gespeichert: {key}='{_mask_secret(key, value)}'")
                 return True
         except Exception as e:
-            # Commit/Rollback übernimmt get_cursor() automatisch (B4)
+            # Commit/Rollback übernimmt get_cursor() automatisch
             logger.error(f"Fehler beim Speichern von setting '{key}': {e}")
             return False
 

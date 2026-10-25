@@ -56,7 +56,6 @@
         </div>
     </div>
 
-    <!-- v9.0: Archive-Feature entfernt - Daten im Backend verwaltet -->
 
     <div class="dashboard-container">
         <div class="dashboard-item full-width">
@@ -72,7 +71,6 @@
                 </ul>
             </div>
 
-            <!-- v9.0: Data management removed - data managed in backend -->
 
             <div class="tab-content active" id="all-tab" role="tabpanel" aria-labelledby="all-tab-link">
                 <div class="chart-container">
@@ -92,7 +90,6 @@
         </div>
     </div>
 
-    <!-- v9.0: Archiv-Container entfernt - Daten im Backend verwaltet -->
 
     <!-- Perzentil-Kontext (prominent platziert) -->
     <div class="scale-section" id="scaleSection" style="display:none;">
@@ -232,11 +229,9 @@
         </div>
     </div>
 
-    <!-- v9.0: CSV Export/Repair/Storage removed - data managed in backend -->
 
-    <!-- v9.0: Backend-Statistiken info card removed -->
 
-    <!-- v9.8: Headlines-Transparenz (ESP-01) -->
+    <!-- Headlines-Transparenz -->
     <div class="info-card" id="headlines-section">
         <div class="info-card-icon">
             <i class="fas fa-newspaper" aria-hidden="true"></i>
@@ -278,7 +273,7 @@
         return { r: (num >> 16) & 0xFF, g: (num >> 8) & 0xFF, b: num & 0xFF };
     }
 
-    // C9: Farben vom Gerät selbst laden (gleicher Origin, /api/settings/colors),
+    // Farben vom Gerät selbst laden (gleicher Origin, /api/settings/colors),
     // damit die Perzentil-Grafik die tatsächlich konfigurierten Custom-Farben
     // zeigt statt fest codierter Standardwerte. Bei Fehler bleibt der obige
     // Fallback (LED_COLORS) unverändert bestehen.
@@ -382,7 +377,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Farben zuerst laden (oder Fallback behalten), danach Perzentil-Grafik rendern (C9)
+        // Farben zuerst laden (oder Fallback behalten), danach Perzentil-Grafik rendern
         loadLedColors().then(loadPercentileContext);
     });
 
@@ -410,7 +405,7 @@
             var cls = typeof h.sentiment_score === 'number' ? scoreClass(h.sentiment_score) : 'score-neutral';
             var feed = h.feed_name || h.source_name || '';
 
-            // textContent statt innerHTML (C6) — verhindert HTML-Injection ueber
+            // textContent statt innerHTML — verhindert HTML-Injection ueber
             // Headline-/Feed-Texte, die vom Backend/RSS-Feeds stammen
             var item = document.createElement('div');
             item.className = 'headline-item';

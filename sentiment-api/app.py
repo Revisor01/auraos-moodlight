@@ -188,11 +188,11 @@ def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
         logging.info(f"Sende {len(headlines_batch)} Headlines zur Analyse an Anthropic API (claude-haiku-4-5-20251001)...")
         response = anthropic_client.messages.create(
             model="claude-haiku-4-5-20251001",
-            # max_tokens: großzügiger bemessen (B6) — 15 Tokens/Headline reichten bei
+            # max_tokens: großzügiger bemessen — 15 Tokens/Headline reichten bei
             # kurzen Batches nicht aus und führten zu stiller Truncation (Neutral-Bias
             # durch fehlende Scores am Ende der Antwort)
             max_tokens=max(1024, len(headlines_batch) * 25),
-            # temperature=0: deterministisches Scoring statt zufälliger Variation (B6)
+            # temperature=0: deterministisches Scoring statt zufälliger Variation
             temperature=0,
             messages=[{"role": "user", "content": full_prompt}]
         )
@@ -224,7 +224,7 @@ def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
         if parsed_count != len(headlines_batch):
             # Teilparse-Fall: Ergebnis ist nicht vertrauenswürdig genug, um als
             # echte Messung gespeichert zu werden — Zyklus verwerfen statt
-            # fehlende Scores still auf 0.0 zu lassen (B2)
+            # fehlende Scores still auf 0.0 zu lassen
             logging.warning(
                 f"Nicht alle Scores geparst! Erwartet: {len(headlines_batch)}, "
                 f"Geparsed: {parsed_count}. Analyse-Zyklus wird verworfen."

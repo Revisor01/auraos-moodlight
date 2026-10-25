@@ -155,7 +155,7 @@ void MemoryMonitor::update() {
     }
 
     // NVS-Write throttlen: max. alle 10 Minuten ODER wenn sich der Tiefstwert
-    // um mehr als 1 KB seit dem letzten Schreiben verändert hat (A10)
+    // um mehr als 1 KB seit dem letzten Schreiben verändert hat
     bool intervalElapsed = (currentTime - _lastNvsWriteTime) >= 600000UL; // 10 min
     bool significantDelta = (_lastPersistedLowestHeap > _lowestHeap) &&
                              ((_lastPersistedLowestHeap - _lowestHeap) > 1024);
@@ -630,7 +630,7 @@ bool SystemHealthCheck::begin(MemoryMonitor* memMonitor, NetworkDiagnostics* net
     _memMonitor = memMonitor;
     _netDiagnostics = netDiagnostics;
 
-    // Lese gespeicherten Neustart-Zähler und Uptime (Uptime nur als Statistik, steuert keinen Neustart mehr — A6)
+    // Lese gespeicherten Neustart-Zähler und Uptime (Uptime nur als Statistik, steuert keinen Neustart mehr)
     _prefs.begin("syshealth", false);
     _restartCount = _prefs.getULong("restarts", 0);
     _uptimeHours = _prefs.getULong("uptime", 0);
@@ -782,7 +782,7 @@ String SystemHealthCheck::getMetricsJson() {
 bool SystemHealthCheck::isRestartRecommended() {
     if (!_initialized) return false;
 
-    // Alle Schwellwerte gegen die Laufzeit DES AKTUELLEN BOOTS prüfen (A6) —
+    // Alle Schwellwerte gegen die Laufzeit DES AKTUELLEN BOOTS prüfen —
     // _uptimeHours ist nur eine NVS-Statistik und darf hier nicht verwendet werden,
     // sonst empfiehlt nach 30 Tagen kumulierter Betriebszeit JEDER Boot einen Neustart.
 
