@@ -68,3 +68,28 @@ __pycache__/
 # Von der pioarduino-Plattform generiert, kein Projekt-Quellcode
 firmware/src/idf_component.yml
 .build/moodlicht/moodlicht.html
+
+# --- Arbeitsnotizen und lokale Konfiguration (gehoeren nicht ins Repo) ---
+.planning/
+.claude/
+CLAUDE.local.md
+HANDOFF*.md
+UEBERGABE*.md
+*review-notes*.md
+.playwright-mcp/
+
+# --- Zugangsdaten und Schluessel ---
+.env
+.env.*
+!.env.example
+*.env
+secrets*
+*.p8
+*.p12
+*.mobileprovision
+*.jks
+release.keystore
+*service-account*.json
+
+# --- System ---
+.DS_Store
