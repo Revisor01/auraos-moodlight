@@ -239,4 +239,4 @@ docker-compose up -d
 
 ## Lizenz
 
-MIT License - Siehe Haupt-README
+GNU AGPL v3.0 – siehe Haupt-README
