@@ -81,6 +81,9 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   `firmware/data/mood.html` — ein kompromittiertes CDN kann keinen fremden Code mehr
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
+### Sonstiges
+- Englische Fassung der README und der Vorlagen für Fehlermeldungen.
+
 ## [9.24] – 2026-10-17
 
 ### Hinzugefügt
