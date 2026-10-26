@@ -52,8 +52,11 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      # Die Adresse ist ein Zugang (wer sie kennt, rollt den Stack aus) und
+      # gehört in ein Secret: Variablen erscheinen im Log im Klartext.
       - name: Trigger Portainer Webhook
-        if: success() && vars.PORTAINER_WEBHOOK_URL != ''
         env:
-          WEBHOOK_URL: ${{ vars.PORTAINER_WEBHOOK_URL }}
-        run: curl -fsS -X POST "$WEBHOOK_URL"
+          WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+        run: |
+          [ -n "$WEBHOOK_URL" ] || { echo "::error::Secret PORTAINER_WEBHOOK_URL fehlt"; exit 1; }
+          curl -fsS -X POST "$WEBHOOK_URL"
