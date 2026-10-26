@@ -29,6 +29,7 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   (bestanden nur für v9.12 und v9.14)
 
 ### Geändert
+- Neue Lizenz: GNU AGPL v3.0 statt MIT: Wer die Software verändert und anderen bereitstellt, auch als Webdienst, legt seine Änderungen offen. Eine kommerzielle Lizenz gibt es auf Anfrage.
 - Meilenstein-Audits nach `.planning/milestones/` verschoben
 - GSD-Konfiguration: Worktrees deaktiviert (`use_worktrees: false`)
 - README inhaltlich richtiggestellt: nannte OpenAI GPT-4o-mini statt Anthropic
