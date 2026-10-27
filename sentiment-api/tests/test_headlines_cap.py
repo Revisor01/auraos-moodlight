@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Unit-Tests für den headlines_per_source-Kostenvektor-Cap in app.py
-(Review-Runde 2, B-HOCH-3).
-
-Verhindert, dass ein Request beliebig viele Headlines pro RSS-Quelle anfordert
-und dadurch die Anthropic-API-Kosten unbegrenzt in die Hoehe treibt.
-"""
+"""Unit-Tests für den headlines_per_source-Kostenvektor-Cap in app.py."""
 
 import sys
 import os
@@ -42,8 +36,7 @@ def _install_flask_stub():
 
     flask_stub.Flask = _FakeFlaskApp
     flask_stub.jsonify = MagicMock(side_effect=lambda *a, **kw: (a, kw))
-    # request wird in get_headlines_per_source() für request.args.get() gebraucht —
-    # jeder Test setzt flask_stub.request.args gezielt neu
+    # Jeder Test setzt flask_stub.request.args neu.
     flask_stub.request = MagicMock()
     flask_stub.render_template = MagicMock(return_value="")
     flask_stub.session = MagicMock()

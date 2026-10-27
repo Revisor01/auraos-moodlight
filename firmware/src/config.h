@@ -23,10 +23,7 @@
 #define DEFAULT_NEWS_API_URL "http://analyse.godsapp.de/api/moodlight/current"
 #define DEFAULT_STATS_API_URL "http://analyse.godsapp.de/api/moodlight/history"
 
-// Firmware-Updates: Das Backend spiegelt die GitHub-Releases und liefert sie per
-// HTTP aus. Direkt von GitHub zu laden wuerde TLS, Zertifikate und zwei Redirects
-// ueber wechselnde Hosts bedeuten — lauter Fehlerquellen in genau dem Pfad, der
-// ein defektes Geraet wieder flottmachen soll.
+// Updates vom Backend-Spiegel: TLS und Redirects zu GitHub wären Fehlerquellen im Rettungspfad.
 #define DEFAULT_UPDATE_API_BASE "http://analyse.godsapp.de"
 #define UPDATE_CHECK_INTERVAL 3600000         // 1 Stunde zwischen zwei Abfragen
 #define UPDATE_CHECK_INITIAL_DELAY 120000     // 2 Min nach Boot warten (WLAN/NTP zuerst)
@@ -79,9 +76,7 @@
 #define NIGHT_REBOOT_DELAY 60000             // 1 Minute Verzögerung für Sofort-Neustart
 #define SCHEDULED_REBOOT_DELAY 30000         // 30s Verzögerung für geplanten Neustart
 
-// NTP
-// GMT/Daylight-Offset ungenutzt: initTime() nutzt configTime(0,0,...) + setenv("TZ",...)
-// fuer korrekte Sommerzeit-Behandlung statt fixem Offset.
+// NTP: Offsets ungenutzt, initTime() setzt TZ für die Sommerzeit.
 #define NTP_SERVER "pool.ntp.org"
 
 #endif // CONFIG_H

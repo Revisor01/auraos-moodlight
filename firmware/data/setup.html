@@ -406,9 +406,7 @@
         var fd = new FormData();
         fd.append(fieldName, file, file.name);
 
-        // nur als Erfolg werten, wenn der Upload tatsächlich 100% erreicht hatte,
-        // BEVOR die Verbindung abbrach — sonst wird ein Abbruch mitten im Upload
-        // (WLAN-Aussetzer, Gerät nicht erreichbar) fälschlich als Erfolg gemeldet
+        // Nur Erfolg, wenn der Upload vor dem Abbruch 100 % erreicht hatte
         var uploadReached100 = false;
         xhr.upload.addEventListener('progress', function(e) {
             if (e.lengthComputable) {
@@ -422,8 +420,7 @@
             callback(xhr.status === 200, xhr.responseText);
         });
         xhr.addEventListener('error', function() {
-            // Firmware-Flash: Connection bricht ab weil ESP neustartet = Erfolg,
-            // ABER nur wenn der Upload wirklich vollständig war
+            // Abbruch durch Neustart heißt Erfolg, aber nur nach vollständigem Upload
             if (url === '/update' && uploadReached100) { callback(true, 'OK'); }
             else { callback(false, 'Verbindung fehlgeschlagen' + (url === '/update' && !uploadReached100 ? ' (Upload nicht vollständig)' : '')); }
         });
@@ -436,7 +433,6 @@
         xhr.send(fd);
     }
 
-    // Version laden
     fetch('/api/firmware-version').then(function(r){return r.json();}).then(function(d){
         document.getElementById('current-version').textContent = d.version || '?.?';
     }).catch(function(){
@@ -461,9 +457,7 @@
         var toggle = document.getElementById('update-check-enabled');
         if (toggle) toggle.checked = !!d.check_enabled;
 
-        // Zeigt, ob die stuendliche Suche tatsaechlich laeuft — ohne diese
-        // Anzeige sieht man einem stillen Update-Tab nicht an, ob das Geraet
-        // ueberhaupt nachfragt oder seit Tagen nichts mehr getan hat
+        // Zeigt, ob die stündliche Suche tatsächlich läuft
         var lastEl = document.getElementById('update-last-check');
         if (lastEl) {
             if (typeof d.last_check_ago_s === 'number') {
@@ -488,8 +482,7 @@
         if (d.update_available) {
             showUpdateResult('Version ' + d.latest + ' steht bereit.', 'success');
             if (installBtn) installBtn.style.display = '';
-            // Die Notes stehen nicht auf dem Geraet — ein Klick fuehrt zur
-            // GitHub-Release-Seite, wo sie vollstaendig lesbar sind
+            // Notes liegen nicht auf dem Gerät, der Link führt zum Release
             if (notesLink && d.release_url) {
                 notesLink.href = d.release_url;
                 notesLink.style.display = '';
@@ -567,11 +560,7 @@
         document.getElementById('online-update-progress').style.display = 'block';
         showUpdateResult('Update läuft — bitte nicht unterbrechen.', 'info');
 
-        // Der Fortschritt wird geschaetzt, nicht gemessen: Waehrend das Geraet
-        // laedt und in die OTA-Partition schreibt, blockiert es und beantwortet
-        // keine Statusanfragen. Ein ehrlicher Balken waere die ganze Zeit bei 0
-        // und spraenge dann auf 100 — die Schaetzung zeigt stattdessen, dass
-        // etwas passiert. Sie orientiert sich an gemessenen ~60s fuer 1,3 MB.
+        // Geschätzt (~60 s für 1,3 MB), weil das Gerät beim Flashen keine Statusanfragen beantwortet
         var started = Date.now();
         var DOWNLOAD_S = 55;   // Laden + Schreiben
         var FLASH_S = 12;      // Abschluss und Neustart
@@ -590,14 +579,12 @@
                 setOnlineProgress(85 + ((elapsed - DOWNLOAD_S) / FLASH_S) * 13,
                                   'Schließe Update ab…');
             } else {
-                // Dauert es laenger als geschaetzt, bei 98 % stehenbleiben
-                // statt 100 % zu behaupten, bevor das Geraet bestaetigt hat
+                // Bei 98 % stehenbleiben, bis das Gerät bestätigt
                 setOnlineProgress(98, 'Fast fertig…');
             }
         }, 500);
 
-        // Grosszuegiger Timeout: Download plus Flash dauern deutlich laenger
-        // als ein normaler Request
+        // Großzügig: Download und Flash dauern länger als ein normaler Request
         var ctrl = new AbortController();
         var timer = setTimeout(function(){ ctrl.abort(); }, 180000);
 
@@ -620,16 +607,14 @@
         .catch(function(){
             clearTimeout(timer);
             stopOnlineTicker();
-            // Bricht die Verbindung ab, kann das Geraet trotzdem gerade neu
-            // starten — deshalb hier keine Fehlermeldung behaupten
+            // Abbruch kann ein Neustart sein, daher keine Fehlermeldung
             setOnlineProgress(100, 'Verbindung abgebrochen.',
                               'Falls das Gerät gerade neu startet, ist das normal.');
             startRebootCountdown();
         });
     }
 
-    // Zaehlt sichtbar herunter, statt die Seite kommentarlos 20 Sekunden
-    // stillstehen zu lassen
+    // Sichtbarer Countdown statt 20 Sekunden Stillstand
     function startRebootCountdown() {
         var left = 20;
         var detail = document.getElementById('online-update-detail');

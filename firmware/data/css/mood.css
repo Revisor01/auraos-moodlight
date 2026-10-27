@@ -1,8 +1,6 @@
 /* mood.css - Dashboard styles for Moodlight */
 
-/* Theme variables — Legacy-Namen als Aliase auf die style.css-Tokens (Quelle
-   der Wahrheit), damit mood.css keine eigene Farbpalette mehr definiert und
-   Dark-Mode automatisch ueber die .dark-Overrides in style.css funktioniert. */
+/* Aliase auf die style.css-Tokens, damit Dark Mode über style.css mitläuft */
 :root {
     --primary-color: var(--primary);
     --secondary-color: var(--secondary);

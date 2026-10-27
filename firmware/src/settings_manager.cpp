@@ -26,7 +26,6 @@ bool saveSettingsToFile() {
 
     JsonDocument doc;
 
-    // Allgemeine Einstellungen
     doc["moodInterval"] = appState.moodUpdateInterval;
     doc["dhtInterval"] = appState.dhtUpdateInterval;
     doc["autoMode"] = appState.autoMode;
@@ -35,12 +34,10 @@ bool saveSettingsToFile() {
     doc["manBright"] = appState.manualBrightness;
     doc["manColor"] = appState.manualColor;
 
-    // WiFi-Einstellungen
     doc["wifiSSID"] = appState.wifiSSID;
     doc["wifiPass"] = appState.wifiPassword;
     doc["wifiConfigured"] = appState.wifiConfigured;
 
-    // Erweiterte Einstellungen
     doc["apiUrl"] = appState.apiUrl;
     doc["mqttServer"] = appState.mqttServer;
     doc["mqttUser"] = appState.mqttUser;
@@ -51,7 +48,6 @@ bool saveSettingsToFile() {
     doc["numLeds"] = appState.numLeds;
     doc["mqttEnabled"] = appState.mqttEnabled;
 
-    // Benutzerdefinierte Farben
     for (int i = 0; i < 5; i++) {
         doc["color" + String(i)] = appState.customColors[i];
     }
@@ -59,7 +55,6 @@ bool saveSettingsToFile() {
     String jsonContent;
     serializeJson(doc, jsonContent);
 
-    // Verwende die sichere Dateischreibfunktion
     return fileOps.writeFile("/data/settings.json", jsonContent);
 }
 
@@ -68,7 +63,6 @@ bool loadSettingsFromFile() {
         return false;
     }
 
-    // Lese die Datei mit der sicheren Lesefunktion
     String jsonContent = fileOps.readFile("/data/settings.json");
     if (jsonContent.isEmpty()) {
         debug(F("Fehler beim Lesen der Einstellungen aus Datei"));
@@ -83,7 +77,6 @@ bool loadSettingsFromFile() {
         return false;
     }
 
-    // Einstellungen aus JSON extrahieren
     appState.moodUpdateInterval = doc["moodInterval"] | DEFAULT_MOOD_UPDATE_INTERVAL;
     appState.dhtUpdateInterval = doc["dhtInterval"] | DEFAULT_DHT_READ_INTERVAL;
     appState.autoMode = doc["autoMode"] | true;
@@ -92,7 +85,6 @@ bool loadSettingsFromFile() {
     appState.manualBrightness = doc["manBright"] | DEFAULT_LED_BRIGHTNESS;
     appState.manualColor = doc["manColor"] | pixels.Color(255, 255, 255);
 
-    // WiFi-Einstellungen
     appState.wifiSSID = doc["wifiSSID"] | "";
     {
         String loadedWifiPass = doc["wifiPass"] | "";
@@ -102,7 +94,6 @@ bool loadSettingsFromFile() {
     }
     appState.wifiConfigured = doc["wifiConfigured"] | false;
 
-    // Erweiterte Einstellungen
     appState.apiUrl = doc["apiUrl"] | DEFAULT_NEWS_API_URL;
     appState.mqttServer = doc["mqttServer"] | "";
     appState.mqttUser = doc["mqttUser"] | "";
@@ -119,7 +110,6 @@ bool loadSettingsFromFile() {
     appState.statusLedIndex = appState.numLeds - 1;
     appState.mqttEnabled = doc["mqttEnabled"] | false;
 
-    // Benutzerdefinierte Farben laden
     for (int i = 0; i < 5; i++) {
         String colorKey = "color" + String(i);
         if (doc[colorKey].is<uint32_t>()) {
@@ -134,19 +124,15 @@ bool loadSettingsFromFile() {
 void saveSettings()
 {
 
-    // Erst in JSON-Datei speichern (neue Methode) — JSON hat beim Laden Vorrang,
-    // daher bei Fehlschlag die (moeglicherweise veraltete) Datei entfernen statt
-    // stillschweigend mit stale Daten weiterzuarbeiten
+    // JSON hat beim Laden Vorrang; bei Fehlschlag die Datei löschen statt veraltete Daten zu laden.
     if (!saveSettingsToFile()) {
         debug(F("FEHLER: Einstellungen konnten nicht in JSON-Datei gespeichert werden — entferne evtl. veraltete Datei"));
         if (LittleFS.exists("/data/settings.json")) {
             LittleFS.remove("/data/settings.json");
         }
     }
-    // Dann in Preferences speichern (bestehende Methode)
     preferences.begin("moodlight", false);
 
-    // Speichere allgemeine Einstellungen
     preferences.putULong("moodInterval", appState.moodUpdateInterval);
     preferences.putULong("dhtInterval", appState.dhtUpdateInterval);
     preferences.putBool("autoMode", appState.autoMode);
@@ -155,12 +141,10 @@ void saveSettings()
     preferences.putUChar("manBright", appState.manualBrightness);
     preferences.putUInt("manColor", appState.manualColor);
 
-    // Speichere WiFi-Einstellungen
     preferences.putString("wifiSSID", appState.wifiSSID);
     preferences.putString("wifiPass", appState.wifiPassword);
     preferences.putBool("wifiConfigured", appState.wifiConfigured);
 
-    // Speichere erweiterte Einstellungen
     preferences.putString("apiUrl", appState.apiUrl);
     preferences.putString("mqttServer", appState.mqttServer);
     preferences.putString("mqttUser", appState.mqttUser);
@@ -171,7 +155,6 @@ void saveSettings()
     preferences.putInt("numLeds", appState.numLeds);
     preferences.putBool("mqttEnabled", appState.mqttEnabled);
 
-    // Speichere benutzerdefinierte Farben
     preferences.putUInt("color0", appState.customColors[0]);
     preferences.putUInt("color1", appState.customColors[1]);
     preferences.putUInt("color2", appState.customColors[2]);
@@ -185,17 +168,14 @@ void saveSettings()
 
 void loadSettings()
 {
-    // Zuerst versuchen wir aus der JSON-Datei zu laden
     bool fileLoadSuccess = loadSettingsFromFile();
 
-    // Wenn das fehlschlägt, versuchen wir aus Preferences zu laden
     if (!fileLoadSuccess)
     {
         debug(F("Lade Einstellungen aus Preferences als Fallback..."));
         preferences.begin("moodlight", true); // read-only
 
-        // Lade allgemeine Einstellungen (symmetrisch zu saveSettings() — nicht auf Defaults zurückfallen,
-        // wenn bereits Werte in Preferences existieren)
+        // Wie saveSettings(): vorhandene Preferences nicht durch Defaults ersetzen.
         appState.moodUpdateInterval = preferences.getULong("moodInterval", DEFAULT_MOOD_UPDATE_INTERVAL);
         appState.dhtUpdateInterval = preferences.getULong("dhtInterval", DEFAULT_DHT_READ_INTERVAL);
         appState.autoMode = preferences.getBool("autoMode", true);
@@ -204,12 +184,10 @@ void loadSettings()
         appState.manualBrightness = preferences.getUChar("manBright", DEFAULT_LED_BRIGHTNESS);
         appState.manualColor = preferences.getUInt("manColor", pixels.Color(255, 255, 255));
 
-        // Lade WiFi-Einstellungen
         appState.wifiSSID = preferences.getString("wifiSSID", "");
         appState.wifiPassword = preferences.getString("wifiPass", "");
         appState.wifiConfigured = preferences.getBool("wifiConfigured", false);
 
-        // Lade erweiterte Einstellungen
         appState.apiUrl = preferences.getString("apiUrl", DEFAULT_NEWS_API_URL);
         appState.mqttServer = preferences.getString("mqttServer", "");
         appState.mqttUser = preferences.getString("mqttUser", "");
@@ -221,7 +199,6 @@ void loadSettings()
         appState.statusLedIndex = appState.numLeds - 1;
         appState.mqttEnabled = preferences.getBool("mqttEnabled", false);
 
-        // Benutzerdefinierte Farben laden
         appState.customColors[0] = preferences.getUInt("color0", 0xFF0000);
         appState.customColors[1] = preferences.getUInt("color1", 0xFFA500);
         appState.customColors[2] = preferences.getUInt("color2", 0x1E90FF);
@@ -234,7 +211,6 @@ void loadSettings()
         debug(F("Einstellungen aus Preferences in JSON-Datei migriert"));
     }
 
-    // Log der geladenen Einstellungen
     debug(F("Einstellungen geladen:"));
     debug("  Mood Interval: " + String(appState.moodUpdateInterval / 1000) + "s");
     debug("  DHT Interval: " + String(appState.dhtUpdateInterval / 1000) + "s");

@@ -19,8 +19,7 @@ services:
       - FIRMWARE_SYNC_TOKEN=${FIRMWARE_SYNC_TOKEN}
       - FIRMWARE_MIRROR_DIR=/data/firmware
     volumes:
-      # Gespiegelte Firmware-Binaries — muss einen Container-Neustart ueberleben,
-      # sonst kaeme kein Geraet mehr an ein Update
+      # Muss Neustarts überleben, sonst käme kein Gerät mehr an ein Update.
       - /opt/stacks/auraos-moodlight/data/firmware:/data/firmware
     depends_on:
       postgres:

@@ -1,11 +1,4 @@
--- Migrations-Skript: 001_add_feeds_table.sql
--- Zweck: feeds-Tabelle für laufendes Produktionssystem anlegen
--- Datum: Phase 9 — DB-Schema & Worker-Integration
---
--- Ausführung auf dem Server (einmalig):
---   docker exec -i moodlight-postgres psql -U moodlight -d moodlight < migrations/001_add_feeds_table.sql
---
--- Das Skript ist idempotent (kann mehrfach ausgeführt werden ohne Fehler).
+-- Legt die feeds-Tabelle an, idempotent. Aufruf: psql -U moodlight -d moodlight < migrations/001_add_feeds_table.sql
 
 -- ===== FEEDS TABLE =====
 CREATE TABLE IF NOT EXISTS feeds (
@@ -28,7 +21,7 @@ COMMENT ON COLUMN feeds.active IS 'Inaktive Feeds werden vom Worker ignoriert';
 COMMENT ON COLUMN feeds.error_count IS 'Anzahl aufeinanderfolgender Fehler beim Feed-Abruf';
 COMMENT ON COLUMN feeds.url IS 'UNIQUE — verhindert doppelte Feed-Einträge';
 
--- Default-Feeds einfügen (ohne Focus.de — FEED-06: gibt 404 zurück)
+-- Default-Feeds, ohne Focus.de (liefert 404)
 INSERT INTO feeds (name, url) VALUES
     ('Zeit', 'https://newsfeed.zeit.de/index'),
     ('Tagesschau', 'https://www.tagesschau.de/xml/rss2'),

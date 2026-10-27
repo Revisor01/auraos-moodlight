@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Moodlight API Extensions
-Neue Endpunkte für 100+ Geräte mit Database + Redis Caching
-
-Integration in app.py:
-    from moodlight_extensions import register_moodlight_endpoints
-    register_moodlight_endpoints(app)
-"""
+"""Moodlight-API-Endpunkte mit Datenbank und Redis-Cache."""
 
 import ipaddress
 import logging
@@ -27,18 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def _validate_feed_url_ssrf(url: str) -> str | None:
-    """
-    SSRF-Guard fuer neu angelegte Feed-URLs (B-MITTEL).
-
-    Prueft:
-    - Nur http/https Schema erlaubt
-    - Hostname muss auflösbar sein
-    - Alle aufgeloesten IPs duerfen nicht privat/loopback/link-local/reserviert sein
-      (verhindert Zugriff auf interne Dienste, Cloud-Metadata-Endpoints etc.)
-
-    Returns:
-        Fehlermeldung als String wenn die URL abgelehnt werden muss, sonst None.
-    """
+    """SSRF-Guard fuer neu angelegte Feed-URLs."""
     try:
         parsed = urlparse(url)
     except Exception:
@@ -70,18 +52,7 @@ def _validate_feed_url_ssrf(url: str) -> str | None:
 
 
 def _safe_get_following_redirects(url: str, timeout: int = 5, max_redirects: int = 5):
-    """
-    Holt eine URL und prueft dabei JEDES Redirect-Ziel erneut gegen den SSRF-Guard.
-
-    requests mit allow_redirects=True wuerde nur die Start-URL pruefen — ein
-    erlaubter Host koennte per 302 auf 127.0.0.1 oder den Metadata-Endpoint
-    169.254.169.254 umleiten und der Guard liefe ins Leere. Deshalb folgen wir
-    den Redirects hier manuell und validieren jeden Hop.
-
-    Returns:
-        (response, None) bei Erfolg, (None, Fehlermeldung) wenn ein Hop
-        abgelehnt werden muss.
-    """
+    """Holt eine URL und prueft dabei JEDES Redirect-Ziel erneut gegen den SSRF-Guard."""
     current = url
     for _ in range(max_redirects + 1):
         ssrf_error = _validate_feed_url_ssrf(current)
@@ -114,19 +85,14 @@ def api_login_required(f):
     return decorated_function
 
 
-# Farben werden auf dem Moodlight selbst konfiguriert (Teil der User-Config)
-# Wir liefern nur den reinen Sentiment-Score
+# Nur der Score, die Farben konfiguriert die Lampe selbst.
 
 
 CURRENT_CACHE_KEY = CACHE_KEY_CURRENT  # Alias fuer Rueckwaertskompatibilitaet innerhalb dieses Moduls
 
 
 def _get_next_update_minutes() -> int:
-    """
-    Ermittelt das tatsaechliche Worker-Intervall in Minuten statt des
-    hartcodierten Werts 30 (B-MITTEL) — reconfigure() aendert
-    worker.interval_seconds zur Laufzeit, das muss sich hier widerspiegeln.
-    """
+    """Ermittelt das tatsächliche Worker-Intervall in Minuten, da reconfigure() es zur Laufzeit ändert."""
     worker = get_background_worker()
     if worker is not None:
         return max(1, worker.interval_seconds // 60)
@@ -134,22 +100,12 @@ def _get_next_update_minutes() -> int:
 
 
 def register_moodlight_endpoints(app):
-    """
-    Registriere alle neuen Moodlight-API-Endpunkte
-
-    Args:
-        app: Flask App-Instanz
-    """
+    """Registriere alle neuen Moodlight-API-Endpunkte."""
 
     # ===== MOODLIGHT CURRENT ENDPOINT (Hauptendpunkt für Geräte) =====
     @app.route('/api/moodlight/current', methods=['GET'])
     def get_moodlight_current():
-        """
-        Optimierter Endpunkt für Moodlight-Geräte
-        - Nutzt Redis-Cache (5 Min TTL)
-        - Liefert RGB/HEX-Farben direkt
-        - Tracking von Geräten
-        """
+        """Endpunkt für Moodlight-Geräte mit Redis-Cache (5 Min TTL) und Geräte-Tracking."""
         start_time = time.time()
 
         # Device-ID aus Header holen (für Tracking)
@@ -161,7 +117,6 @@ def register_moodlight_endpoints(app):
         try:
             cache = get_cache()
 
-            # 1. Redis-Cache prüfen
             cached_data = cache.get(CURRENT_CACHE_KEY)
             if cached_data:
                 logger.debug(f"Cache HIT für /api/moodlight/current (Device: {device_id})")
@@ -181,7 +136,6 @@ def register_moodlight_endpoints(app):
 
                 return jsonify(cached_data)
 
-            # 2. Cache MISS - Daten aus Datenbank holen
             logger.debug(f"Cache MISS für /api/moodlight/current (Device: {device_id})")
 
             db = get_database()
@@ -193,15 +147,13 @@ def register_moodlight_endpoints(app):
                     "message": "Keine Sentiment-Daten verfügbar"
                 }), 503
 
-            # 3. Response-Daten vorbereiten
             sentiment_score = latest['sentiment_score']
 
             # Dynamische Schwellwerte aus DB (7-Tage-Fenster)
             thresholds = db.get_score_percentiles(days=7)
             led_index = compute_led_index(sentiment_score, thresholds)
 
-            # Perzentil-Position des aktuellen Scores bestimmen (0.0–1.0)
-            # Lineare Interpolation zwischen min und max
+            # Perzentil-Position 0.0-1.0, linear zwischen min und max
             score_range = thresholds['max'] - thresholds['min']
             if score_range > 0:
                 percentile = round((sentiment_score - thresholds['min']) / score_range, 3)
@@ -236,10 +188,9 @@ def register_moodlight_endpoints(app):
                 "cached": False
             }
 
-            # 4. In Redis cachen (5 Minuten)
+            # 5 Minuten im Redis-Cache
             cache.set(CURRENT_CACHE_KEY, response, ttl=300)
 
-            # 5. Device-Tracking
             if device_id != 'unknown':
                 try:
                     db.register_device(
@@ -251,7 +202,6 @@ def register_moodlight_endpoints(app):
                 except Exception as e:
                     logger.error(f"Fehler beim Device-Tracking: {e}")
 
-            # 6. Response-Zeit loggen
             response_time = int((time.time() - start_time) * 1000)
             logger.info(f"Moodlight Request: Device={device_id}, Response-Time={response_time}ms")
 
@@ -267,18 +217,8 @@ def register_moodlight_endpoints(app):
     # ===== HISTORY ENDPOINT =====
     @app.route('/api/moodlight/history', methods=['GET'])
     def get_moodlight_history():
-        """
-        Sentiment-Historie abrufen
-
-        Query-Parameter:
-            all: Wenn 'true', hole alle Daten (kein Zeitlimit)
-            hours: Anzahl Stunden zurück (einfacher Modus, default: 168 = 7 Tage)
-            from: ISO8601 timestamp
-            to: ISO8601 timestamp (default: now)
-            limit: Max. Anzahl Einträge (default: 50000)
-        """
+        """Sentiment-Historie abrufen."""
         try:
-            # Parameter parsen
             all_param = request.args.get('all', '').lower() == 'true'
             hours_param = request.args.get('hours', type=int)
             from_param = request.args.get('from')
@@ -286,20 +226,17 @@ def register_moodlight_endpoints(app):
             # limit deckeln — verhindert übermäßig große Result-Sets/Speicherverbrauch
             limit = min(request.args.get('limit', 50000, type=int), 50000)
 
-            # Zeitstempel konvertieren (timezone-aware UTC statt naiver datetime.utcnow(), B8)
+            # timezone-aware UTC statt naiver datetime.utcnow()
             from_time = None
             to_time = None
 
             if all_param:
-                # Alle Daten: Kein Zeitfilter (from_time bleibt None)
                 to_time = datetime.now(timezone.utc)
                 logger.info("History: Hole ALLE Daten (kein Zeitlimit)")
             elif hours_param:
-                # Wenn 'hours' Parameter vorhanden, berechne from_time
                 from_time = datetime.now(timezone.utc) - timedelta(hours=hours_param)
                 to_time = datetime.now(timezone.utc)
             elif from_param:
-                # Expliziter from-Parameter
                 try:
                     from_time = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
                 except ValueError:
@@ -311,23 +248,19 @@ def register_moodlight_endpoints(app):
                     except ValueError:
                         return jsonify({"error": "Ungültiges 'to' Format (ISO8601 erwartet)"}), 400
             else:
-                # Keine Parameter: Default 7 Tage
                 from_time = datetime.now(timezone.utc) - timedelta(days=7)
                 to_time = datetime.now(timezone.utc)
 
-            # B-PERF: Redis-Cache mit 120s TTL — Key inkl. aller Parameter, damit
-            # unterschiedliche Anfragen (hours/all/from/to/limit) nicht kollidieren
+            # Key enthält alle Parameter, damit verschiedene Anfragen nicht kollidieren.
             cache_key = f"moodlight:history:{all_param}:{hours_param}:{from_param}:{to_param}:{limit}"
             cache = get_cache()
             cached = cache.get(cache_key)
             if cached is not None:
                 return jsonify(cached)
 
-            # Daten aus DB holen
             db = get_database()
             history = db.get_sentiment_history(from_time, to_time, limit)
 
-            # Timestamps zu ISO-Format konvertieren
             for entry in history:
                 if isinstance(entry.get('timestamp'), datetime):
                     entry['timestamp'] = entry['timestamp'].isoformat()
@@ -346,11 +279,9 @@ def register_moodlight_endpoints(app):
     # ===== TREND ENDPOINT =====
     @app.route('/api/moodlight/trend', methods=['GET'])
     def get_moodlight_trend():
-        """
-        Trend-Analyse: Aktuell vs. 24h vs. 7d Durchschnitt
-        """
+        """Trend-Analyse: aktuell gegen 24h- und 7-Tage-Durchschnitt."""
         try:
-            # B-PERF: Redis-Cache mit 120s TTL
+            # Redis-Cache mit 120 s TTL
             cache_key = "moodlight:trend"
             cache = get_cache()
             cached = cache.get(cache_key)
@@ -359,20 +290,17 @@ def register_moodlight_endpoints(app):
 
             db = get_database()
 
-            # Aktuelle Daten
             latest = db.get_latest_sentiment()
             if not latest:
                 return jsonify({"error": "Keine Daten verfügbar"}), 503
 
             current_score = latest['sentiment_score']
 
-            # Statistiken
             stats = db.get_statistics()
 
             avg_24h = float(stats.get('avg_sentiment_24h', 0))
             avg_7d = float(stats.get('avg_sentiment_7d', 0))
 
-            # Trend berechnen
             change_24h = current_score - avg_24h
 
             if abs(change_24h) < 0.05:
@@ -402,11 +330,9 @@ def register_moodlight_endpoints(app):
     # ===== STATISTICS ENDPOINT =====
     @app.route('/api/moodlight/stats', methods=['GET'])
     def get_moodlight_stats():
-        """
-        System-Statistiken: Geräte, Analysen, Uptime
-        """
+        """System-Statistiken: Geräte, Analysen, Uptime."""
         try:
-            # B-PERF: Redis-Cache mit 120s TTL
+            # Redis-Cache mit 120 s TTL
             cache_key = "moodlight:stats"
             cache = get_cache()
             cached = cache.get(cache_key)
@@ -435,19 +361,13 @@ def register_moodlight_endpoints(app):
     # ===== DEVICES ENDPOINT =====
     @app.route('/api/moodlight/devices', methods=['GET'])
     def get_moodlight_devices():
-        """
-        Liste aller aktiven Geräte (last_seen < 2h)
-
-        Query-Parameter:
-            hours: Zeitfenster in Stunden (default: 2)
-        """
+        """Liste aller aktiven Geräte (last_seen < 2h)."""
         try:
             hours = request.args.get('hours', 2, type=int)
 
             db = get_database()
             devices = db.get_active_devices(hours=hours)
 
-            # Timestamps konvertieren
             for device in devices:
                 if isinstance(device.get('last_seen'), datetime):
                     device['last_seen'] = device['last_seen'].isoformat()
@@ -467,14 +387,12 @@ def register_moodlight_endpoints(app):
     @app.route('/api/moodlight/cache/clear', methods=['POST'])
     @api_login_required
     def clear_moodlight_cache():
-        """
-        Lösche Redis-Cache (für manuelle Aktualisierung)
-        """
+        """Lösche Redis-Cache (für manuelle Aktualisierung)."""
         try:
             cache = get_cache()
             cache.delete(CURRENT_CACHE_KEY)
             cache.delete(CACHE_KEY_CURRENT_LEGACY)  # Alten Key beim nächsten Clear-Aufruf bereinigen
-            # B-PERF: neue history/trend/stats/feeds-trends-Caches ebenfalls loeschen
+            # Auch die Caches für history, trend, stats und feeds-trends löschen
             cache.delete_pattern("moodlight:history:*")
             cache.delete_pattern("moodlight:trend")
             cache.delete_pattern("moodlight:stats")
@@ -491,15 +409,11 @@ def register_moodlight_endpoints(app):
             logger.error(f"Fehler beim Cache-Löschen: {e}", exc_info=True)
             return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
-    # ===== MANUELLER ANALYSE-TRIGGER (CTRL-01, API-02) =====
+    # ===== MANUELLER ANALYSE-TRIGGER =====
     @app.route('/api/moodlight/analyze/trigger', methods=['POST'])
     @api_login_required
     def trigger_moodlight_analysis():
-        """
-        Startet sofortige Sentiment-Analyse (manueller Trigger vom Dashboard).
-        Synchroner Request — dauert ca. 10–30 Sekunden.
-        Gibt Analyse-Ergebnis zurück: sentiment_score, category, headlines_analyzed.
-        """
+        """Startet sofortige Sentiment-Analyse (manueller Trigger vom Dashboard)."""
         try:
             worker = get_background_worker()
             if worker is None:
@@ -533,14 +447,11 @@ def register_moodlight_endpoints(app):
 
     @app.route('/api/moodlight/feeds', methods=['GET'])
     def get_moodlight_feeds():
-        """
-        Alle RSS-Feeds mit Status zurückgeben (FEED-02)
-        """
+        """Alle RSS-Feeds mit Status zurückgeben."""
         try:
             db = get_database()
             feeds = db.get_all_feeds()
 
-            # Timestamps zu ISO-Format konvertieren
             for feed in feeds:
                 if isinstance(feed.get('last_fetched_at'), datetime):
                     feed['last_fetched_at'] = feed['last_fetched_at'].isoformat()
@@ -563,12 +474,7 @@ def register_moodlight_endpoints(app):
     @app.route('/api/moodlight/feeds', methods=['POST'])
     @api_login_required
     def add_moodlight_feed():
-        """
-        Neuen RSS-Feed hinzufügen mit URL-Validierung (FEED-03, FEED-05)
-
-        Body (JSON): {"url": "https://...", "name": "Feed-Name"}
-        Gibt 201 bei Erfolg, 400 bei fehlenden Feldern, 409 bei Duplikat, 422 bei nicht erreichbarer URL.
-        """
+        """Neuen RSS-Feed hinzufügen mit URL-Validierung."""
         try:
             data = request.get_json(silent=True)
             if not data:
@@ -582,19 +488,12 @@ def register_moodlight_endpoints(app):
             if not name:
                 return jsonify({"status": "error", "message": "Feld 'name' fehlt oder leer"}), 400
 
-            # SSRF-Guard (B-MITTEL): Backend ist oeffentlich im Internet — ohne diese
-            # Pruefung koennte ein Feed mit URL auf ein internes Ziel (localhost,
-            # 169.254.169.254 Metadata-Endpoint, RFC1918-Netz) angelegt werden und
-            # der Worker wuerde regelmaessig interne Dienste abfragen (SSRF).
-            # Fruehe Ablehnung ohne Netzwerkzugriff; die Redirect-Kette prueft
-            # _safe_get_following_redirects unten Hop fuer Hop erneut.
+            # SSRF-Schutz: keine Feeds auf interne Ziele; Redirects prüft _safe_get_following_redirects je Hop.
             ssrf_error = _validate_feed_url_ssrf(url)
             if ssrf_error:
                 return jsonify({"status": "error", "message": ssrf_error}), 422
 
-            # URL-Validierung: Erreichbarkeit prüfen (FEED-05).
-            # Redirects werden manuell verfolgt, damit jeder Hop erneut gegen den
-            # SSRF-Guard laeuft (sonst umgeht ein 302 auf ein internes Ziel die Pruefung).
+            # Redirects von Hand verfolgen, damit jeder Hop den SSRF-Schutz durchläuft.
             try:
                 resp, redirect_error = _safe_get_following_redirects(url, timeout=5)
                 if redirect_error:
@@ -616,15 +515,13 @@ def register_moodlight_endpoints(app):
                     "message": "Feed-URL nicht erreichbar: Verbindungsfehler"
                 }), 422
             except http_requests.exceptions.RequestException as e:
-                # Der requests-Fehlertext enthaelt Hostnamen, Ports und Proxy-Details —
-                # nur ins Log, dem Client genuegt die generische Meldung
+                # Fehlertext nur ins Log, er enthält Hostnamen und Ports.
                 logger.warning(f"Feed-URL nicht abrufbar ({url}): {e}")
                 return jsonify({
                     "status": "error",
                     "message": "Feed-URL ungültig oder nicht abrufbar"
                 }), 422
 
-            # In DB anlegen
             db = get_database()
             try:
                 new_feed = db.add_feed(name=name, url=url)
@@ -632,7 +529,6 @@ def register_moodlight_endpoints(app):
                 # Duplikat (UniqueViolation)
                 return jsonify({"status": "error", "message": str(e)}), 409
 
-            # Timestamps konvertieren
             if isinstance(new_feed.get('created_at'), datetime):
                 new_feed['created_at'] = new_feed['created_at'].isoformat()
 
@@ -647,11 +543,7 @@ def register_moodlight_endpoints(app):
     @app.route('/api/moodlight/feeds/<int:feed_id>', methods=['DELETE'])
     @api_login_required
     def delete_moodlight_feed(feed_id):
-        """
-        RSS-Feed entfernen (FEED-04)
-
-        Gibt 204 bei Erfolg, 404 wenn ID nicht gefunden.
-        """
+        """RSS-Feed entfernen."""
         try:
             db = get_database()
             deleted = db.delete_feed(feed_id)
@@ -666,15 +558,10 @@ def register_moodlight_endpoints(app):
             logger.error(f"Fehler in DELETE /api/moodlight/feeds/{feed_id}: {e}", exc_info=True)
             return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
-    # ===== HEADLINES ENDPOINT (HEAD-02) =====
+    # ===== HEADLINES ENDPOINT =====
     @app.route('/api/moodlight/headlines', methods=['GET'])
     def get_moodlight_headlines():
-        """
-        Letzte analysierte Headlines mit Einzel-Scores und Feed-Zuordnung.
-
-        Query-Parameter:
-            limit: Anzahl Headlines (default: 50, max: 500)
-        """
+        """Letzte analysierte Headlines mit Einzel-Scores und Feed-Zuordnung."""
         try:
             limit = min(request.args.get('limit', 50, type=int), 500)
             if limit < 1:
@@ -693,15 +580,12 @@ def register_moodlight_endpoints(app):
             logger.error(f"Fehler in /api/moodlight/headlines: {e}", exc_info=True)
             return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
-    # ===== SETTINGS ENDPOINTS (CFG-03, API-01) =====
+    # ===== SETTINGS ENDPOINTS =====
 
     @app.route('/api/moodlight/settings', methods=['GET'])
     @api_login_required
     def get_moodlight_settings():
-        """
-        Aktuelle Backend-Einstellungen zurückgeben (CFG-01, API-01).
-        API Key wird maskiert zurückgegeben: erste 10 Zeichen + '****'
-        """
+        """Aktuelle Backend-Einstellungen zurückgeben."""
         try:
             db = get_database()
             settings = db.get_all_settings()
@@ -739,18 +623,7 @@ def register_moodlight_endpoints(app):
     @app.route('/api/moodlight/settings', methods=['PUT'])
     @api_login_required
     def update_moodlight_settings():
-        """
-        Einstellungen aktualisieren und sofort wirksam machen (CFG-03, API-01).
-
-        Body (JSON, alle Felder optional):
-          {
-            "analysis_interval_minutes": 30,   -- Analyse-Frequenz in Minuten
-            "headlines_per_source": 2,          -- Headlines pro RSS-Feed
-            "anthropic_api_key": "sk-ant-...",  -- Neuer API Key (leer = unverändert)
-            "admin_password": "neues_pw",       -- Neues Admin-Passwort
-            "current_password": "altes_pw"      -- Pflichtfeld wenn admin_password gesetzt
-          }
-        """
+        """Einstellungen aktualisieren und sofort wirksam machen."""
         try:
             data = request.get_json(silent=True)
             if not data:
@@ -811,7 +684,6 @@ def register_moodlight_endpoints(app):
                 if not current_password:
                     return jsonify({"status": "error", "message": "current_password ist Pflichtfeld beim Passwort-Ändern"}), 400
 
-                # Altes Passwort prüfen
                 try:
                     import app as main_app
                     from werkzeug.security import check_password_hash, generate_password_hash
@@ -839,24 +711,16 @@ def register_moodlight_endpoints(app):
             logger.error(f"Fehler in PUT /api/moodlight/settings: {e}", exc_info=True)
             return jsonify({"status": "error", "message": "Interner Serverfehler"}), 500
 
-    # ===== FEED-TRENDS ENDPOINT (TREND-01, TREND-02) =====
+    # ===== FEED-TRENDS ENDPOINT =====
     @app.route('/api/moodlight/feeds/trends', methods=['GET'])
     def get_moodlight_feed_trends():
-        """
-        Durchschnitts-Score pro Feed für ein Zeitfenster.
-
-        Query-Parameter:
-            days: Zeitfenster in Tagen (default: 7, erlaubt: 7, 30)
-
-        Returns:
-            JSON mit status, days, count, feeds (sortiert nach avg_score DESC).
-        """
+        """Durchschnitts-Score pro Feed für ein Zeitfenster."""
         try:
             days_param = request.args.get('days', 7, type=int)
             if days_param not in (7, 30):
                 days_param = 7
 
-            # B-PERF: Redis-Cache mit 120s TTL — Key inkl. days-Parameter
+            # Redis-Cache mit 120 s TTL, Key mit days-Parameter
             cache_key = f"moodlight:feeds:trends:{days_param}"
             cache = get_cache()
             cached = cache.get(cache_key)

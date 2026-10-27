@@ -1,15 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Unit-Tests für die Worker-Lebensdauer-Fixes (Review-Runde 2, B-MITTEL).
-
-Deckt die drei bestätigten Bugs in SentimentUpdateWorker._worker_loop() ab:
-1. Thread stirbt nicht dauerhaft, wenn reconfigure() während der ersten 10s
-   Startverzögerung aufgerufen wird (vorher: jedes Event.set() beendete den Thread).
-2. Ein Wake durch reconfigure() löst KEINE sofortige Analyse aus (Vertrag von
-   reconfigure() ist reines Intervall-Update, nicht "jetzt analysieren").
-3. Die Deadline wird nach reconfigure() korrekt gegen das neue interval_seconds
-   neu berechnet.
-"""
+"""Unit-Tests für die Worker-Lebensdauer-Fixes."""
 
 import sys
 import os
@@ -46,10 +36,7 @@ class TestWorkerLifecycle(unittest.TestCase):
         return worker
 
     def test_reconfigure_waehrend_startverzoegerung_beendet_thread_nicht(self):
-        """
-        Bug 1: reconfigure() innerhalb der ersten 10s darf den Worker-Thread
-        NICHT dauerhaft beenden — nur stop() darf das.
-        """
+        """Bug 1: reconfigure() innerhalb der ersten 10s darf den Worker-Thread NICHT dauerhaft beenden — nur stop() darf das."""
         worker = self._make_worker()
 
         with patch.object(worker, '_perform_update') as mock_perform:
@@ -68,10 +55,7 @@ class TestWorkerLifecycle(unittest.TestCase):
             self.assertFalse(worker.thread.is_alive())
 
     def test_reconfigure_loest_keine_sofortige_analyse_aus(self):
-        """
-        Bug 3: reconfigure() darf NICHT sofort _perform_update() ausloesen —
-        nur das Intervall aendert sich, trigger() bleibt der Weg für Sofort-Analysen.
-        """
+        """Bug 3: reconfigure() darf NICHT sofort _perform_update() ausloesen — nur das Intervall aendert sich, trigger() bleibt der Weg für Sofort-Analysen."""
         worker = self._make_worker()
 
         with patch.object(worker, '_perform_update') as mock_perform:
@@ -86,11 +70,7 @@ class TestWorkerLifecycle(unittest.TestCase):
             worker.stop()
 
     def test_reconfigure_aendert_intervall_sofort_wirksam(self):
-        """
-        Deadline wird nach reconfigure() gegen das NEUE interval_seconds neu
-        berechnet — mit einem sehr kurzen neuen Intervall muss die naechste
-        Analyse zeitnah erfolgen (nicht erst nach dem urspruenglichen langen Intervall).
-        """
+        """Deadline wird nach reconfigure() gegen das NEUE interval_seconds neu berechnet — mit einem sehr kurzen neuen Intervall muss die naechste Analyse zeitnah erfolgen (nicht erst nach dem urspruenglichen langen Intervall)."""
         worker = self._make_worker()
 
         with patch.object(worker, '_perform_update') as mock_perform:
@@ -100,9 +80,7 @@ class TestWorkerLifecycle(unittest.TestCase):
             # Intervall auf sehr kurz aendern — Analyse sollte danach zeitnah erfolgen
             worker.reconfigure(interval_seconds=1)
 
-            # Warten bis (deutlich) laenger als das neue Intervall, aber kuerzer
-            # als das urspruengliche (3600s) — beweist, dass die Deadline neu
-            # berechnet wurde und nicht das alte lange Intervall gilt
+            # Länger als das neue, kürzer als das alte Intervall: belegt die neue Deadline.
             time.sleep(2.0)
 
             self.assertTrue(mock_perform.called, "Analyse wurde nicht innerhalb des neuen kurzen Intervalls ausgeloest")

@@ -20,10 +20,7 @@ function refreshLog() {
     .then(data => {
       const log = document.getElementById('logContent');
       if (log) {
-        // C-HOCH-1: textContent statt innerHTML (XSS-sicher, Log-Zeilen koennen
-        // beliebige Zeichen enthalten). .logs { white-space: pre-wrap; } in
-        // style.css sorgt dafuer, dass Zeilenumbrueche weiterhin sichtbar sind
-        // (behebt die Regression, dass das Log seit dem text/plain-Umbau einzeilig war)
+        // textContent statt innerHTML: Log-Zeilen können beliebige Zeichen enthalten.
         log.textContent = data;
         log.scrollTop = log.scrollHeight;
       }
@@ -31,14 +28,10 @@ function refreshLog() {
     .catch(err => console.error('Log error:', err));
 }
 
-// In-Flight-Guard gegen überlappende Requests — verhindert, dass ein
-// langsamer Request von einem später gestarteten überholt wird und die UI
-// mit veralteten Daten überschreibt
+// Verhindert, dass ein langsamer Request die UI mit veralteten Daten überschreibt.
 let refreshStatusInFlight = false;
 
-// Update-Banner auf der Startseite ein-/ausblenden.
-// Zeigt nur an, was das Gerät beim letzten stündlichen Poll erfahren hat —
-// löst selbst keine Suche aus, das macht die Firmware.
+// Zeigt nur den Stand des letzten stündlichen Polls der Firmware, sucht selbst nicht.
 function refreshUpdateBanner() {
   const banner = document.getElementById('update-banner');
   if (!banner) return;
@@ -70,8 +63,7 @@ function refreshUpdateBanner() {
       banner.style.display = 'flex';
     })
     .catch(() => {
-      // Ältere Firmware kennt /api/update/status nicht — dann bleibt das
-      // Banner einfach aus, statt einen Fehler zu zeigen
+      // Ältere Firmware kennt /api/update/status nicht; dann bleibt das Banner aus.
       banner.style.display = 'none';
     });
 }
@@ -90,7 +82,6 @@ function refreshStatus() {
       updatePercentile(data);
       updateSwitches(data);
 
-      // Version aktualisieren
       const versionEl = document.getElementById('version');
       if (versionEl && data.version) {
         versionEl.textContent = 'v' + data.version;
@@ -103,8 +94,7 @@ function refreshStatus() {
 // Sentiment aktualisieren
 function refreshSentiment() {
   const btn = document.querySelector('button[onclick="refreshSentiment()"]');
-  // C-NIEDRIG: Label ueber einen separaten Span setzen statt btn.textContent —
-  // btn.textContent wuerde das <i class="fas fa-sync-alt">-Icon-Element loeschen
+  // Eigener Span, weil btn.textContent das Icon löschen würde.
   const label = document.getElementById('refresh-btn-label');
   if (btn) {
     btn.disabled = true;
@@ -124,9 +114,7 @@ function refreshSentiment() {
       return response.text();
     })
     .then(() => {
-      // C-NIEDRIG: 3x im 3s-Abstand nachpollen statt einmal nach 2s — der
-      // Sentiment-Abruf auf dem Geraet dauert variabel lang (HTTP-Request an
-      // das Backend), ein einzelner Poll nach 2s zeigte oft noch den alten Wert
+      // Mehrfach nachpollen, weil der Abruf auf dem Gerät unterschiedlich lange dauert.
       let pollCount = 0;
       const maxPolls = 3;
       const poll = () => {
@@ -163,8 +151,7 @@ function updateStats(data) {
   const dhtEl = document.getElementById('dht');
   
   if (dhtRow) {
-    // visibility statt display: Kachel behaelt ihren Platz im Grid, wodurch
-    // kein Reflow der .stat-tiles-Spaltenaufteilung ausgeloest wird
+    // visibility statt display, damit das Grid nicht umbricht.
     if (data.dhtEnabled) {
       dhtRow.style.visibility = 'visible';
       if (dhtEl && data.dht !== undefined) {
@@ -260,11 +247,7 @@ function updateMood(data) {
   }
 
   if (cls) {
-    // C-MITTEL: Kategorie aus der Backend-Kategorie ableiten statt eigener
-    // JS-Schwellenberechnung — data.sentiment hat das Format "0.23 (positiv)",
-    // die Kategorie in Klammern kommt direkt vom Backend/Firmware
-    // (appState.sentimentCategory) und ist die "single source of truth".
-    // Fallback auf ledIndex-basierte Ableitung falls das Format unerwartet ist.
+    // Kategorie kommt vom Backend ("0.23 (positiv)"); Fallback über ledIndex.
     const categoryMatch = data.sentiment.match(/\(([^)]+)\)/);
     const categoryText = categoryMatch ? categoryMatch[1].trim().toLowerCase() : null;
     const displayName = categoryText ? capitalizeFirst(categoryText) : getMoodClass(value);
@@ -282,9 +265,7 @@ function capitalizeFirst(text) {
 }
 
 function getMoodColor(value) {
-  // C-NIEDRIG: "Sehr positiv" bekommt eine eigene Farbe (#12b886) statt mit
-  // "Positiv" (#20c997) zu verschmelzen — beide Stufen waren zuvor visuell
-  // ununterscheidbar
+  // "Sehr positiv" mit eigener Farbe, sonst von "Positiv" nicht zu unterscheiden.
   return value >= 0.30 ? '#12b886' :
          value >= 0.10 ? '#20c997' :
          value >= -0.20 ? '#6c757d' :
@@ -321,7 +302,6 @@ function updatePercentile(data) {
   document.getElementById('pct-badge').textContent = pct + '. Pzt.';
   document.getElementById('pct-desc').textContent = 'Der aktuelle Score (' + score.toFixed(2) + ') liegt über ' + pct + ' % der Werte der letzten 7 Tage.';
 
-  // Bereich und Nadel positionieren
   var range = h.max - h.min;
   if (range > 0) {
     var rangeLeft = 0;
@@ -364,13 +344,11 @@ function updatePercentile(data) {
   document.getElementById('pct-led-dot').style.background = ledColors[ledIdx];
   document.getElementById('pct-led-text').innerHTML = 'Das Moodlight zeigt <strong style="color:var(--primary);">' + ledNames[ledIdx] + '</strong> (LED-Index ' + ledIdx + ' = \u201E' + ledNames[ledIdx].toLowerCase() + '\u201C). Der aktuelle Score ist relativ zur letzten Woche im <strong style="color:var(--primary);">' + pct + '. Perzentil</strong>.';
 
-  // Regenbogen-Balken dynamisch einfärben
   var rangeEl = document.getElementById('pct-range');
   if (rangeEl) {
     rangeEl.style.background = 'linear-gradient(to right, ' + ledColors.join(', ') + ')';
   }
 
-  // Fallback-Hinweis
   document.getElementById('pct-fallback').style.display = t.fallback ? '' : 'none';
 
   // LED-Farbstufen (jedes Mal neu rendern, da Farben sich ändern können)
@@ -413,20 +391,14 @@ function updateSwitches(data) {
     modeSwitch.disabled = false;
   }
   if (modeText) modeText.textContent = data.mode;
-  // C-NIEDRIG: Waehrend der Nutzer den Slider zieht (Flag von index.html
-  // pointerdown/pointerup gesetzt) den Wert NICHT vom Poll ueberschreiben lassen —
-  // sonst springt der Slider waehrend des Ziehens auf den zuletzt vom Geraet
-  // gemeldeten Wert zurueck
+  // Während des Ziehens überschreibt der Poll den Slider nicht.
   if (!window.brightnessSliderActive) {
     if (brightness) brightness.value = data.brightness || 255;
     if (brightnessVal) brightnessVal.textContent = data.brightness || 255;
   }
 }
 
-// Control functions
-// Alle vier Steuerfunktionen: .catch() ergänzt — bei Netzwerkfehlern wird
-// refreshStatus() trotzdem aufgerufen, damit die UI den tatsächlichen Geräte-
-// Zustand zeigt statt eines optimistisch angenommenen (Rollback bei Fehlschlag).
+// Bei Netzwerkfehlern trotzdem refreshStatus(), damit die UI den echten Gerätezustand zeigt.
 function toggleLight() {
   fetch('/toggle-light')
     .then(() => setTimeout(refreshStatus, 300))
@@ -467,22 +439,17 @@ function setBrightness(value) {
 
 // Initialization
 window.onload = function() {
-  // Dark mode initialization
   if (localStorage.getItem('darkMode') === 'true') {
     document.body.classList.add('dark');
     const themeBtn = document.getElementById('theme-btn');
     if (themeBtn) themeBtn.innerHTML = '☀️';
   }
   
-  // Status-Polling nur auf dem Dashboard: script.js wird auch von mood.html
-  // mitgeladen, das kein #leds-Element hat und /api/status nicht braucht.
+  // Nur auf dem Dashboard: mood.html lädt script.js mit, hat aber kein #leds.
   const isDashboard = document.getElementById('leds') !== null;
 
   clearInterval(refreshStatusInterval);
-  // Log-Polling wird nicht mehr hier gestartet — #logContent liegt seit dem
-  // Umzug in setup.html/Info-Tab und wird dort tab-gebunden von setup.js
-  // (startLogPolling()/stopLogPolling()) gesteuert, damit /logs nicht dauerhaft
-  // im Hintergrund gepollt wird, waehrend ein anderer Tab aktiv ist
+  // Log-Polling steuert setup.js je nach aktivem Tab.
   clearInterval(refreshLogInterval);
 
   if (isDashboard) {
@@ -490,14 +457,11 @@ window.onload = function() {
     // Alle 5 s, damit die Lampe nicht unnötig mit Anfragen belastet wird
     refreshStatusInterval = setInterval(refreshStatus, 5000);
 
-    // Update-Banner getrennt vom Status-Polling: /api/update/status liest den
-    // zuletzt geholten Stand aus dem RAM, muss aber nicht im 5-Sekunden-Takt
-    // abgefragt werden. Das Gerät selbst sucht ohnehin nur stündlich.
+    // Seltener als der Status, das Gerät sucht ohnehin nur stündlich.
     refreshUpdateBanner();
     setInterval(refreshUpdateBanner, 300000);  // alle 5 Minuten
   }
 
-  // Setup color grid
   const colors = ['#ffffff', '#e9ecef', '#adb5bd', '#495057', '#20c997', '#0dcaf0', '#6610f2', '#e83e3e'];
   const grid = document.getElementById('color-grid');
   
@@ -515,7 +479,6 @@ window.onload = function() {
     });
   }
   
-  // Call page-specific init if defined
   if (typeof pageInit === 'function') {
     pageInit();
   }

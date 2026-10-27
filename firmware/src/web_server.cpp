@@ -1,9 +1,4 @@
-// ========================================================
-// Web-Server Modul
-// ========================================================
-// Alle Web-Server-Funktionen, API-Handler, File-Handler,
-// Upload-Handler, JsonBufferPool und Datei-Hilfsfunktionen.
-// Extrahiert aus moodlight.cpp (Plan 07-06).
+// Web-Server: API-, Datei- und Upload-Handler.
 
 #include "web_server.h"
 
@@ -54,9 +49,7 @@ extern NetworkDiagnostics netDiag;
 extern SystemHealthCheck sysHealth;
 extern SafeFileOps fileOps;
 
-// ===== JSON-Puffer-Pool =====
-// 4096 reicht fuer alle Pool-Antworten (Status ~2 KB, serializeJson-Aufrufe
-// werden gegen dieses Limit geprueft) — 16384 war unnoetig grosszuegig (A-MITTEL Flash/RAM)
+// JSON-Puffer-Pool: 4096 reicht, serializeJson wird gegen das Limit geprüft.
 #define JSON_BUFFER_SIZE 4096
 #define JSON_BUFFER_COUNT 2
 
@@ -65,7 +58,6 @@ struct JsonBufferPool {
     bool inUse[JSON_BUFFER_COUNT];
     SemaphoreHandle_t mutex;
 
-    // Initialisiert den Pool
     void init() {
         mutex = xSemaphoreCreateMutex();
         for (int i = 0; i < JSON_BUFFER_COUNT; i++) {
@@ -74,7 +66,6 @@ struct JsonBufferPool {
         debug(F("JSON-Puffer-Pool initialisiert"));
     }
 
-    // Reserviert einen Puffer
     char* acquire() {
         if (xSemaphoreTake(mutex, 100 / portTICK_PERIOD_MS) == pdTRUE) {
             for (int i = 0; i < JSON_BUFFER_COUNT; i++) {
@@ -91,7 +82,6 @@ struct JsonBufferPool {
         return new char[JSON_BUFFER_SIZE];
     }
 
-    // Gibt einen Puffer frei
     void release(char* buffer) {
         if (!buffer) return;
         if (xSemaphoreTake(mutex, 100 / portTICK_PERIOD_MS) == pdTRUE) {
@@ -104,8 +94,7 @@ struct JsonBufferPool {
             }
             xSemaphoreGive(mutex);
         }
-        // KRITISCHER FIX: delete[] IMMER wenn nicht im Pool —
-        // unabhaengig ob Mutex erfolgreich war
+        // delete[] immer, wenn nicht im Pool, auch wenn der Mutex scheiterte.
         delete[] buffer;
     }
 };
@@ -116,13 +105,9 @@ void initJsonPool() {
     jsonPool.init();
 }
 
-// A-NIEDRIG: JsonBufferGuard entfernt — ungenutzt, kein Aufrufer im Code
 
 // ===== Datei-Hilfsfunktionen =====
 
-// Helper function to copy a file
-// A-NIEDRIG: char[64]-Zwischenpuffer entfernt — String::c_str() direkt verwendet
-// (Puffer haette laengere Pfade stillschweigend abgeschnitten)
 bool copyFile(const String& source, const String& destination) {
     if (!LittleFS.exists(source)) {
         debug("Quelldatei existiert nicht: " + source);
@@ -247,7 +232,6 @@ void initFS() {
         }
     }
 
-    // Create required directories if they don't exist
     const char* directories[] = {"/data", "/temp", "/extract", "/extract/css", "/extract/js", "/backup", "/css", "/js"};
     for (const char* dir : directories) {
         if (!LittleFS.exists(dir)) {
@@ -269,9 +253,7 @@ void initFS() {
         }
     }
 
-    // /firmware-version.txt wird nicht mehr angelegt: die Firmware-Version kommt
-    // ausschliesslich aus SOFTWARE_VERSION. Eine Datei im Flash ueberlebt einen
-    // USB-Flash und meldet danach eine veraltete Version.
+    // Keine /firmware-version.txt: sie überlebt einen USB-Flash und meldet dann eine alte Version.
 }
 
 // ===== Versions-Abfragen =====
@@ -287,24 +269,17 @@ String getCurrentUiVersion() {
         }
     }
 
-    // Default version if file doesn't exist - match SOFTWARE_VERSION
     return String(SOFTWARE_VERSION);
 }
 
 String getCurrentFirmwareVersion() {
-    // Immer die einkompilierte Version melden — sie ist die einzige Quelle, die
-    // nicht veralten kann. Zuvor wurde /firmware-version.txt aus dem Flash
-    // gelesen; diese Datei wird aber nur beim OTA-Update geschrieben und blieb
-    // nach einem USB-Flash auf dem alten Stand. Ergebnis: /api/firmware-version
-    // meldete 9.14, waehrend /api/status (das SOFTWARE_VERSION nutzt) korrekt
-    // 9.15 auswies.
+    // Einkompilierte Version, die einzige Quelle, die nicht veraltet.
     return String(SOFTWARE_VERSION);
 }
 
 // ===== Speicherinformationen =====
 
 void getStorageInfo(uint64_t &totalBytes, uint64_t &usedBytes, uint64_t &freeBytes) {
-    // A-NIEDRIG: LittleFS.begin()-Aufruf entfernt — FS ist bereits ueber initFS() gemountet
     totalBytes = LittleFS.totalBytes();
     usedBytes = LittleFS.usedBytes();
     freeBytes = totalBytes - usedBytes;
@@ -328,7 +303,7 @@ void handleStaticFile(String path) {
         path = "/" + path;
     }
 
-    // Direkt oeffnen statt exists()+open() — vermeidet doppelten Dateisystem-Zugriff (A-NIEDRIG)
+    // Direkt öffnen statt exists()+open(), spart einen Dateisystem-Zugriff.
     File file = LittleFS.open(path, "r");
     if (file) {
         if (isCacheable) {
@@ -345,7 +320,7 @@ void handleStaticFile(String path) {
 
 // ===== UI-Upload Handler =====
 
-// Statisches Erfolgs-/Fehlerflag ueber Extraktion, Kopieren und Platzpruefung hinweg (A-HOCH-4)
+// Statisches Erfolgsflag über Extraktion, Kopieren und Platzprüfung hinweg
 static bool uiUploadSuccess = false;
 static String uiUploadError = "";
 static File uiUploadFile;
@@ -366,7 +341,6 @@ void handleUiUpload() {
         Serial.printf("UI Upload: %s\n", filename.c_str());
         debug(String(F("UI Upload gestartet: ")) + filename);
 
-        // Check if it's a TGZ file
         isTgzFile = filename.endsWith(".tgz") || filename.endsWith(".tar.gz");
         if (!isTgzFile) {
             debug(F("Fehler: Keine TGZ-Datei"));
@@ -374,8 +348,7 @@ void handleUiUpload() {
             return;
         }
 
-        // Platzpruefung vor Upload-Start — freie Bytes muessen mind. 3x Content-Length sein
-        // (Original-TGZ + entpackte Dateien + Backup)
+        // Freier Platz muss mindestens 3x Content-Length sein (TGZ, entpackt, Backup).
         int contentLength = server.clientContentLength();
         if (contentLength > 0) {
             uint64_t total, used, free;
@@ -399,7 +372,6 @@ void handleUiUpload() {
             }
         }
 
-        // Create all required directories first
         if (!LittleFS.exists("/temp")) {
             debug(F("Erstelle Verzeichnis /temp"));
             if (!LittleFS.mkdir("/temp")) {
@@ -418,7 +390,6 @@ void handleUiUpload() {
             }
         }
 
-        // Create required subdirectories
         if (!LittleFS.exists("/extract/css")) {
             LittleFS.mkdir("/extract/css");
         }
@@ -427,7 +398,6 @@ void handleUiUpload() {
             LittleFS.mkdir("/extract/js");
         }
 
-        // Clean temp directory
         debug(F("Lösche alten Inhalt in /temp"));
         File tempRoot = LittleFS.open("/temp");
         if (tempRoot && tempRoot.isDirectory()) {
@@ -439,7 +409,6 @@ void handleUiUpload() {
             }
         }
 
-        // Clean extract directory
         debug(F("Lösche alten Inhalt in /extract"));
         File extractRoot = LittleFS.open("/extract");
         if (extractRoot && extractRoot.isDirectory()) {
@@ -454,7 +423,7 @@ void handleUiUpload() {
         uploadPath = "/temp/" + filename;
         debug(String(F("Upload-Pfad: ")) + uploadPath);
 
-        // Datei-Handle EINMAL pro Upload oeffnen (nicht bei jedem WRITE neu) — A-MITTEL Upload-Robustheit
+        // Datei-Handle einmal pro Upload öffnen, nicht bei jedem WRITE.
         uiUploadFile = LittleFS.open(uploadPath, "w");
         if (!uiUploadFile) {
             debug(F("Fehler beim Erstellen der TGZ-Datei"));
@@ -494,13 +463,10 @@ void handleUiUpload() {
         debug(String(F("UI Upload abgeschlossen: ")) + upload.totalSize + F(" Bytes"));
         debug(F("Starte TAR-Extraktion..."));
 
-        // Ensure memory heap is sufficient
         debug(String(F("Verfügbarer Heap vor Extraktion: ")) + ESP.getFreeHeap());
 
-        // Initialize TarGzUnpacker with proper memory management
         TarGzUnpacker *TARGZUnpacker = new TarGzUnpacker();
 
-        // Configure unpacker with more verbose logging
         TARGZUnpacker->setTarVerify(false);  // Skip verification to save memory
         TARGZUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
         TARGZUnpacker->setGzProgressCallback(BaseUnpacker::defaultProgressCallback);
@@ -509,7 +475,6 @@ void handleUiUpload() {
         TARGZUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
         TARGZUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);
 
-        // Try the extraction with proper error reporting
         debug(String(F("Entpacke ")) + uploadPath + F(" nach /extract"));
         bool success = false;
 
@@ -527,14 +492,11 @@ void handleUiUpload() {
         if (success) {
             debug(F("TAR-Extraktion erfolgreich. Überprüfe Dateien..."));
 
-            // Manual file installation instead of checking for files
-            // Create backup directory if needed
             if (!LittleFS.exists("/backup")) {
                 debug(F("Erstelle Backup-Verzeichnis"));
                 LittleFS.mkdir("/backup");
             }
 
-            // Backup existing files
             debug(F("Erstelle Backup der aktuellen Dateien"));
             if (LittleFS.exists("/index.html"))
                 copyFile("/index.html", "/backup/index.html");
@@ -543,26 +505,22 @@ void handleUiUpload() {
             if (LittleFS.exists("/mood.html"))
                 copyFile("/mood.html", "/backup/mood.html");
 
-            // Ensure CSS and JS directories exist
             if (!LittleFS.exists("/css"))
                 LittleFS.mkdir("/css");
             if (!LittleFS.exists("/js"))
                 LittleFS.mkdir("/js");
 
-            // Copy main HTML files
             debug(F("Kopiere Hauptdateien"));
             copyFile("/extract/index.html", "/index.html");
             copyFile("/extract/setup.html", "/setup.html");
             copyFile("/extract/mood.html", "/mood.html");
 
-            // Copy CSS files
             debug(F("Kopiere CSS-Dateien"));
             if (LittleFS.exists("/extract/css/style.css"))
                 copyFile("/extract/css/style.css", "/css/style.css");
             if (LittleFS.exists("/extract/css/mood.css"))
                 copyFile("/extract/css/mood.css", "/css/mood.css");
 
-            // Copy JS files
             debug(F("Kopiere JS-Dateien"));
             if (LittleFS.exists("/extract/js/script.js"))
                 copyFile("/extract/js/script.js", "/js/script.js");
@@ -571,7 +529,6 @@ void handleUiUpload() {
             if (LittleFS.exists("/extract/js/setup.js"))
                 copyFile("/extract/js/setup.js", "/js/setup.js");
 
-            // Save version
             if (extractedVersion.length() > 0) {
                 debug(String(F("Speichere UI-Version: ")) + extractedVersion);
                 File versionFile = LittleFS.open("/ui-version.txt", "w");
@@ -605,7 +562,6 @@ void handleUiUpload() {
             debug(String(F("Fehler: ")) + uiUploadError);
         }
 
-        // Clean up
         debug(F("Aufräumen nach UI-Update"));
         LittleFS.remove(uploadPath);
         uploadPath = "";
@@ -622,7 +578,6 @@ void handleApiStatus() {
     doc["wifi"] = WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected";
     doc["mqtt"] = appState.mqttEnabled && mqtt.isConnected() ? "Connected" : (appState.mqttEnabled ? "Disconnected" : "Disabled");
 
-    // System Info
     unsigned long uptime = millis() / 1000;
     int days = uptime / 86400;
     int hours = (uptime % 86400) / 3600;
@@ -642,7 +597,6 @@ void handleApiStatus() {
     doc["brightness"] = appState.manualBrightness;
     doc["version"] = SOFTWARE_VERSION;
 
-    // LED-Farbe als Hex
     uint32_t currentColor;
     if (appState.autoMode) {
         appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
@@ -659,7 +613,6 @@ void handleApiStatus() {
     snprintf(hexColor, sizeof(hexColor), "#%02X%02X%02X", r, g, b);
     doc["ledColor"] = hexColor;
 
-    // Perzentil-Daten für Dashboard
     if (appState.initialAnalysisDone) {
         doc["percentile"] = appState.percentile;
         doc["ledIndex"] = appState.currentLedIndex;
@@ -684,7 +637,6 @@ void handleApiStatus() {
         historical["count"] = appState.histCount;
     }
 
-    // Status-LED Info
     if (appState.statusLedMode != 0) {
         char statusLedColor[8] = "#000000";
         switch (appState.statusLedMode) {
@@ -735,13 +687,13 @@ void handleApiStorageInfo() {
     jsonPool.release(jsonBuffer);
 }
 
-// ===== UPDATED IN v9.0: Stats from Backend =====
+// ===== Statistik vom Backend =====
 void handleApiStats() {
     int hours = 168;
     if (server.hasArg("hours")) {
         hours = server.arg("hours").toInt();
     }
-    hours = constrain(hours, 1, 720);  // A-HOCH-3: Clamp gegen OOM bei grossen Backend-Antworten
+    hours = constrain(hours, 1, 720);  // gegen OOM bei großen Backend-Antworten
 
     JsonDocument doc;
     if (fetchBackendStatistics(doc, hours)) {
@@ -811,7 +763,7 @@ void setupWebServer() {
     server.on("/mood", HTTP_GET, []()
               { handleStaticFile("/mood.html"); });
 
-    // System diagnostics API endpoints (diagnostics page removed, APIs kept for debugging)
+    // Diagnose-APIs für das Debugging
     server.on("/api/system/metrics", HTTP_GET, []() {
         JsonDocument doc;
 
@@ -882,10 +834,7 @@ void setupWebServer() {
         debug(F("Dateisystem-Bereinigung angefordert"));
         int cleanedFiles = 0;
 
-        // A-MITTEL: advance-then-delete-Muster (wie handleUiUpload Z. 429-434) —
-        // openNextFile() MUSS vor dem Loeschen/Schliessen der aktuellen Datei erfolgen,
-        // sonst wird der Verzeichnis-Iterator auf einem bereits geschlossenen Handle
-        // fortgesetzt (undefiniertes Verhalten, ueberspringt oder wiederholt Eintraege).
+        // openNextFile() vor dem Löschen, sonst läuft der Iterator auf einem geschlossenen Handle weiter.
         if (LittleFS.exists("/temp")) {
             File root = LittleFS.open("/temp");
             if (root && root.isDirectory()) {
@@ -938,16 +887,11 @@ void setupWebServer() {
         jsonPool.release(jsonBuffer);
     });
 
-    // API-Endpunkte für dynamische Daten
     server.on("/api/status", HTTP_GET, handleApiStatus);
     server.on("/api/stats", HTTP_GET, handleApiStats);
-    // server.on("/api/feeds", HTTP_GET, handleApiGetFeeds);
-    // server.on("/api/feeds", HTTP_POST, handleApiSaveFeeds);
 
     server.on("/api/storage", HTTP_GET, handleApiStorageInfo);
-    // setupArchiveEndpoints();
 
-    // Additional common files
     server.on("/favicon.ico", HTTP_GET, []() {
         if (LittleFS.exists("/favicon.ico")) {
             File file = LittleFS.open("/favicon.ico", "r");
@@ -969,8 +913,7 @@ void setupWebServer() {
 
     server.on("/ui-upload", HTTP_POST,
         []() {
-            // A-HOCH-4: Completion-Handler wertet das statische Erfolgs-/Fehlerflag aus
-            // statt bedingungslos 200 zu senden
+            // Auf das Erfolgsflag prüfen statt immer 200 zu senden.
             if (uiUploadSuccess) {
                 server.send(200, "text/html", "<html><body><h1>UI Update Complete</h1><a href='/setup'>Return to Setup</a></body></html>");
             } else {
@@ -994,9 +937,7 @@ void setupWebServer() {
         jsonPool.release(jsonBuffer);
     });
 
-    // A-NIEDRIG: /api/export/settings entfernt — verwaist, keine UI-Referenz
 
-    // Neue API-Endpunkte für Einstellungen
     server.on("/api/settings/api", HTTP_GET, []() {
         JsonDocument doc;
 
@@ -1031,7 +972,6 @@ void setupWebServer() {
         JsonArray colors = doc["colors"].to<JsonArray>();
 
         for (int i = 0; i < 5; i++) {
-            // uint32 Farbe in Hex-String konvertieren
             uint32_t color = appState.customColors[i];
             char hexColor[8];
             snprintf(hexColor, sizeof(hexColor), "#%06X", color & 0xFFFFFF);
@@ -1058,7 +998,6 @@ void setupWebServer() {
         doc["firmwareVersion"] = getCurrentFirmwareVersion();
         doc["chip"] = ESP.getChipModel();
 
-        // MAC-Adresse formatieren
         uint8_t mac[6];
         WiFi.macAddress(mac);
         char macStr[18];
@@ -1071,13 +1010,11 @@ void setupWebServer() {
         jsonPool.release(jsonBuffer);
     });
 
-    // WiFi Scan Endpunkt
     server.on("/wifiscan", HTTP_GET, []() {
         String jsonResult = scanWiFiNetworks();
         server.send(200, "application/json", jsonResult);
     });
 
-    // WiFi Einstellungen speichern
     server.on("/savewifi", HTTP_POST, []() {
         String jsonStr = server.arg("plain");
         JsonDocument doc;
@@ -1089,7 +1026,6 @@ void setupWebServer() {
             return;
         }
 
-        // Werte aus JSON extrahieren und validieren
         String newSsid = doc["ssid"].as<String>();
         String newPass = doc["pass"].as<String>();
 
@@ -1108,11 +1044,9 @@ void setupWebServer() {
         appState.wifiPassword = newPass;
         appState.wifiConfigured = true;
 
-        // Einstellungen speichern
         appState.settingsNeedSaving = true;
         appState.lastSettingsSaved = millis();
 
-        // Reboot planen
         appState.rebootNeeded = true;
         appState.rebootTime = millis() + REBOOT_DELAY;
 
@@ -1120,17 +1054,14 @@ void setupWebServer() {
         debug(F("Neue WiFi-Einstellungen gespeichert, Reboot geplant"));
     });
 
-    // WiFi zurücksetzen
     server.on("/resetwifi", HTTP_POST, []() {
         appState.wifiSSID = "";
         appState.wifiPassword = "";
         appState.wifiConfigured = false;
 
-        // Einstellungen speichern
         appState.settingsNeedSaving = true;
         appState.lastSettingsSaved = millis();
 
-        // Reboot planen
         appState.rebootNeeded = true;
         appState.rebootTime = millis() + REBOOT_DELAY;
 
@@ -1138,7 +1069,6 @@ void setupWebServer() {
         debug(F("WiFi-Einstellungen zurückgesetzt, Reboot geplant"));
     });
 
-    // MQTT Einstellungen speichern
     server.on("/savemqtt", HTTP_POST, []() {
         String jsonStr = server.arg("plain");
         JsonDocument doc;
@@ -1174,8 +1104,7 @@ void setupWebServer() {
                 changed = true;
             }
         }
-        // Passwort nur uebernehmen wenn nicht leer/maskiert — sonst wuerde die
-        // Maske "****" das echte Passwort ueberschreiben (A-HOCH-2)
+        // Leeres oder maskiertes Passwort nicht übernehmen, sonst überschriebe "****" das echte.
         if (doc["pass"].is<const char*>()) {
             String newPass = doc["pass"].as<String>();
             if (newPass != "****" && newPass.length() > 0 && newPass != appState.mqttPassword) {
@@ -1215,7 +1144,6 @@ void setupWebServer() {
 
         bool changed = false;
 
-        // Werte aus JSON extrahieren und globale Variablen aktualisieren
         if (doc["apiUrl"].is<const char*>()) {
             String newApiUrl = doc["apiUrl"].as<String>();
             if (newApiUrl.length() == 0 || !newApiUrl.startsWith("http")) {
@@ -1250,7 +1178,7 @@ void setupWebServer() {
             }
         }
 
-        // NEU: DHT Intervall hier verarbeiten
+        // DHT-Intervall
         if (doc["dhtInterval"].is<float>()) {
             unsigned long dhtSeconds = constrain(doc["dhtInterval"].as<unsigned long>(), 10UL, 3600UL);  // Mind. 10s, Max 1h — vor der Multiplikation clampen (32-Bit-Overflow-Schutz)
             unsigned long newDhtInterval = 1000UL * dhtSeconds;
@@ -1261,21 +1189,16 @@ void setupWebServer() {
             }
         }
 
-        // Nur speichern und HA updaten, wenn sich tatsächlich etwas geändert hat
         if (changed) {
             debug(F("API/Intervall-Einstellungen geändert. Speichere und aktualisiere HA..."));
-            // Einstellungen speichern
             appState.settingsNeedSaving = true;
             appState.lastSettingsSaved = millis();
 
-            // HA Entitäten aktualisieren, falls MQTT verbunden
             if (appState.mqttEnabled && mqtt.isConnected()) {
-                // API Update Interval
                 haUpdateInterval.setState(float(appState.moodUpdateInterval / 1000.0));
                 debug(String(F("  HA: haUpdateInterval auf ")) + String(appState.moodUpdateInterval / 1000.0) + F("s gesetzt."));
 
 
-                // DHT Update Interval
                 haDhtInterval.setState(float(appState.dhtUpdateInterval / 1000.0));
                 debug(String(F("  HA: haDhtInterval auf ")) + String(appState.dhtUpdateInterval / 1000.0) + F("s gesetzt."));
             } else {
@@ -1289,7 +1212,6 @@ void setupWebServer() {
         }
     });
 
-    // Farben speichern
     server.on("/savecolors", HTTP_POST, []() {
         String jsonStr = server.arg("plain");
         JsonDocument doc;
@@ -1301,8 +1223,7 @@ void setupWebServer() {
             return;
         }
 
-        // Farben aus JSON extrahieren — in temporaeres Array parsen, nur bei
-        // vollstaendigem Erfolg komplett uebernehmen (kein Teilzustand bei Parse-Fehler)
+        // Erst vollständig parsen, dann übernehmen, damit kein Teilzustand entsteht.
         if (doc["colors"].is<JsonArray>()) {
             JsonArray colorArray = doc["colors"].as<JsonArray>();
             uint32_t tempColors[5];
@@ -1331,19 +1252,15 @@ void setupWebServer() {
                 return;
             }
 
-            // Nur komplett uebernehmen
             for (int i = 0; i < 5; i++) {
                 appState.customColors[i] = tempColors[i];
             }
 
-            // Neue Farben sofort zeigen statt erst beim naechsten Abruf (im Auto-Modus
-            // aendert sich die Anzeige, im Manual-Modus bleibt sie gleich). updateLEDs()
-            // setzt auch haLightStateDirty — HA bekommt die neue Farbe ueber loop().
+            // Neue Farben sofort zeigen; updateLEDs() meldet sie über loop() an HA.
             if (appState.lightOn) {
                 updateLEDs();
             }
 
-            // Einstellungen speichern
             appState.settingsNeedSaving = true;
             appState.lastSettingsSaved = millis();
 
@@ -1354,7 +1271,6 @@ void setupWebServer() {
         }
     });
 
-    // API testen
     server.on("/testapi", HTTP_POST, []() {
         String jsonStr = server.arg("plain");
         JsonDocument doc;
@@ -1366,10 +1282,8 @@ void setupWebServer() {
             return;
         }
 
-        // Werte aus JSON extrahieren
         String testApiUrl = doc["apiUrl"].as<String>();
 
-        // API testen
         HTTPClient http;
         http.setReuse(false);
         http.setUserAgent("MoodlightClient/1.0");
@@ -1440,8 +1354,7 @@ void setupWebServer() {
         bool needsReboot = false;
         String rejectedPins = "";
 
-        // Werte aus JSON extrahieren und prüfen, ob Änderung vorliegt
-        // Pins 6-11 sind intern mit dem Flash verbunden — deren Nutzung würde das Gerät bricken
+        // Pins 6-11 hängen am Flash, ihre Nutzung würde das Gerät bricken.
         if (doc["ledPin"].is<int>()) {
             int newLedPin = doc["ledPin"].as<int>();
             if (newLedPin >= 0 && newLedPin <= 39 && !(newLedPin >= 6 && newLedPin <= 11)) {
@@ -1476,7 +1389,6 @@ void setupWebServer() {
             }
         }
 
-        // DHT Intervall wird hier NICHT mehr verarbeitet
 
         if (rejectedPins.length() > 0 && !needsReboot) {
             // Nur abgelehnte Pins, keine sonstige Aenderung — Fehler statt stillem Ignorieren melden
@@ -1485,11 +1397,9 @@ void setupWebServer() {
         }
 
         if (needsReboot) {
-            // Einstellungen speichern (nur wenn relevant)
             appState.settingsNeedSaving = true;
             appState.lastSettingsSaved = millis();  // Speichert die geänderten Pins/LEDs
 
-            // Reboot planen (ist für Pin/LED-Änderungen notwendig)
             appState.rebootNeeded = true;
             appState.rebootTime = millis() + REBOOT_DELAY;
 
@@ -1509,13 +1419,11 @@ void setupWebServer() {
     server.on("/factoryreset", HTTP_POST, []() {
         debug(F("Factory Reset angefordert"));
 
-        // Preferences komplett löschen
         preferences.begin("moodlight", false);
         preferences.clear();
         preferences.end();
 
-        // Persistierte JSON-Einstellungen löschen — sonst lädt loadSettings()
-        // beim nächsten Boot bevorzugt die alte Datei und der Reset greift nicht
+        // Sonst lädt loadSettings() beim nächsten Boot die alte Datei und der Reset greift nicht.
         if (LittleFS.exists("/data/settings.json")) {
             LittleFS.remove("/data/settings.json");
         }
@@ -1523,7 +1431,6 @@ void setupWebServer() {
             LittleFS.remove("/data/settings.json.bak");
         }
 
-        // Standardwerte wiederherstellen
         appState.wifiSSID = "";
         appState.wifiPassword = "";
         appState.wifiConfigured = false;
@@ -1538,7 +1445,6 @@ void setupWebServer() {
         appState.dhtPin = DEFAULT_DHT_PIN;
         appState.numLeds = DEFAULT_NUM_LEDS;
 
-        // Reboot planen
         appState.rebootNeeded = true;
         appState.rebootTime = millis() + REBOOT_DELAY;
 
@@ -1546,7 +1452,6 @@ void setupWebServer() {
         debug(F("Factory Reset durchgeführt, Reboot geplant"));
     });
 
-    // Log-Anzeige
     server.on("/logs", HTTP_GET, []() {
         String logs = "";
         logs.reserve(LOG_BUFFER_SIZE * 200); // Pre-allokieren um Fragmentierung zu vermeiden
@@ -1560,32 +1465,26 @@ void setupWebServer() {
         server.send(200, "text/plain; charset=utf-8", logs);
     });
 
-    // /status entfernt — Duplikat von /api/status, kein Aufrufer (A-NIEDRIG)
 
     // Force-Refresh fuer Sentiment — nutzt den gleichen Flag-Mechanismus wie HA-Button
     server.on("/refresh", HTTP_GET, []() {
         debug(F("Force-Update via Web — setze Flag fuer naechsten Loop"));
-        // Antwort sofort senden
         server.send(200, "text/plain", "Refresh initiated");
         // Flag setzen, loop() fuehrt den Abruf sicher aus (wie beim HA-Button)
         appState.mqttRefreshPending = true;
     });
 
-    // toggle-light Endpunkt
     server.on("/toggle-light", HTTP_GET, []() {
         appState.lightOn = !appState.lightOn;
 
-        // Antwort senden
         server.send(200, "text/plain", "OK");
 
         // LED-Update ueber Mutex-geschuetzten Pfad (NICHT pixels.show() direkt!)
         updateLEDs();
 
-        // Verzoegerte Speicherung
         appState.settingsNeedSaving = true;
         appState.lastSettingsSaved = millis();
 
-        // Home Assistant aktualisieren
         if (appState.mqttEnabled && mqtt.isConnected()) {
             haLight.setState(appState.lightOn);
         }
@@ -1593,22 +1492,18 @@ void setupWebServer() {
         debug(String(F("Licht über Web umgeschaltet: ")) + (appState.lightOn ? "AN" : "AUS"));
     });
 
-    // toggle-mode Endpunkt
     server.on("/toggle-mode", HTTP_GET, []() {
         appState.autoMode = !appState.autoMode;
-        // Home Assistant aktualisieren, wenn aktiviert
         if (appState.mqttEnabled && mqtt.isConnected()) {
             haMode.setState(appState.autoMode ? 0 : 1);
         }
 
-        // LEDs aktualisieren, wenn Licht an ist
         if (appState.lightOn) {
             updateLEDs();
         }
         // Farbe des neuen Modus an HA melden (loop() sendet), auch bei ausgeschaltetem Licht
         appState.haLightStateDirty = true;
 
-        // Einstellung speichern
         appState.settingsNeedSaving = true;
         appState.lastSettingsSaved = millis();
 
@@ -1616,12 +1511,10 @@ void setupWebServer() {
         debug(String(F("Modus über Web umgeschaltet: ")) + (appState.autoMode ? "Auto" : "Manual"));
     });
 
-    // set-color Endpunkt
     server.on("/set-color", HTTP_GET, []() {
         if (server.hasArg("hex")) {
             String hexColor = server.arg("hex");
 
-            // Hex zu RGB konvertieren
             const char* hexStr = hexColor.c_str();
             if (hexStr[0] == '#') hexStr++; // führendes '#' überspringen
             uint32_t rgb = 0;
@@ -1631,13 +1524,11 @@ void setupWebServer() {
             }
             rgb &= 0xFFFFFF;
 
-            // RGB-Komponenten extrahieren
             uint8_t r = (rgb >> 16) & 0xFF;
             uint8_t g = (rgb >> 8) & 0xFF;
             uint8_t b = rgb & 0xFF;
 
-            // Gleiche Regel wie bei HA: Farbwahl im Auto-Modus schaltet auf Manual.
-            // Keine Startphasen-Sperre — ein Web-Klick ist immer eine bewusste Wahl.
+            // Wie bei HA schaltet eine Farbwahl im Auto-Modus auf Manual, ohne Startphasen-Sperre.
             uint32_t newColor = pixels.Color(r, g, b);
             ColorCommandAction action = decideColorCommand(appState.autoMode, false,
                                                            newColor, appState.manualColor);
@@ -1651,7 +1542,6 @@ void setupWebServer() {
                     debug(F("Farbwahl über Web im Auto-Modus — wechsle auf Manual"));
                 }
 
-                // LEDs aktualisieren, wenn im manuellen Modus und Licht an
                 if (!appState.autoMode && appState.lightOn) {
                     updateLEDs();
                 }
@@ -1659,7 +1549,6 @@ void setupWebServer() {
                 // HA bekommt die angezeigte Farbe ueber loop() (syncHaLightState)
                 appState.haLightStateDirty = true;
 
-                // Einstellung speichern
                 appState.settingsNeedSaving = true;
                 appState.lastSettingsSaved = millis();
             }
@@ -1671,23 +1560,19 @@ void setupWebServer() {
         }
     });
 
-    // set-brightness Endpunkt
     server.on("/set-brightness", HTTP_GET, []() {
         if (server.hasArg("value")) {
             int brightness = server.arg("value").toInt();
             brightness = constrain(brightness, 10, 255);
             appState.manualBrightness = brightness;
 
-            // LEDs aktualisieren, wenn im manuellen Modus und Licht an
             if (!appState.autoMode && appState.lightOn) {
                 updateLEDs();
             }
 
-            // HA bekommt die angezeigte Helligkeit ueber loop() (syncHaLightState) —
-            // im Auto-Modus bleibt das die Auto-Helligkeit, der Modus wechselt nicht
+            // HA bekommt die angezeigte Helligkeit über loop(); der Modus wechselt nicht.
             appState.haLightStateDirty = true;
 
-            // Einstellung speichern
             appState.settingsNeedSaving = true;
             appState.lastSettingsSaved = millis();
 
@@ -1702,14 +1587,12 @@ void setupWebServer() {
     server.on("/api/settings/all", HTTP_GET, []() {
         JsonDocument doc;
 
-        // Allgemeine Einstellungen
         doc["moodInterval"] = appState.moodUpdateInterval / 1000;
         doc["dhtInterval"] = appState.dhtUpdateInterval / 1000;
         doc["autoMode"] = appState.autoMode;
         doc["lightOn"] = appState.lightOn;
         doc["manBright"] = appState.manualBrightness;
 
-        // Farbe als HEX
         char hexColor[10];
         snprintf(hexColor, sizeof(hexColor), "#%06X", appState.manualColor & 0xFFFFFF);
         doc["manColor"] = hexColor;
@@ -1729,7 +1612,6 @@ void setupWebServer() {
         doc["numLeds"] = appState.numLeds;
         doc["mqttEnabled"] = appState.mqttEnabled;
 
-        // Farben
         JsonArray colors = doc["colors"].to<JsonArray>();
         for (int i = 0; i < 5; i++) {
             char hexColorArr[10];
@@ -1737,7 +1619,7 @@ void setupWebServer() {
             colors.add(hexColorArr);
         }
 
-        // Dateisystem-Informationen — LittleFS.begin() entfernt, FS ist bereits gemountet (A-NIEDRIG)
+        // Das Dateisystem ist bereits gemountet.
         {
             size_t totalBytes = LittleFS.totalBytes();
             size_t usedBytes = LittleFS.usedBytes();
@@ -1754,14 +1636,12 @@ void setupWebServer() {
         jsonPool.release(jsonBuffer);
     });
 
-    // Restart Endpunkt
     server.on("/restart", HTTP_GET, []() {
         server.send(200, "text/html", "<html><body><h1>Restarting...</h1><p>Device will restart in a few seconds.</p><script>setTimeout(function(){window.location.href='/';}, 10000);</script></body></html>");
         delay(1000);
         ESP.restart();
     });
 
-    // Update-Handler für Firmware
     server.on(
         "/update", HTTP_POST, []() {
             server.sendHeader("Connection", "close");
@@ -1789,7 +1669,6 @@ void setupWebServer() {
                     int dashPos = filename.indexOf('-', 9); // Position after "Firmware-X.X"
 
                     if (dashPos > 0) {
-                        // Extract version from filename (e.g., "2.1" from "Firmware-2.1-AuraOS.bin")
                         extractedVersion = filename.substring(9, dashPos);
                         debug(String(F("Firmware-Version aus Dateiname: ")) + extractedVersion);
                     }
@@ -1805,8 +1684,7 @@ void setupWebServer() {
                 }
             }
             else if (upload.status == UPLOAD_FILE_WRITE) {
-                // Bricking-Vorsorge: erster Chunk muss mit dem ESP32-Firmware-Magic-Byte
-                // 0xE9 beginnen — verhindert das Flashen offensichtlich falscher Dateien
+                // Erster Chunk muss mit dem ESP32-Magic-Byte 0xE9 beginnen, gegen falsche Dateien.
                 if (!magicByteChecked) {
                     magicByteChecked = true;
                     if (upload.currentSize == 0 || upload.buf[0] != 0xE9) {
@@ -1824,7 +1702,6 @@ void setupWebServer() {
                 if (Update.end(true)) {
                     debug("Update erfolgreich: " + String(upload.totalSize) + " Bytes");
 
-                    // Save the extracted version to a file for future reference
                     if (extractedVersion.length() > 0) {
                         debug(String(F("Speichere Firmware-Version: ")) + extractedVersion);
                         File versionFile = LittleFS.open("/firmware-version.txt", "w");
@@ -1855,8 +1732,7 @@ void setupWebServer() {
         doc["in_progress"] = appState.updateInProgress;
         if (appState.updateAvailable) {
             doc["latest"] = appState.updateVersion;
-            // Die Release-Notes zeigt die Lampe nicht selbst an — sie verlinkt
-            // auf GitHub. Spart RAM und die Notes bleiben vollstaendig lesbar.
+            // Release-Notes nur verlinkt, das spart RAM.
             doc["release_url"] = appState.updateReleaseUrl;
             doc["size"] = appState.updateFirmwareSize;
         }
@@ -1898,8 +1774,7 @@ void setupWebServer() {
         jsonPool.release(jsonBuffer);
     });
 
-    // Installation anstossen — der Neustart passiert in der loop(), damit
-    // diese Antwort den Browser noch erreicht
+    // Neustart in loop(), damit diese Antwort den Browser noch erreicht.
     server.on("/api/update/install", HTTP_POST, []() {
         if (!appState.updateAvailable) {
             server.send(400, "application/json",
@@ -1975,27 +1850,19 @@ void setupWebServer() {
         handleStaticFile(path);
     });
 
-    // server.begin() wird NICHT hier aufgerufen — das passiert in
-    // connectWiFiAndStartServices() (STA) oder startAPModeWithServer() (AP)
-    // nachdem WiFi korrekt initialisiert ist.
+    // server.begin() erst nach der WiFi-Initialisierung (connectWiFiAndStartServices, startAPModeWithServer).
     debug(F("Webserver-Routen registriert"));
 }
 
-// A-NIEDRIG: initWatchdog() entfernt — toter Code, kein Aufrufer
-// (WatchdogManager::begin() in moodlight.cpp::setup() ist der tatsaechlich genutzte Pfad)
 
 // === Regelmäßiger System-Gesundheitscheck ===
 void runSystemHealthCheck() {
     unsigned long currentMillis = millis();
     debug(F("Führe regelmäßige Systemprüfung durch..."));
 
-    // Memory-Analyse durchführen
     memMonitor.update();
 
-    // A-MITTEL Flash/RAM: sysstat-Schreibblock entfernt — niemand liest die Dateien
-    // (statsDoc/sysstat_*.json), unnoetiger Flash-Verschleiss.
 
-    // Systemgesundheit aktualisieren
     sysHealth.update();
 
     if (sysHealth.isRestartRecommended()) {
@@ -2028,7 +1895,6 @@ void runSystemHealthCheck() {
         prefs.end();
     }
 
-    // Geplanten Neustart prüfen
     {
         Preferences prefs;
         prefs.begin("syshealth", true);
@@ -2054,7 +1920,6 @@ void runSystemHealthCheck() {
         }
     }
 
-    // Speicherplatz-Prüfung
     uint64_t total, used, free;
     getStorageInfo(total, used, free);
     float percentUsed = (total > 0) ? ((float)used * 100.0 / total) : 0;

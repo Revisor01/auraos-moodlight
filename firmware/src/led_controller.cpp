@@ -3,13 +3,7 @@
 
 extern AppState appState;
 
-// Hardware-Instanz. Wird in initPixels() mit den echten Parametern erzeugt —
-// genau so wie im minimalen Testsketch, der nachweislich funktioniert:
-//   Adafruit_NeoPixel pixels(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-// Der Umweg ueber ein parameterlos konstruiertes Objekt mit spaeterem
-// setPin()/updateLength() hat den GPIO nie korrekt konfiguriert: begin()
-// ruft intern setPin() mit dem gespeicherten Wert (-1) auf und verwirft damit
-// eine vorher gesetzte Pin-Nummer.
+// Erst in initPixels() mit echten Parametern erzeugen: begin() verwirft einen später per setPin() gesetzten Pin.
 #undef pixels
 Adafruit_NeoPixel *pixelsPtr = nullptr;
 #define pixels (*pixelsPtr)
@@ -58,12 +52,10 @@ ShownLight currentShownLight() {
 
 // === Aktualisiere die LEDs ===
 void updateLEDs() {
-    // HA soll sehen, was angezeigt wird. updateLEDs() laeuft u.a. im
-    // MQTT-Callback-Kontext — daher nur Flag setzen, gesendet wird in loop().
+    // Im MQTT-Callback nur das Flag setzen, gesendet wird in loop().
     appState.haLightStateDirty = true;
 
     if (!appState.lightOn) {
-        // Just set the clear flag and return
         if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
             appState.ledClear = true;
             appState.ledUpdatePending = true;
@@ -72,7 +64,6 @@ void updateLEDs() {
         return;
     }
 
-    // Licht soll an sein
     appState.currentLedIndex = constrain(appState.currentLedIndex, 0, 4);
     ShownLight shown = currentShownLight();
     uint32_t colorToShow = shown.color;
@@ -80,9 +71,7 @@ void updateLEDs() {
 
     // Instead of directly updating LEDs, store the values safely
     if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-        // Fill LED buffer
         for (int i = 0; i < appState.numLeds; i++) {
-            // Skip status LED if in status mode
             if (i == (appState.numLeds - 1) && appState.statusLedMode != 0) {
                 continue;
             }
@@ -94,7 +83,6 @@ void updateLEDs() {
         xSemaphoreGive(appState.ledMutex);
     }
 
-    // Debug output optimized
     uint8_t r = (colorToShow >> 16) & 0xFF;
     uint8_t g = (colorToShow >> 8) & 0xFF;
     uint8_t b = colorToShow & 0xFF;
@@ -146,7 +134,6 @@ void setStatusLED(int mode) {
 
     // Store LED state but don't update directly
     if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
-        // LED-Farbe entsprechend dem Status setzen
         uint32_t statusColor = pixels.Color(0, 0, 0); // Default black
 
         switch (mode) {
@@ -166,13 +153,11 @@ void setStatusLED(int mode) {
                 statusColor = pixels.Color(255, 255, 0);
                 break;
             default: // Normal (LED aus oder normaler Betrieb)
-                // Just update the whole LED strip
                 appState.ledUpdatePending = true;
                 xSemaphoreGive(appState.ledMutex);
                 return;
         }
 
-        // Only update the status LED
         appState.ledColors[appState.statusLedIndex] = statusColor;
         appState.ledUpdatePending = true;
         xSemaphoreGive(appState.ledMutex);
@@ -180,14 +165,11 @@ void setStatusLED(int mode) {
 }
 
 void updateStatusLED() {
-    // Kein Blinken im Normalmodus
     if (appState.statusLedMode == 0)
         return;
 
-    // Zeit für Blink-Update
     unsigned long currentMillis = millis();
 
-    // Unterschiedliche Blink-Frequenzen für verschiedene Modi
     unsigned long blinkInterval;
     switch (appState.statusLedMode) {
         case 1: blinkInterval = 500; break; // WiFi (schnell)
@@ -198,14 +180,12 @@ void updateStatusLED() {
         default: blinkInterval = 500;
     }
 
-    // Zeit abgelaufen?
     if (currentMillis - appState.statusLedBlinkStart >= blinkInterval) {
         appState.statusLedState = !appState.statusLedState;
         appState.statusLedBlinkStart = currentMillis;
 
         if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
             if (appState.statusLedState) {
-                // LED einschalten mit entsprechender Farbe
                 uint32_t statusColor = pixels.Color(0, 0, 0);
 
                 switch (appState.statusLedMode) {
@@ -218,7 +198,6 @@ void updateStatusLED() {
 
                 appState.ledColors[appState.statusLedIndex] = statusColor;
             } else {
-                // LED ausschalten
                 appState.ledColors[appState.statusLedIndex] = pixels.Color(0, 0, 0);
             }
 
@@ -237,20 +216,15 @@ void processLEDUpdates() {
         return;
     }
 
-    // Check if we have pending LED updates
     bool needsUpdate = false;
 
     if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
         needsUpdate = appState.ledUpdatePending;
         if (needsUpdate) {
-            // Apply the stored LED values
             if (appState.ledClear) {
                 pixels.clear();
             } else {
-                // setBrightness() VOR setPixelColor(): die Bibliothek wendet den
-                // Helligkeitsfaktor beim Schreiben jedes Pixels an. Umgekehrte
-                // Reihenfolge skaliert den bereits gefuellten Puffer ein zweites
-                // Mal und dunkelt bei jedem Durchlauf weiter ab.
+                // setBrightness() vor setPixelColor(), sonst dunkelt jeder Durchlauf den Puffer weiter ab.
                 pixels.setBrightness(appState.ledBrightness);
                 for (int i = 0; i < appState.numLeds; i++) {
                     pixels.setPixelColor(i, appState.ledColors[i]);
@@ -268,22 +242,12 @@ void processLEDUpdates() {
             yield();
             delay(1);
 
-            // pixels.show() ausfuehren — WiFi Power Save wird NICHT getoggelt.
-            // Staendiges Umschalten zwischen WIFI_PS_MIN_MODEM und WIFI_PS_NONE
-            // destabilisiert den WiFi-Stack bei schwachem Signal.
-            // Power Save ist global auf WIFI_PS_NONE gesetzt (nach WiFi-Connect).
-            //
-            // KEIN portDISABLE_INTERRUPTS() um show(): die Adafruit-Bibliothek
-            // nutzt auf dem ESP32 den RMT-Peripheriebaustein, der die Bitfolge
-            // interruptgesteuert ausgibt. Mit gesperrten Interrupts kann RMT die
-            // Uebertragung nicht abschliessen — der Ring bleibt dunkel.
+            // WiFi Power Save nicht umschalten, das destabilisiert den WiFi-Stack bei schwachem Signal.
+            // Keine Interrupt-Sperre um show(): RMT gibt interruptgesteuert aus, sonst bleibt der Ring dunkel.
             pixels.show();
             lastLedUpdateTime = currentTime;
         } else {
-            // Das Update ist oben bereits als erledigt markiert worden, wurde aber
-            // nie ausgegeben — sonst bleibt der Ring stehen, bis zufaellig ein
-            // weiteres Update kommt. Flag zuruecksetzen, damit der naechste
-            // Durchlauf es erneut versucht.
+            // Flag zurücksetzen, damit der nächste Durchlauf die Ausgabe erneut versucht.
             if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {
                 appState.ledUpdatePending = true;
                 xSemaphoreGive(appState.ledMutex);
@@ -306,10 +270,7 @@ void initFirstLEDUpdate() {
     appState.firstLedShowDone = true;
     debug(F("First LED update scheduled"));
 
-    // Direkt danach den tatsaechlichen Zustand ausgeben. Ohne diesen Aufruf
-    // bleibt der Ring nach dem Loeschen dunkel, bis zufaellig ein Ereignis
-    // (Web-Klick, MQTT-Befehl, Sentiment-Abruf) updateLEDs() ausloest — beim
-    // 30-Minuten-Poll also potenziell eine halbe Stunde lang.
+    // Sonst bleibt der Ring bis zum nächsten Ereignis dunkel, beim 30-Minuten-Poll bis zu einer halben Stunde.
     updateLEDs();
     debug(F("Initialer LED-Zustand ausgegeben"));
 }

@@ -1,6 +1,4 @@
--- Migration Phase 12: headlines-Tabelle für Headline-Persistenz
--- Sicher bei Mehrfachausführung (IF NOT EXISTS Guards)
--- Ausführung: docker exec -i <postgres-container> psql -U moodlight -d moodlight < migration_phase12.sql
+-- Legt die headlines-Tabelle an, idempotent. Aufruf: psql -U moodlight -d moodlight < migration_phase12.sql
 
 SET TIME ZONE 'Europe/Berlin';
 

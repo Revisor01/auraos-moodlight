@@ -31,6 +31,5 @@ void checkAndReconnectWifi();
 // AP-Modus mit Server-Start (fuer Setup-Phase in setup())
 void startAPModeWithServer();
 
-// WiFi verbinden + NTP + mDNS + Server starten (für setup())
-// Gibt true zurück wenn WiFi verbunden, false wenn AP-Modus gestartet
+// Verbindet WiFi und startet die Dienste; false, wenn stattdessen der AP-Modus läuft.
 bool connectWiFiAndStartServices();

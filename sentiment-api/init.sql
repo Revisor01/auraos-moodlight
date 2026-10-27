@@ -1,15 +1,10 @@
--- PostgreSQL Initialisierungs-Schema für Moodlight System
--- Erstellt automatisch beim ersten Start von docker-compose
+-- Schema der Sentiment-API, angelegt beim ersten Start.
 
 -- Datenbank-Einstellungen
 SET TIME ZONE 'Europe/Berlin';
 
 -- ===== HELPER FUNCTIONS =====
--- B-KRITISCH-2: VOR alle Tabellen verschoben — die settings-Tabelle weiter unten
--- referenziert die Funktion unten in ihrem Update-Trigger. Auf einer frischen DB
--- schlaegt der CREATE TRIGGER-Aufruf fehl, wenn die Funktion an dieser Stelle
--- noch nicht existiert (vorher stand dieser Block ganz am Dateiende, nach der
--- settings-Tabelle).
+-- Vor allen Tabellen: der settings-Trigger braucht die Funktion schon beim Anlegen.
 
 -- Funktion: Updated_at Timestamp automatisch aktualisieren
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -20,13 +15,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Hinweis: get_sentiment_category()-Funktion und der set_sentiment_category()-Trigger
--- wurden entfernt (siehe migrations/002_drop_category_trigger.sql) — Python
--- (shared_config.get_sentiment_category) ist jetzt die einzige Quelle der Kategorie-
--- Zuordnung, ein DB-seitiger Trigger fuehrte zu Duplikat-Logik mit Drift-Risiko.
 
 -- ===== SENTIMENT HISTORY TABLE =====
--- Speichert alle Sentiment-Analysen zentral
 CREATE TABLE IF NOT EXISTS sentiment_history (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -45,7 +35,6 @@ CREATE INDEX IF NOT EXISTS idx_sentiment_category ON sentiment_history(category)
 CREATE INDEX IF NOT EXISTS idx_sentiment_created ON sentiment_history(created_at DESC);
 
 -- ===== DEVICE STATISTICS TABLE =====
--- Tracking aller Moodlight-Geräte
 CREATE TABLE IF NOT EXISTS device_statistics (
     id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) UNIQUE NOT NULL,
@@ -67,7 +56,6 @@ CREATE INDEX IF NOT EXISTS idx_device_last_seen ON device_statistics(last_seen D
 CREATE INDEX IF NOT EXISTS idx_device_id ON device_statistics(device_id);
 
 -- ===== DEVICE REQUESTS TABLE =====
--- Optional: Detaillierte Request-Logs pro Gerät
 CREATE TABLE IF NOT EXISTS device_requests (
     id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) NOT NULL,
@@ -84,12 +72,8 @@ CREATE INDEX IF NOT EXISTS idx_device_requests_timestamp ON device_requests(time
 CREATE INDEX IF NOT EXISTS idx_device_requests_device ON device_requests(device_id);
 CREATE INDEX IF NOT EXISTS idx_device_requests_endpoint ON device_requests(endpoint);
 
--- Fremdschlüssel (optional - erlaubt auch unbekannte Geräte)
--- ALTER TABLE device_requests ADD CONSTRAINT fk_device
---   FOREIGN KEY (device_id) REFERENCES device_statistics(device_id) ON DELETE CASCADE;
 
 -- ===== FEEDS TABLE =====
--- RSS-Feeds für Sentiment-Analyse — verwaltet via API
 CREATE TABLE IF NOT EXISTS feeds (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -110,7 +94,6 @@ COMMENT ON COLUMN feeds.active IS 'Inaktive Feeds werden vom Worker ignoriert';
 COMMENT ON COLUMN feeds.error_count IS 'Anzahl aufeinanderfolgender Fehler beim Feed-Abruf';
 
 -- ===== HEADLINES TABLE =====
--- Einzelne Headlines mit Einzel-Scores pro Sentiment-Analyse
 CREATE TABLE IF NOT EXISTS headlines (
     id SERIAL PRIMARY KEY,
     sentiment_history_id INTEGER NOT NULL REFERENCES sentiment_history(id) ON DELETE CASCADE,
@@ -133,7 +116,6 @@ COMMENT ON COLUMN headlines.feed_id IS 'FK zu feeds — NULLABLE falls Feed gel�
 COMMENT ON COLUMN headlines.strength IS 'Kategorie: sehr negativ, negativ, neutral, positiv, sehr positiv';
 
 -- ===== SETTINGS TABLE =====
--- Key-Value-Store für Backend-Konfiguration
 CREATE TABLE IF NOT EXISTS settings (
     key VARCHAR(100) PRIMARY KEY,
     value TEXT NOT NULL,
@@ -151,11 +133,7 @@ CREATE TRIGGER trigger_update_settings
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Default-Werte — werden beim Start durch DB-Werte oder Env-Variablen überschrieben
--- analysis_interval: Sekunden zwischen Sentiment-Updates (1800 = 30 Min)
--- headlines_per_source: Headlines pro RSS-Feed pro Analyse
--- anthropic_api_key: Leer — wird aus ANTHROPIC_API_KEY Env-Variable geladen
--- admin_password_hash: Leer — wird aus ADMIN_PASSWORD Env-Variable berechnet
+-- Vorgaben; DB-Werte und Umgebung haben Vorrang, API-Schlüssel und Passwort kommen aus der Umgebung.
 INSERT INTO settings (key, value) VALUES
     ('analysis_interval', '1800'),
     ('headlines_per_source', '1'),
@@ -163,7 +141,7 @@ INSERT INTO settings (key, value) VALUES
     ('admin_password_hash', '')
 ON CONFLICT (key) DO NOTHING;
 
--- Default-Feeds (ohne Focus.de — FEED-06)
+-- Default-Feeds, ohne Focus.de (liefert 404)
 INSERT INTO feeds (name, url) VALUES
     ('Zeit', 'https://newsfeed.zeit.de/index'),
     ('Tagesschau', 'https://www.tagesschau.de/xml/rss2'),
@@ -178,7 +156,7 @@ INSERT INTO feeds (name, url) VALUES
     ('Deutschlandfunk', 'https://www.deutschlandfunk.de/nachrichten-100.rss')
 ON CONFLICT (url) DO NOTHING;
 
--- Trigger: Auto-Update updated_at (Funktion ist am Dateianfang definiert, B-KRITISCH-2)
+-- Trigger: updated_at aktualisieren (Funktion steht am Dateianfang)
 DROP TRIGGER IF EXISTS trigger_update_device_stats ON device_statistics;
 CREATE TRIGGER trigger_update_device_stats
     BEFORE UPDATE ON device_statistics
@@ -240,15 +218,7 @@ ORDER BY date DESC;
 
 -- ===== INITIAL DATA =====
 
--- Beispiel-Eintrag (optional)
--- INSERT INTO sentiment_history (sentiment_score, headlines_analyzed, source_count)
--- VALUES (-0.45, 120, 12);
 
--- ===== GRANTS =====
--- (Optional: Wenn separate DB-User verwendet werden)
--- GRANT SELECT, INSERT, UPDATE ON sentiment_history TO moodlight_app;
--- GRANT SELECT, INSERT, UPDATE ON device_statistics TO moodlight_app;
--- GRANT SELECT ON v_current_sentiment TO moodlight_readonly;
 
 -- ===== KOMMENTARE =====
 COMMENT ON TABLE sentiment_history IS 'Zentrale Speicherung aller Sentiment-Analysen';

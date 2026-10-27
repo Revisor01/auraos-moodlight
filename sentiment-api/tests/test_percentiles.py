@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Unit-Tests für get_score_percentiles() und compute_led_index()
-
-Tests sind absichtlich ohne DB-Verbindung ausführbar:
-- compute_led_index wird direkt importiert und getestet
-- get_score_percentiles wird über Mock-Objekte getestet
-"""
+"""Unit-Tests für get_score_percentiles() und compute_led_index()."""
 
 import sys
 import os

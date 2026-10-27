@@ -19,20 +19,15 @@ from shared_config import get_sentiment_category
 
 app = Flask(__name__)
 
-# --- Session-Konfiguration ---
-# B-KRITISCH-1: Kein unsicherer Fallback mehr — SECRET_KEY MUSS gesetzt sein,
-# sonst waeren Sessions mit einem oeffentlich bekannten Default-Key signiert
-# (Session-Faelschung moeglich). Fail-fast statt stillschweigend unsicher starten.
+# SECRET_KEY ist Pflicht, sonst wären Sessions mit einem bekannten Schlüssel signiert.
 _secret_key = os.environ.get('SECRET_KEY', '').strip()
 if not _secret_key:
     raise RuntimeError("SECRET_KEY muss gesetzt sein")
 app.secret_key = _secret_key
 app.permanent_session_lifetime = timedelta(hours=24)
-# SameSite=Lax mindert CSRF via Cross-Site-Requests. Kein SESSION_COOKIE_SECURE,
-# da die Seite ueber http laeuft — das wuerde den Login brechen.
+# Kein SESSION_COOKIE_SECURE, die Seite läuft über http.
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Logging-Konfiguration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -40,10 +35,7 @@ logging.basicConfig(
 
 
 def load_settings_from_db():
-    """
-    Lade Einstellungen aus PostgreSQL; fällt auf Env-Variablen zurück wenn DB-Wert fehlt oder leer.
-    Gibt Dict mit geladenen Werten zurück.
-    """
+    """Lade Einstellungen aus PostgreSQL; fällt auf Env-Variablen zurück wenn DB-Wert fehlt oder leer."""
     from database import get_database
     try:
         db = get_database()
@@ -99,8 +91,6 @@ _admin_password_hash = _startup_settings['admin_password_hash']
 if not _admin_password_hash:
     logging.warning("ADMIN_PASSWORD nicht gesetzt (weder DB noch Env) — Login deaktiviert!")
 
-# --- Konfiguration & Standardwerte ---
-# Standardanzahl Headlines pro Quelle, wenn nichts anderes angegeben
 DEFAULT_HEADLINES_PER_SOURCE_MAIN = 2
 DEFAULT_HEADLINES_PER_SOURCE_TOTAL = 1
 # DEFAULT_HEADLINES_FROM_ENV aus DB oder Env
@@ -135,23 +125,14 @@ def login_required(f):
 
 # --- Funktion zur Sentiment-Analyse mit Anthropic API ---
 def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
-    """
-    Analysiert Headlines per Anthropic API.
-
-    Returns:
-        Liste von Scores bei Erfolg (auch bei teilweise ungeparsten Zeilen —
-        fehlende Scores bleiben 0.0 innerhalb der Liste), oder None wenn die
-        API nicht erreichbar war / ein Fehler auftrat. None MUSS vom Aufrufer
-        von einem echten Analyse-Ergebnis unterschieden werden (B2) — sonst
-        werden API-Fehler als Sentiment 0.0 in der Datenbank gespeichert.
-    """
+    """Analysiert Headlines per Anthropic API."""
     if not anthropic_client:
         logging.error("Anthropic Client nicht verfügbar in analyze_sentiment_claude.")
         return None
     if not headlines_batch:
         return []
 
-    # Kalibrierter Prompt — Ankerpunkte und Anti-Bias-Anweisung (Plan 02)
+    # Kalibrierter Prompt mit Ankerpunkten und Anti-Bias-Anweisung
     prompt_lines = [
         "Analysiere das Sentiment jeder der folgenden deutschen Nachrichtenschlagzeilen.",
         "Gib für jede Schlagzeile eine Fließkommazahl zwischen -1.0 und +1.0 zurück.",
@@ -188,9 +169,7 @@ def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
         logging.info(f"Sende {len(headlines_batch)} Headlines zur Analyse an Anthropic API (claude-haiku-4-5-20251001)...")
         response = anthropic_client.messages.create(
             model="claude-haiku-4-5-20251001",
-            # max_tokens: großzügiger bemessen — 15 Tokens/Headline reichten bei
-            # kurzen Batches nicht aus und führten zu stiller Truncation (Neutral-Bias
-            # durch fehlende Scores am Ende der Antwort)
+            # Zu knappe max_tokens schneiden Scores ab und verzerren zu neutral.
             max_tokens=max(1024, len(headlines_batch) * 25),
             # temperature=0: deterministisches Scoring statt zufälliger Variation
             temperature=0,
@@ -222,9 +201,7 @@ def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
 
         logging.info(f"Erfolgreich {parsed_count} Scores aus der Anthropic-Antwort geparst.")
         if parsed_count != len(headlines_batch):
-            # Teilparse-Fall: Ergebnis ist nicht vertrauenswürdig genug, um als
-            # echte Messung gespeichert zu werden — Zyklus verwerfen statt
-            # fehlende Scores still auf 0.0 zu lassen
+            # Teilparse verwerfen, statt fehlende Scores still auf 0.0 zu lassen.
             logging.warning(
                 f"Nicht alle Scores geparst! Erwartet: {len(headlines_batch)}, "
                 f"Geparsed: {parsed_count}. Analyse-Zyklus wird verworfen."
@@ -240,8 +217,7 @@ def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
         logging.error(f"Anthropic Rate-Limit erreicht: {e}")
         return None
     except APIStatusError as e:
-        # Response-Body mitloggen — sonst ist die eigentliche Fehlerursache
-        # (z.B. "credit balance too low") unsichtbar und nur der Statuscode sichtbar
+        # Body mitloggen, sonst bleibt die Fehlerursache unsichtbar.
         try:
             response_body = e.response.text
         except Exception:
@@ -252,24 +228,14 @@ def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
         logging.error(f"Unerwarteter Fehler bei der Anthropic Analyse: {e}")
         return None
 
-# --- Haupt-Analysefunktion (gibt jetzt gewichteten Score als 'total_sentiment' zurück) ---
+# --- Haupt-Analysefunktion ---
 def analyze_headlines_batch(headlines: list) -> Optional[dict]:
-    """
-    Analysiert Headlines mit Anthropic (Claude Haiku), berechnet Statistiken und gibt den
-    gewichteten Mood-Score als 'total_sentiment' zurück.
-
-    Returns:
-        Ergebnis-Dict bei Erfolg, oder None wenn die Anthropic-Analyse fehlgeschlagen ist
-        (API-Fehler oder Teilparse) — der Aufrufer (Background Worker) MUSS in diesem Fall
-        den Zyklus ohne DB-Write überspringen (B2), sonst werden API-Fehler als
-        Sentiment 0.0 dauerhaft gespeichert.
-    """
+    """Analysiert Headlines mit Anthropic (Claude Haiku), berechnet Statistiken und gibt den gewichteten Mood-Score als 'total_sentiment' zurück."""
     results = []
     sentiment_distribution = Counter()
     total_numeric_sentiment_sum = 0.0 # Wird nur noch für Logging gebraucht
     analyzed_count = 0
 
-    # --- Vorbereitung ---
     if not headlines:
         logging.warning("analyze_headlines_batch aufgerufen mit leerer Headline-Liste.")
         return {
@@ -291,17 +257,13 @@ def analyze_headlines_batch(headlines: list) -> Optional[dict]:
             "statistics": {"analyzed_count": 0, "sentiment_distribution": {}}
         }
 
-    # --- Sentiment Analyse ---
     sentiment_scores = analyze_sentiment_claude(headline_texts)
 
     if sentiment_scores is None:
-        # API-Fehler oder Teilparse — Zyklus verwerfen, KEIN Ergebnis mit Score 0.0
-        # zurückgeben (B2, Ursache der 30-Tage-Nullserie)
+        # Zyklus verwerfen, kein Ergebnis mit Score 0.0.
         logging.error("Sentiment-Analyse fehlgeschlagen — kein verwertbares Ergebnis (siehe vorherige Fehlermeldung).")
         return None
 
-    # --- Verarbeitung der Scores und Kategorisierung ---
-    # (Code unverändert)
     for i, score in enumerate(sentiment_scores):
         if i < len(original_indices):
             original_idx = original_indices[i]
@@ -324,31 +286,21 @@ def analyze_headlines_batch(headlines: list) -> Optional[dict]:
         else:
              logging.error(f"Interner Fehler: Score-Index {i} ohne korrespondierenden Original-Index.")
 
-    # --- Berechnungen nach der Analyse ---
-    # 1. (Optional) Normaler Durchschnitt für Logging
     average_sentiment_for_logging = total_numeric_sentiment_sum / analyzed_count if analyzed_count > 0 else 0.0
     logging.info(f"Analyse abgeschlossen. Verarbeitet: {analyzed_count}. (Durchschnittl. Sentiment für Logging: {average_sentiment_for_logging:.4f})")
 
-    # 2. Gewichteter Mood Score (dies wird der neue 'total_sentiment')
-    # Mit Verstärkung für mehr Varianz auf der LED-Darstellung
+    # Verstärkt für mehr Varianz in der LED-Darstellung
     weighted_mood_score = 0.0
     if analyzed_count > 0:
-      # Alle individuellen Sentiment-Scores sammeln
       all_scores = [item['sentiment'] for item in results]
 
-      # Basis: Durchschnitt der Einzelwerte
       raw_average = sum(all_scores) / len(all_scores)
 
-      # Verstärkungsfunktion: Streckt moderate Werte für mehr Varianz
-      # Verwendet eine sanfte S-Kurve (tanh-ähnlich) mit Faktor 2.0
-      # Bei raw_average = -0.25 -> ca. -0.47
-      # Bei raw_average = -0.35 -> ca. -0.62
-      # Bei raw_average = -0.50 -> ca. -0.76
+      # tanh-S-Kurve mit Faktor 2: -0.25 wird ca. -0.47, -0.50 ca. -0.76.
       amplification_factor = 2.0
       stretched = raw_average * amplification_factor
 
-      # Sanfte Begrenzung mit tanh-ähnlicher Funktion (verhindert harte Clipping)
-      # math.tanh begrenzt natürlich auf [-1, 1]
+      # tanh begrenzt weich auf [-1, 1].
       weighted_mood_score = math.tanh(stretched)
 
       logging.info(f"Sentiment Berechnung: Roh-Durchschnitt={raw_average:.4f}, Verstärkt (x{amplification_factor})={weighted_mood_score:.4f}")
@@ -356,7 +308,6 @@ def analyze_headlines_batch(headlines: list) -> Optional[dict]:
     else:
         logging.warning("Keine Headlines analysiert, total_sentiment bleibt 0.0")
 
-    # --- Rückgabe der Ergebnisse ---
     return {
         "results": results, # Detaillierte Ergebnisse pro Headline
         "total_sentiment": weighted_mood_score, # !!! HIER DIE ÄNDERUNG: Gewichteter Score ist jetzt total_sentiment !!!
@@ -369,18 +320,11 @@ def analyze_headlines_batch(headlines: list) -> Optional[dict]:
 
 # --- Hilfsfunktion zur Bestimmung der Headlines pro Quelle ---
 def get_headlines_per_source(route_default: int) -> int:
-    """
-    Ermittelt die Anzahl der zu holenden Headlines pro Quelle.
-    Priorität: URL-Parameter > Umgebungsvariable > Routen-Standard.
-    """
-    # 1. URL-Parameter prüfen
+    """Ermittelt die Anzahl der zu holenden Headlines pro Quelle."""
     try:
-        # Versuche, den Parameter aus der URL zu lesen und in eine Zahl umzuwandeln
         headlines_param = request.args.get('headlines_per_source', type=int)
         if headlines_param is not None and headlines_param > 0:
-            # B-HOCH-3: Kostenvektor deckeln — ohne Limit koennte ein Request
-            # beliebig viele Headlines pro Quelle anfordern und die Anthropic-
-            # API-Kosten unbegrenzt in die Hoehe treiben (kein Auth-Zwang, nur Cap)
+            # Deckel gegen unbegrenzte API-Kosten durch einen Request.
             capped = min(headlines_param, 10)
             if capped != headlines_param:
                 logging.warning(f"headlines_per_source={headlines_param} auf Maximum {capped} gedeckelt.")
@@ -392,12 +336,10 @@ def get_headlines_per_source(route_default: int) -> int:
         logging.warning(f"Konnte URL-Parameter 'headlines_per_source' ('{request.args.get('headlines_per_source')}') nicht als Zahl lesen. Ignoriere.")
         pass # Ignorieren und mit nächster Priorität weitermachen
 
-    # 2. Umgebungsvariable prüfen (wenn vorhanden und gültig)
     if DEFAULT_HEADLINES_FROM_ENV is not None:
         logging.debug(f"Verwende {DEFAULT_HEADLINES_FROM_ENV} aus Umgebungsvariable DEFAULT_HEADLINES_PER_SOURCE.")
         return DEFAULT_HEADLINES_FROM_ENV
 
-    # 3. Routen-spezifischen Standardwert verwenden
     logging.debug(f"Verwende Routen-Standardwert: {route_default} Headlines pro Quelle.")
     return route_default
 
@@ -408,9 +350,7 @@ def index():
 
 @app.route('/api/health')
 def health_check():
-  """
-  Health-Check Endpoint mit Datenbank-Verbindungstest
-  """
+  """Health-Check Endpoint mit Datenbank-Verbindungstest."""
   from database import get_database
 
   health = {
@@ -419,7 +359,6 @@ def health_check():
     "checks": {}
   }
 
-  # Datenbank-Check
   try:
     db = get_database()
     db_health = db.check_connection_health()
@@ -432,13 +371,11 @@ def health_check():
     if not db_health.get('connected'):
       health["status"] = "unhealthy"
   except Exception as e:
-    # Fehlertext nur ins Log, nicht in die oeffentliche Health-Antwort —
-    # psycopg2-Fehler enthalten Hostnamen, Ports und Tabellennamen
+    # Fehlertext nur ins Log, psycopg2-Fehler enthalten Hostnamen und Ports.
     logging.error(f"Health-Check: Datenbank nicht erreichbar: {e}", exc_info=True)
     health["checks"]["database"] = {"status": "unhealthy", "error": "Datenbank nicht erreichbar"}
     health["status"] = "unhealthy"
 
-  # Anthropic-Check
   health["checks"]["anthropic"] = {
     "status": "healthy" if anthropic_client else "unhealthy",
     "available": anthropic_client is not None
@@ -450,15 +387,7 @@ def health_check():
   return jsonify(health), status_code
 
 def _fetch_single_feed_for_news(source: str, url: str, num_headlines_per_source: int) -> tuple:
-    """
-    Holt Headlines von einem einzelnen Feed (B-PERF: fuer Parallelisierung via
-    ThreadPoolExecutor ausgelagert, Pendant zu SentimentUpdateWorker._fetch_single_feed).
-
-    Returns:
-        (source, entries, skip_reason, error) — entries ist eine Liste von
-        (headline_text, link) Tupeln in Feed-Reihenfolge. skip_reason/error sind
-        None bei Erfolg.
-    """
+    """Holt Headlines von einem einzelnen Feed, ausgelagert für den ThreadPoolExecutor."""
     entries = []
     try:
         try:
@@ -494,17 +423,16 @@ def _fetch_single_feed_for_news(source: str, url: str, num_headlines_per_source:
         return (source, entries, None, f"Fehler bei {source}")
 
 
-# --- Flask Routen (angepasst für Konfiguration und neuen Score) ---
+# --- Flask-Routen ---
 @app.route('/api/news', methods=['GET'])
 def get_news():
     if not anthropic_client: return jsonify({"status": "error", "message": "Sentiment-Analyse-Dienst nicht bereit (Anthropic Problem)."}), 503
 
-    # RSS-Feeds dynamisch aus DB laden (FEED-01)
+    # RSS-Feeds aus der DB
     from database import get_database
     from concurrent.futures import ThreadPoolExecutor
     rss_feeds = {f['name']: f['url'] for f in get_database().get_active_feeds()}
 
-    # Dynamische Anzahl der Headlines pro Quelle ermitteln
     num_headlines_per_source = get_headlines_per_source(DEFAULT_HEADLINES_PER_SOURCE_MAIN)
 
     headlines = []; errors = []; processed_links = set(); skipped_feeds = []
@@ -512,8 +440,7 @@ def get_news():
     logging.info(f"Starte Feed-Abruf für /api/news (max. {num_headlines_per_source} Headlines/Quelle)...")
     total_headlines_found_before_filtering = 0
 
-    # B-PERF: Feed-Fetching parallelisiert (max 6 Worker, 10s Timeout pro Feed) —
-    # executor.map() erhaelt die Eingabereihenfolge stabil in der Ausgabe
+    # executor.map() hält die Reihenfolge der Feeds.
     feed_items = list(rss_feeds.items())
     with ThreadPoolExecutor(max_workers=6) as executor:
         results = executor.map(
@@ -539,7 +466,6 @@ def get_news():
                     headlines_from_source += 1
             logging.debug(f"  Quelle {source}: {headlines_from_source} Headlines übernommen.")
 
-    # --- Analyse und Rückgabe ---
     if not headlines:
         logging.error("Keine Schlagzeilen nach Feed-Abruf gefunden.")
         return jsonify({
@@ -554,8 +480,7 @@ def get_news():
     analysis_result = analyze_headlines_batch(headlines)
 
     if analysis_result is None:
-        # Anthropic-Analyse fehlgeschlagen (API-Fehler oder Teilparse, B2) —
-        # kein Fake-Ergebnis mit Score 0.0 zurückgeben
+        # Kein Ersatzergebnis mit Score 0.0.
         return jsonify({
             "status": "error",
             "message": "Sentiment-Analyse fehlgeschlagen (Anthropic API nicht verfügbar oder Antwort nicht auswertbar)",
@@ -565,7 +490,6 @@ def get_news():
             "statistics": {"analyzed_count": 0, "sentiment_distribution": {}}
         }), 502
 
-    # Gib den gewichteten Score unter 'total_sentiment' zurück
     return jsonify({
         "status": "success",
         "total_sentiment": analysis_result['total_sentiment'], # Hier steht jetzt der gewichtete Score
@@ -576,16 +500,10 @@ def get_news():
     })
 
 
-# --- /api/news/total_sentiment Route (konfigurierbar, gibt gewichteten Score zurück) ---
+# --- /api/news/total_sentiment ---
 @app.route('/api/news/total_sentiment', methods=['GET'])
 def get_total_sentiment():
-    """
-    Legacy-Endpoint für AuraOS Moodlight-Geräte
-    Nutzt jetzt gecachte Daten vom Background Worker (statt Live-Analyse)
-
-    Returns:
-        JSON mit 'total_sentiment' (float) und 'headlines_analyzed_count' (int)
-    """
+    """Legacy-Endpoint für Moodlight-Geräte, liefert die gecachten Daten des Workers."""
     from database import get_database
 
     try:
@@ -622,15 +540,10 @@ from moodlight_extensions import register_moodlight_endpoints
 from firmware_mirror import register_firmware_endpoints
 from background_worker import start_background_worker
 
-# Neue Endpunkte registrieren
 register_moodlight_endpoints(app)
 register_firmware_endpoints(app)
 
-# ===== LOGIN RATE-LIMITING (B-HOCH-4) =====
-# In-Memory-Rate-Limit ohne neue Dependency: {ip: (fail_count, locked_until_timestamp)}.
-# Nach 5 Fehlversuchen 60s Sperre (HTTP 429), Reset bei Erfolg. Thread-safe per Lock.
-# Speicher begrenzt auf max. ~1000 IPs (aelteste zuerst raus), um unbegrenztes
-# Wachstum durch verteilte Brute-Force-Versuche von vielen IPs zu verhindern.
+# Login-Sperre im Speicher: 5 Fehlversuche, 60 s Sperre, höchstens ~1000 IPs gegen verteilte Versuche.
 _login_attempts_lock = threading.Lock()
 _login_attempts = {}  # ip -> (fail_count, locked_until_epoch)
 _LOGIN_MAX_ATTEMPTS = 5
@@ -688,9 +601,7 @@ def login_page():
             _login_rate_limit_reset(client_ip)
             session['authenticated'] = True
             session.permanent = True
-            # Open-Redirect-Guard (B-MITTEL): next nur akzeptieren wenn es ein
-            # relativer Pfad ist (beginnt mit "/" aber nicht mit "//" — "//evil.com"
-            # wird von Browsern als protokollrelative externe URL interpretiert)
+            # Nur relative Pfade: "//evil.com" wäre für Browser eine externe URL.
             next_param = request.args.get('next')
             if next_param and next_param.startswith('/') and not next_param.startswith('//'):
                 next_url = next_param
@@ -737,14 +648,12 @@ start_background_worker(
     analyze_function=analyze_headlines_batch,
     interval_seconds=_worker_interval
 )
-# Headlines-Anzahl auf den Worker übertragen
 from background_worker import get_background_worker
 _worker = get_background_worker()
 if _worker:
     _worker.headlines_per_source = _worker_headlines
     logging.info(f"Worker gestartet: Intervall={_worker_interval}s, Headlines/Quelle={_worker_headlines}")
 
-# Hauptausführungspunkt
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG) # DEBUG für mehr Infos zur Konfiguration etc.
 

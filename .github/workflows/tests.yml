@@ -1,8 +1,6 @@
 name: Tests
 
-# Sentiment-API: unittest ohne Datenbank (psycopg2 und redis werden in den
-# Tests ersetzt). Firmware: Unity-Tests der Lichtlogik auf dem Host
-# (`pio test -e native`), ohne ESP32.
+# Sentiment-API ohne Datenbank, Firmware-Lichtlogik nativ ohne ESP32.
 
 on:
   pull_request:

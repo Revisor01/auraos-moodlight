@@ -1,8 +1,6 @@
 // mood.js - Dashboard-Funktionalität für Moodlight
 
-// Score-Farbstufen des Dashboards (identisch zu den --score-*-Tokens in
-// style.css) — hart in JS hinterlegt, da Chart.js keine CSS-Variablen in
-// Canvas-Kontexten aufloest. Primary dient als Akzentfarbe fuer Linien-Charts.
+// Wie --score-* in style.css; Chart.js löst im Canvas keine CSS-Variablen auf.
 const SCORE_COLORS = {
     sehrNegativ: '#e74c3c',
     negativ: '#e67e22',
@@ -29,10 +27,7 @@ let weekdayAverages = [];
 let dailyAverages = [];
 let charts = {};
 
-// ===== Native Datums-Helfer (C-PERF: ersetzt die frueher genutzte externe
-// Zeit-Bibliothek samt Chart.js-Zeit-Adapter) =====
-// Alle Charts nutzen category-Achsen (keine "time"-Skalen) — daher wird kein
-// Chart.js-Zeit-Adapter benoetigt, nur Formatierung von Label-Strings.
+// Datums-Helfer: alle Charts nutzen category-Achsen, ein Zeit-Adapter ist nicht nötig.
 
 // YYYY-MM-DD (lokale Zeit, kein UTC-Shift)
 function formatDateISO(date) {
@@ -87,14 +82,10 @@ function isSameOrAfter(a, b) {
     return a.getTime() >= b.getTime();
 }
 
-// aktuell gewählter Zeitraum (Stunden) — Auto-Refresh nutzt diesen Wert statt
-// immer den 720h-Default zu laden und damit z.B. die "Letzte Woche"-Ansicht
-// (168h) beim nächsten automatischen Reload zu überschreiben
+// Auto-Refresh lädt den gewählten Zeitraum, nicht den 720h-Default.
 let currentHours = 720;
 
-// Dokumenten-Bereit-Handler
 document.addEventListener('DOMContentLoaded', function() {
-    // Tabs einrichten
     setupTabs();
 
     // Daten laden (initialer Default-Zeitraum, entspricht dem aktiven "week"-Tab)
@@ -108,10 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() { loadData(currentHours); }, 300000);
 });
 
-// Tabs initialisieren
-// C-MITTEL: Tracking pro Zeitraum statt einem einzelnen Bool — jetzt haben ALLE
-// Tabs (all/week/day) ein data-hours-Attribut, daher muss bei JEDEM Zeitraumwechsel
-// neu geladen werden, wenn dieser konkrete Zeitraum noch nicht im Cache ist.
+// Jeder Zeitraum wird beim ersten Wechsel geladen, danach aus dem Cache.
 let loadedHoursSet = new Set();
 
 function setupTabs() {
@@ -122,8 +110,6 @@ function setupTabs() {
             });
             this.classList.add('active');
 
-            // Zeitraum-Badge neben der Ueberschrift auf den Label-Text des
-            // geklickten Tabs setzen (2e)
             const rangeBadge = document.getElementById('range-badge');
             if (rangeBadge) {
                 rangeBadge.textContent = this.textContent;
@@ -136,7 +122,6 @@ function setupTabs() {
             const tabId = this.getAttribute('data-tab');
             document.getElementById(`${tabId}-tab`).classList.add('active');
 
-            // On-demand: pro Zeitraum nur einmal laden, danach aus dem Cache
             const hours = this.getAttribute('data-hours');
             if (hours) {
                 const hoursInt = parseInt(hours);
@@ -144,9 +129,7 @@ function setupTabs() {
 
                 if (!loadedHoursSet.has(hoursInt)) {
                     document.getElementById('loading-message').textContent = 'Lade Daten...';
-                    // allDataLoaded/loadedHoursSet erst im ERFOLGS-Fall markieren —
-                    // bei einem Fehlschlag soll der naechste Tab-Klick einen neuen
-                    // Ladeversuch ausloesen statt den Cache-Status faelschlich zu setzen
+                    // Erst bei Erfolg als geladen markieren, damit ein Fehlschlag beim nächsten Klick neu lädt.
                     loadData(hoursInt).then(function(result) {
                         if (result) {
                             loadedHoursSet.add(hoursInt);
@@ -155,7 +138,6 @@ function setupTabs() {
                 }
             }
 
-            // Charts neu zeichnen
             Object.values(charts).forEach(chart => {
                 if (chart && chart.canvas && chart.canvas.offsetParent !== null) {
                     chart.resize();
@@ -165,13 +147,10 @@ function setupTabs() {
     });
 }
 
-// Backend-Endpunkt fuer direkten History-Zugriff (A-HOCH-3/C-MITTEL) — CORS
-// live verifiziert, mood.html nutzt denselben Origin bereits fuer current/headlines
+// History direkt vom Backend; CORS erlaubt den Zugriff.
 const BACKEND_HISTORY_URL = 'https://analyse.godsapp.de/api/moodlight/history';
 
-// Daten vom Server laden — primaer DIREKT vom Backend (weniger Last auf dem
-// ESP32-Webserver, kein doppeltes JSON-Puffern), Fallback auf das geraeteseitige
-// /api/stats (geclampte, langsamere Backend-Proxy-Route) bei Fetch-Fehler
+// Direkt vom Backend, um den ESP32 zu entlasten; bei Fehler über /api/stats des Geräts.
 function loadData(hours) {
     hours = hours || 720; // Default: Gesamter Zeitraum (30 Tage)
     currentHours = hours; // für Auto-Refresh merken, welcher Zeitraum zuletzt geladen wurde
@@ -224,8 +203,7 @@ function loadDataFromDeviceFallback(hours) {
     });
 }
 
-// Gemeinsame Verarbeitung des Ergebnis-JSON (Backend und Geräte-Fallback liefern
-// dasselbe {count, data:[...]}-Format, moodlight_extensions.py::get_moodlight_history)
+// Backend und Geräte-Fallback liefern dasselbe {count, data:[...]}-Format.
 function handleLoadDataResult(result) {
     if (result.error) {
         document.getElementById('loading-message').textContent =
@@ -258,9 +236,7 @@ function processRawData(data) {
         return;
     }
 
-    // Daten vorbereiten - Backend gibt ISO timestamp und sentiment_score
     allData = data.map(item => {
-        // Parse ISO timestamp to Date object
         const timestamp = new Date(item.timestamp);
         // Backend sendet sentiment_score, nicht sentiment
         const value = item.sentiment_score !== undefined ? item.sentiment_score : item.sentiment;
@@ -273,16 +249,9 @@ function processRawData(data) {
         };
     }).sort((a, b) => a.timestamp - b.timestamp);
 
-    // Daten verarbeiten
     processData();
 }
 
-// Verarbeite die Daten und aktualisiere die Anzeigen
-// C-PERF: der tote reprocess=true-Zweig wurde entfernt — processData() wird im
-// gesamten Code ausschliesslich mit reprocess=false aufgerufen (processRawData()
-// ist der einzige Aufrufer). updateChart() selbst bleibt erhalten, da es
-// weiterhin von den sieben updateXChart()-Wrappern referenziert wird (siehe
-// createOrUpdateChart/updateChart weiter unten).
 function processData() {
     if (!allData || allData.length === 0) {
         console.error("processData: Keine Daten zum Verarbeiten");
@@ -291,7 +260,6 @@ function processData() {
 
     filteredData = [...allData];
 
-    // Berechne Statistiken und erstelle Charts
     calculateStatistics();
     createAllCharts();
 }
@@ -316,11 +284,9 @@ function calculateStatistics() {
         endDate: data[data.length - 1].timestamp
     };
     
-    // Varianz und Volatilität berechnen
     const variance = values.reduce((acc, val) => acc + Math.pow(val - stats.avg, 2), 0) / values.length;
     stats.volatility = Math.sqrt(variance);
     
-    // Stündliche Durchschnitte
     const hourlyData = {};
     data.forEach(item => {
         const hour = item.timestamp.getHours();
@@ -335,7 +301,6 @@ function calculateStatistics() {
             { hour: i, value: null };
     });
     
-    // Wochentag Durchschnitte
     const weekdayData = {};
     data.forEach(item => {
         const weekday = item.timestamp.getDay();
@@ -351,7 +316,6 @@ function calculateStatistics() {
             { weekday: weekdayNames[i], value: null };
     });
     
-    // Tägliche Durchschnitte
     const dailyData = {};
     data.forEach(item => {
         const day = formatDateISO(item.timestamp);
@@ -369,7 +333,6 @@ function calculateStatistics() {
         value: dailyData[day].sum / dailyData[day].count
     })).sort((a, b) => a.date - b.date);
     
-    // Lineare Regression für Trendlinien
     if (dailyAverages.length > 1) {
         const xValues = dailyAverages.map((_, i) => i);
         const yValues = dailyAverages.map(day => day.value);
@@ -384,7 +347,6 @@ function calculateStatistics() {
         stats.trend = 0;
     }
     
-    // Anzeigen aktualisieren
     updateStatsDisplay(stats);
     generateSummary(stats);
 }
@@ -396,10 +358,8 @@ function updateStatsDisplay(stats) {
     document.getElementById('max-value').textContent = stats.max.toFixed(2);
     document.getElementById('count-value').textContent = stats.count.toLocaleString();
     
-    // Trend-Anzeigen
     displayTrend('avg-trend', stats.trend);
     
-    // Trendindikator
     const trendIndicator = document.getElementById('trend-indicator');
     if (stats.trend > 0.1) {
         trendIndicator.innerHTML = '<i class="fas fa-arrow-trend-up"></i> Positiver Trend';
@@ -439,7 +399,6 @@ function clearOrResetCharts() {
     });
     charts = {};
     
-    // Legenden löschen
     const hourlyLegend = document.getElementById('hourly-legend');
     const weekdayLegend = document.getElementById('weekday-legend');
     if (hourlyLegend) hourlyLegend.innerHTML = '';
@@ -463,10 +422,7 @@ function displayTrend(elementId, trend) {
     }
 }
 
-// Liest die aktuellen Theme-Farben zur Laufzeit aus (Hell-/Dunkelmodus),
-// damit Achsen-Ticks und Gitterlinien in beiden Themes lesbar bleiben.
-// Chart.js loest keine CSS-Variablen selbst auf, daher der Umweg ueber
-// getComputedStyle beim Erzeugen der Options.
+// Chart.js löst keine CSS-Variablen auf, daher getComputedStyle für Hell und Dunkel.
 function getThemeChartColors() {
     const styles = getComputedStyle(document.body);
     return {
@@ -475,9 +431,7 @@ function getThemeChartColors() {
     };
 }
 
-// Allgemeine Chart-Optionen — als Funktionen, damit die Achsenfarben bei
-// jeder Chart-Neuerstellung (createOrUpdateChart) aktuell aus dem Theme
-// gelesen werden
+// Als Funktionen, damit jede Neuerstellung die aktuellen Theme-Farben liest.
 function getCommonLineChartOptions() {
     const theme = getThemeChartColors();
     return {
@@ -634,9 +588,7 @@ function updateAllTimeChart() {
 }
 
 function getAllTimeData() {
-    // C-PERF: Schrittfilter-Dezimierung statt slice(-500) — behaelt die
-    // Verteilung ueber den GESAMTEN Zeitraum bei (wie im Day-Chart), statt nur
-    // die letzten 500 Punkte zu zeigen und aeltere Daten komplett abzuschneiden
+    // Schrittfilter statt slice(-500), damit der ganze Zeitraum sichtbar bleibt.
     let chartData = filteredData;
     if (chartData.length > 500) {
         const step = Math.ceil(chartData.length / 500);
@@ -886,8 +838,7 @@ function calculateTrendLine(data) {
     return xValues.map(x => slope * x + intercept);
 }
 
-// Farbgebung basierend auf Stimmungswert — Schwellwerte identisch zu
-// scoreClass() im Dashboard (sentiment-api/templates/dashboard.html)
+// Schwellwerte wie scoreClass() im Dashboard der Sentiment-API.
 function getColorBasedOnValue(value, alpha = 0.7) {
     if (value >= 0.30) return hexToRgba(SCORE_COLORS.sehrPositiv, alpha);
     if (value >= 0.10) return hexToRgba(SCORE_COLORS.positiv, alpha);
