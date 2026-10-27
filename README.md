@@ -26,9 +26,6 @@ lesen; man sieht es.
 
 Mehr zur Idee: **[revisor01.github.io/auraos-moodlight](https://revisor01.github.io/auraos-moodlight)**
 
-Die erste Fassung von 2022 steht in
-[Zustand-der-Welt](https://github.com/Revisor01/Zustand-der-Welt).
-
 ## Funktionen
 
 **Die Lampe (ESP32)**
