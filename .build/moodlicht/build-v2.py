@@ -11,8 +11,7 @@ def b64(name):
 body = (here / "v2-body.html").read_text(encoding="utf-8")
 css = (here / "v2-style.css").read_text(encoding="utf-8")
 
-# Clash Display kommt vom Fontshare-CDN (so ist die Schrift lizenziert gedacht).
-# Inter ist OFL und wird eingebettet — es traegt den Fliesstext, der soll nicht flackern.
+# Clash Display vom Fontshare-CDN (Lizenz); Inter eingebettet, damit der Fließtext nicht flackert.
 CLASH_CDN = "https://api.fontshare.com/v2/css?f%5B%5D=clash-display@500,600"
 
 fonts = f"""@import url('{CLASH_CDN}');
@@ -88,13 +87,7 @@ script = r"""
 
       // ---- beide Werte, in der Kachel und im Vergleichs-Kapitel ----
       var roh = typeof d.raw_score === 'number' ? d.raw_score : null;
-      // ACHTUNG: d.percentile ist eine LINEARE Interpolation zwischen min und
-      // max des 7-Tage-Fensters — kein Rang. Bei schiefer Verteilung (Median
-      // -0.46, Max +0.44) ergibt das irrefuehrende Werte: Score -0.59 lag bei
-      // "16 %", war aber nur knapp besser als das schlechteste Fuenftel.
-      // Der Rang wird deshalb aus den Perzentil-Schwellen interpoliert, die
-      // dieselbe Quelle wie die Farbstufe sind — Wort und Zahl passen dann
-      // zwangslaeufig zusammen.
+      // d.percentile ist linear zwischen min und max, kein Rang; daher aus den Perzentil-Schwellen interpolieren.
       var pct = null;
       if (d.thresholds && typeof d.raw_score === 'number') {
         var T = d.thresholds, sc = d.raw_score;
@@ -188,8 +181,7 @@ script = r"""
     if (einheit) el.appendChild(einheit);
   }
 
-  // Aktuelle Firmware-Version vom GitHub-Release holen, damit die Angabe
-  // auf der Seite nicht veraltet
+  // Firmware-Version vom GitHub-Release, damit die Angabe nicht veraltet
   fetch('https://api.github.com/repos/Revisor01/auraos-moodlight/releases/latest')
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) {
@@ -199,10 +191,7 @@ script = r"""
     })
     .catch(function () { /* der statische Wert im Markup bleibt stehen */ });
 
-  // Taschenlampe auf dem Hero: der Lichtkegel folgt dem Zeiger und legt
-  // Wortmarke, Wortspiel und Headline frei. Gleichzeitig kippt die Schrift
-  // leicht gegen die Zeigerrichtung — das erzeugt Tiefe, ohne aufdringlich
-  // zu wirken. Man muss hinsehen, um zu sehen.
+  // Lichtkegel folgt dem Zeiger, die Schrift kippt leicht dagegen.
   (function () {
     var torch = document.getElementById('torch');
     if (!torch) return;
@@ -212,9 +201,7 @@ script = r"""
     var RADIUS = 180;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
 
-    // Die Maske sitzt auf .torch-lit, die Rotation auf .torch-3d. Beide
-    // Koordinatensysteme haengen an der maskierten Ebene: --tx/--ty werden
-    // relativ zu IHREM Kasten berechnet, sonst sitzt der Kegel versetzt.
+    // --tx/--ty relativ zum Kasten von .torch-lit, sonst sitzt der Kegel versetzt.
     var lit = torch.querySelector('.torch-lit');
     var dreh = torch.querySelector('.torch-3d');
     if (!lit || !dreh) return;
@@ -269,27 +256,14 @@ script = r"""
     var f = h > 0 ? window.scrollY / h : 0;
     f = Math.min(1, Math.max(0, f));
     bar.style.width = (f * 100).toFixed(1) + '%';
-    // Je weiter unten, desto lichter — leicht beschleunigt, damit der
-    // Unterschied zwischen oben und unten wirklich spuerbar wird
-    // Leicht beschleunigt, damit die Aufhellung frueh spuerbar wird und
-    // das untere Drittel wirklich hell ankommt
+    // Leicht beschleunigt, damit das untere Drittel wirklich hell ankommt
     var lift = Math.pow(f, 0.8);
     var v = lift.toFixed(3);
     if (aura) aura.style.setProperty('--lift', v);
     document.body.style.setProperty('--lift', v);
     document.documentElement.style.setProperty('--lift', v);
 
-    // Textfarbe kippt hart, damit sie dem Grund nicht auf halber Strecke
-    // begegnet — dort faellt der Kontrast sonst unter das Lesbare.
-    // Etwas Hysterese verhindert Flackern beim Scrollen um die Schwelle.
-    // Der Grund darf nicht durch mittlere Helligkeit wandern: dort erreicht
-    // KEINE Textfarbe mehr 4.5:1 — das ist rechnerisch zwingend, egal wie man
-    // die Kurven gegeneinander versetzt. Deshalb springt der Grund an einer
-    // Schwelle (die CSS-Transition macht daraus einen weichen Fade von 1,1 s).
-    //
-    // Alles andere fliesst weiter kontinuierlich mit: die Aura, ihre Deckkraft,
-    // die Akzentfarbe. Der Eindruck bleibt ein Verlauf — nur der Moment, in dem
-    // die Welt ins Helle kippt, hat einen klaren Punkt.
+    // Grund und Text springen an einer Schwelle mit Hysterese: bei mittlerer Helligkeit erreicht kein Text 4.5:1.
     var ziel = lift > (textHell ? 0.44 : 0.52) ? 1 : 0;
     if (ziel !== textHell) {
       textHell = ziel;

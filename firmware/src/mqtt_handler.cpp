@@ -26,8 +26,7 @@ HASensor haSentimentPercentile("sentiment_percentile", HASensor::PrecisionP0);
 HASensor haUptime("uptime");
 HASensor haWifiSignal("wifi_signal");
 HASensor haSystemStatus("system_status");
-// Seit 9.24: Stufe der Lampenfarbe relativ zur Woche (Wort + Zahl).
-// Neue unique_ids — bestehende Entitaeten bleiben unveraendert.
+// Eigene unique_ids, damit bestehende Entitäten unverändert bleiben.
 HASensor haSentimentRelative("sentiment_relative");
 HASensor haSentimentLevel("sentiment_level");
 
@@ -39,9 +38,7 @@ extern void setStatusLED(int mode);
 extern void saveSettings();
 extern void handleSentiment(float sentimentScore, const String &apiCategory);
 
-// ============================================================
 // HA-Callbacks
-// ============================================================
 
 void onStateCommand(bool state, HALight *sender)
 {
@@ -74,8 +71,7 @@ void onBrightnessCommand(uint8_t brightness, HALight *sender)
 
     if (brightness == appState.manualBrightness)
         return;
-    // Helligkeit schaltet den Modus bewusst NICHT um. Im Auto-Modus wird der Wert
-    // fuer Manual gemerkt; HA zeigt weiter die tatsaechlich angezeigte Helligkeit.
+    // Helligkeit schaltet den Modus nicht um; im Auto-Modus wird sie für Manual gemerkt.
     appState.manualBrightness = brightness;
     debug(F("HA Brightness Command"));
     if (!appState.autoMode && appState.lightOn)
@@ -119,8 +115,7 @@ void onRGBColorCommand(HALight::RGBColor color, HALight *sender)
     {
         updateLEDs();
     }
-    // Rueckmeldung an HA ueber loop() (syncHaLightState) statt Echo des Befehls —
-    // bei StoreOnly bleibt HA so bei der tatsaechlich angezeigten Auto-Farbe
+    // Rückmeldung über loop() statt Echo, damit HA bei StoreOnly die angezeigte Auto-Farbe behält.
     appState.haLightStateDirty = true;
 
     // Verzoegerte Speicherung statt Flash-I/O im Callback-Kontext
@@ -199,24 +194,18 @@ void onDHTIntervalCommand(HANumeric value, HANumber *sender)
 
 void onRefreshButtonPressed(HAButton *sender)
 {
-    // HTTP-Requests dürfen NICHT im Callback-Kontext ausgeführt werden
-    // (mqtt.loop() → Callback → HTTP blockiert → WDT-Timeout / Stack-Korruption).
-    // Stattdessen: Flag setzen, loop() führt den Abruf sicher aus.
+    // Kein HTTP im Callback-Kontext (WDT-Timeout); loop() führt den Abruf aus.
     debug(F("Sentiment Refresh über Home Assistant ausgelöst — wird in loop() ausgeführt"));
     appState.mqttRefreshPending = true;
 }
 
-// ============================================================
 // Heartbeat
-// ============================================================
 
-// === MQTT Heartbeat ===
 void sendHeartbeat()
 {
     if (!appState.mqttEnabled || !mqtt.isConnected())
         return;
 
-    // 1. Uptime
     unsigned long uptime = millis() / 1000;
     int days = uptime / 86400;
     int hours = (uptime % 86400) / 3600;
@@ -226,14 +215,11 @@ void sendHeartbeat()
     snprintf(uptimeStr, sizeof(uptimeStr), "%dd %dh %dm %ds", days, hours, minutes, seconds);
     haUptime.setValue(uptimeStr);
 
-    // 2. WiFi Signal
     int rssi = WiFi.RSSI();
     haWifiSignal.setValue(String(rssi).c_str());
 
-    // 3. System Status
     String status = "OK";
 
-    // Sentiment API Status
     if (!appState.sentimentAPIAvailable)
     {
         status = "Sentiment API nicht erreichbar";
@@ -245,7 +231,6 @@ void sendHeartbeat()
         status = "DHT Sensor Probleme";
     }
 
-    // Speicher-Status
     if (ESP.getFreeHeap() < 10000)
     { // Weniger als 10KB
         status = "Speicher niedrig";
@@ -257,11 +242,8 @@ void sendHeartbeat()
     appState.lastMqttHeartbeat = millis();
 }
 
-// ============================================================
 // HA Setup
-// ============================================================
 
-// === Home Assistant Setup Routine ===
 void setupHA()
 {
     if (!appState.mqttEnabled || appState.mqttServer.isEmpty())
@@ -270,93 +252,76 @@ void setupHA()
         return;
     }
 
-    WiFi.macAddress(mac); // Hole MAC-Adresse für Unique ID
+    WiFi.macAddress(mac);
 
-    // --- Device Konfiguration ---
-    // Setze Unique ID basierend auf MAC-Adresse
+    // Unique ID aus der MAC-Adresse
     device.setUniqueId(mac, sizeof(mac));
-    // Setze Namen und Infos für das Gerät in Home Assistant
-    device.setName("Moodlight"); // Name des Geräts in HA
+    device.setName("Moodlight");
     device.setSoftwareVersion(MOODLIGHT_VERSION);
-    device.setManufacturer("Bridging Faith Tech"); // Hersteller
-    device.setModel("Moodlight ESP32 Proto v1");   // Modell
+    device.setManufacturer("Bridging Faith Tech");
+    device.setModel("Moodlight ESP32 Proto v1");
 
-    // --- Entitäten Konfiguration ---
 
     // Numerischer Sentiment Score (-1.00 bis +1.00)
-    haSentimentScore.setName("Weltlage Score");     // Angezeigter Name in HA
-    haSentimentScore.setIcon("mdi:gauge-low");      // Passendes Icon
-    haSentimentScore.setUnitOfMeasurement("Score"); // Einheit für den Wert
+    haSentimentScore.setName("Weltlage Score");
+    haSentimentScore.setIcon("mdi:gauge-low");
+    haSentimentScore.setUnitOfMeasurement("Score");
     // Präzision wurde bereits im Konstruktor gesetzt: HASensor::PrecisionP2
 
-    // Sentiment Kategorie (Text-Sensor)
     haSentimentCategory.setName("Weltlage Kategorie");
     haSentimentCategory.setIcon("mdi:tag-text-outline");
-    // Keine Einheit für Text-Sensoren
 
     // Sentiment Perzentil (Position im 7-Tage-Fenster, 0-100%)
     haSentimentPercentile.setName("Weltlage Perzentil");
     haSentimentPercentile.setIcon("mdi:chart-bell-curve-cumulative");
     haSentimentPercentile.setUnitOfMeasurement("%");
 
-    // Weltlage relativ zur Woche: genau die Stufe, aus der im Auto-Modus die
-    // LED-Farbe kommt (led_index des Backends). "Weltlage Kategorie" ist dagegen
-    // absolut aus dem Score — beide koennen verschieden lauten.
+    // Stufe der Auto-Farbe relativ zur Woche; "Weltlage Kategorie" ist absolut und kann abweichen.
     haSentimentRelative.setName("Weltlage relativ");
     haSentimentRelative.setIcon("mdi:scale-balance");
 
-    // Dieselbe Stufe als Zahl 0-4 (0 = viel schlechter, 4 = viel besser) fuer
-    // Automationen und Verlauf; "None" (unbekannt), solange keine echte Stufe vorliegt
+    // Dieselbe Stufe als Zahl 0-4 für Automationen; "None", solange keine echte Stufe vorliegt.
     haSentimentLevel.setName("Weltlage Stufe");
     haSentimentLevel.setIcon("mdi:stairs");
     haSentimentLevel.setStateClass("measurement");
 
     if (appState.dhtEnabled)
     {
-        // Temperatur Sensor
         haTemperature.setName("Temperatur");
-        haTemperature.setDeviceClass("temperature"); // Setzt Icon und Verhalten in HA
-        haTemperature.setUnitOfMeasurement("°C");    // Einheit
+        haTemperature.setDeviceClass("temperature");
+        haTemperature.setUnitOfMeasurement("°C");
 
-        // Luftfeuchtigkeit Sensor
         haHumidity.setName("Luftfeuchtigkeit");
-        haHumidity.setDeviceClass("humidity"); // Setzt Icon und Verhalten in HA
-        haHumidity.setUnitOfMeasurement("%");  // Einheit
+        haHumidity.setDeviceClass("humidity");
+        haHumidity.setUnitOfMeasurement("%");
     }
-    // Licht Steuerung
-    haLight.setName("Moodlight"); // Name der Entität
+    haLight.setName("Moodlight");
     haLight.setIcon("mdi:lightbulb-variant-outline");
-    haLight.onStateCommand(onStateCommand);           // Callback für An/Aus
-    haLight.onBrightnessCommand(onBrightnessCommand); // Callback für Helligkeit
-    haLight.onRGBColorCommand(onRGBColorCommand);     // Callback für Farbe
-    // Kein setRetain(true): retain wuerde HA-Befehle beim Broker retained
-    // publizieren und bei jedem Reconnect erneut zustellen — Callbacks
-    // feuern dann mit veralteten Werten. sendInitialStates() versorgt
-    // HA nach jedem (Re-)Connect ohnehin korrekt mit dem aktuellen Zustand.
+    haLight.onStateCommand(onStateCommand);
+    haLight.onBrightnessCommand(onBrightnessCommand);
+    haLight.onRGBColorCommand(onRGBColorCommand);
+    // Kein setRetain(true): retained Befehle kämen bei jedem Reconnect veraltet zurück.
 
-    // Modus Auswahl (Auto/Manual)
     haMode.setName("Betriebsmodus");
-    haMode.setOptions("Auto;Manual"); // Optionen für die Dropdown-Liste
+    haMode.setOptions("Auto;Manual");
     haMode.setIcon("mdi:cogs");
-    haMode.onCommand(onModeCommand); // Callback registrieren
+    haMode.onCommand(onModeCommand);
 
-    // Update Intervall (Stimmung)
     haUpdateInterval.setName("Stimmung Update Intervall");
-    haUpdateInterval.setMin(10);                // Minimalwert in Sekunden
-    haUpdateInterval.setMax(7200);              // Maximalwert (2 Stunden)
-    haUpdateInterval.setStep(10);               // Schrittweite
-    haUpdateInterval.setUnitOfMeasurement("s"); // Einheit
+    haUpdateInterval.setMin(10);
+    haUpdateInterval.setMax(7200);
+    haUpdateInterval.setStep(10);
+    haUpdateInterval.setUnitOfMeasurement("s");
     haUpdateInterval.setIcon("mdi:timer-sync-outline");
-    haUpdateInterval.onCommand(onUpdateIntervalCommand); // Callback registrieren
+    haUpdateInterval.onCommand(onUpdateIntervalCommand);
 
-    // Update Intervall (DHT Sensor)
     haDhtInterval.setName("Sensor Update Intervall");
     haDhtInterval.setMin(10);
     haDhtInterval.setMax(7200);
     haDhtInterval.setStep(10);
     haDhtInterval.setUnitOfMeasurement("s");
     haDhtInterval.setIcon("mdi:sun-clock");
-    haDhtInterval.onCommand(onDHTIntervalCommand); // Callback registrieren
+    haDhtInterval.onCommand(onDHTIntervalCommand);
 
     // Refresh Button
     haRefreshSentiment.setName("Weltlage aktualisieren");
@@ -378,17 +343,13 @@ void setupHA()
     debug(F("HA Komponenten konfiguriert."));
 }
 
-// ============================================================
-// Angezeigte Farbe/Helligkeit an HA melden
-// ============================================================
+// Angezeigte Farbe und Helligkeit an HA melden
 
-// Publiziert, was die LEDs bei eingeschaltetem Licht zeigen. HALight sendet nur
-// bei Aenderung und liefert false, wenn nicht gesendet werden konnte.
+// HALight sendet nur bei Änderung und liefert false, wenn das Senden scheitert.
 static bool publishShownLight()
 {
     ShownLight shown = currentShownLight();
-    // Konstruktor mit Werten verwenden: der Standardkonstruktor setzt isSet=false,
-    // und HALight::publishRGBColor() verwirft solche Farben ohne Fehlermeldung
+    // Der Standardkonstruktor setzt isSet=false, solche Farben verwirft publishRGBColor() still.
     HALight::RGBColor color((shown.color >> 16) & 0xFF, (shown.color >> 8) & 0xFF,
                             shown.color & 0xFF);
     bool colorOk = haLight.setRGBColor(color);
@@ -396,8 +357,7 @@ static bool publishShownLight()
     return colorOk && brightnessOk;
 }
 
-// Aus loop() aufrufen: meldet eine geaenderte Anzeige (Flag haLightStateDirty)
-// an HA — nie aus Callback-Kontext publizieren.
+// Aus loop() aufrufen, nie aus einem Callback.
 void syncHaLightState()
 {
     if (!appState.haLightStateDirty)
@@ -411,9 +371,7 @@ void syncHaLightState()
     }
 }
 
-// ============================================================
-// Weltlage relativ (Wort + Stufe) an HA melden
-// ============================================================
+// Weltlage relativ an HA melden
 
 // Zuletzt an HA gemeldete Stufe; -2 = noch nie gemeldet
 static int publishedRelativeLevel = -2;
@@ -434,8 +392,7 @@ static bool publishRelativeLevel()
     return false;
 }
 
-// Aus loop() aufrufen: meldet eine geaenderte Stufe (getSentiment setzt
-// appState.relativeLevel) — nie aus Callback-Kontext publizieren.
+// Aus loop() aufrufen, nie aus einem Callback.
 void syncHaRelativeLevel()
 {
     if (appState.relativeLevel == publishedRelativeLevel)
@@ -449,11 +406,8 @@ void syncHaRelativeLevel()
     }
 }
 
-// ============================================================
 // Initiale Zustände
-// ============================================================
 
-// === Sende initiale Zustände an HA ===
 void sendInitialStates()
 {
     if (!appState.mqttEnabled || !mqtt.isConnected())
@@ -467,55 +421,43 @@ void sendInitialStates()
     // Setze Flag um Callback-Loops zu vermeiden
     appState.sendingInitialStates = true;
 
-    // Licht & Modus (aus globalen Variablen)
     haLight.setState(appState.lightOn);
-    // Angezeigte Farbe/Helligkeit (Auto: Weltlage-Farbe, Manual: manuelle Werte) —
-    // reine Berechnung ohne pixels.Color() (vermeidet Crash bei uninitialisiertem NeoPixel)
+    // Ohne pixels.Color() berechnen, das bei uninitialisiertem NeoPixel abstürzt.
     publishShownLight();
     haMode.setState(appState.autoMode ? 0 : 1);
 
-    // Intervalle (aus globalen Variablen)
     haUpdateInterval.setState(float(appState.moodUpdateInterval / 1000.0));
     haDhtInterval.setState(float(appState.dhtUpdateInterval / 1000.0));
 
-    // DHT: Letzte bekannte Werte senden statt direkt zu lesen
-    // (DHT-I/O im Callback-/Reconnect-Kontext vermeiden — naechster regulaerer DHT-Zyklus liefert aktuelle Werte)
+    // Letzte bekannte DHT-Werte, kein DHT-I/O im Reconnect-Kontext.
     if (!isnan(appState.currentTemp))
         haTemperature.setValue(floatToString(appState.currentTemp, 1).c_str());
     if (!isnan(appState.currentHum))
         haHumidity.setValue(floatToString(appState.currentHum, 1).c_str());
 
-    // Sentiment (letzter bekannter Wert)
     haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
     haSentimentCategory.setValue(appState.sentimentCategory.c_str());
     haSentimentPercentile.setValue(floatToString(appState.percentile * 100.0, 0).c_str());
     // Weltlage relativ: vor dem ersten echten Wert "unbekannt"
     publishRelativeLevel();
 
-    // Initiale Heartbeat-Werte senden
     sendHeartbeat();
 
     debug(F("Initiale Zustände gesendet."));
 
-    // Anzeige ist gemeldet
     appState.haLightStateDirty = false;
 
-    // Flag zurücksetzen - Callbacks sind jetzt wieder aktiv
     appState.sendingInitialStates = false;
 }
 
-// ============================================================
 // MQTT Reconnect
-// ============================================================
 
-// === Verbesserte MQTT Reconnect und Heartbeat ===
 void checkAndReconnectMQTT() {
     if (!appState.mqttEnabled || appState.mqttServer.isEmpty())
         return;
 
     unsigned long currentMillis = millis();
 
-    // Heartbeat senden, wenn verbunden
     if (WiFi.status() == WL_CONNECTED && mqtt.isConnected()) {
         if (currentMillis - appState.lastMqttHeartbeat >= MQTT_HEARTBEAT_INTERVAL) {
             sendHeartbeat();
@@ -525,11 +467,9 @@ void checkAndReconnectMQTT() {
     // Reduce reconnection attempts frequency
     static unsigned long mqttReconnectBackoff = 10000; // Start with 10 seconds
 
-    // Reconnect-Logik
     if (WiFi.status() == WL_CONNECTED) {
         if (!mqtt.isConnected()) {
-            // Abriss registrieren — sonst feuert der Wiederverbunden-Zweig unten nach
-            // einem Reconnect nie (Status-LED bliebe dauerhaft im MQTT-Modus 4)
+            // Abriss merken, sonst feuert der Wiederverbunden-Zweig nie und die Status-LED bleibt im Modus 4.
             appState.mqttWasConnected = false;
 
             if (currentMillis - appState.lastMqttReconnectAttempt > mqttReconnectBackoff) {
@@ -545,9 +485,7 @@ void checkAndReconnectMQTT() {
 
                 mqtt.disconnect();
 
-                // MQTT neu starten — kein Busy-Wait mehr: HAMqtt::loop() (wird periodisch
-                // in loop() aufgerufen) verbindet selbst nach. Erfolg wird beim naechsten
-                // Check ausgewertet (else-Zweig unten, appState.mqttWasConnected).
+                // Kein Busy-Wait: HAMqtt::loop() verbindet selbst nach, ausgewertet beim nächsten Check.
                 mqtt.begin(appState.mqttServer.c_str(), appState.mqttUser.c_str(), appState.mqttPassword.c_str());
 
                 appState.lastMqttReconnectAttempt = currentMillis;
@@ -557,14 +495,12 @@ void checkAndReconnectMQTT() {
         } else if (!appState.mqttWasConnected) {
             debug(F("MQTT wieder verbunden. Sende Zustände..."));
 
-            // Initiale Zustände für nächsten Loop-Zyklus einplanen
             appState.mqttInitialStatesPending = true;
 
             appState.mqttWasConnected = true;
             mqttReconnectBackoff = 10000; // Reset backoff bei erfolgreicher Verbindung
 
-            // Status-LED nur zuruecksetzen wenn sie zuvor MQTT-Reconnect (4) anzeigte —
-            // API-Fehler-Anzeige (2) darf durch MQTT-Erfolg nicht geloescht werden
+            // Nur Modus 4 zurücksetzen, die API-Fehleranzeige (2) bleibt.
             if (appState.statusLedMode == 4) {
                 setStatusLED(0); // Normal mode — fordert selbst das volle LED-Update an
             } else if (xSemaphoreTake(appState.ledMutex, 10 / portTICK_PERIOD_MS) == pdTRUE) {

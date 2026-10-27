@@ -36,9 +36,7 @@ public:
     CaptiveRequestHandler() {}
     virtual ~CaptiveRequestHandler() {}
 
-    // Arduino-Core 3.x reicht die WebServer-Referenz zusaetzlich durch, 2.x
-    // nicht. Ohne diese Weiche uebersetzt der Handler nur gegen genau eine
-    // Core-Version — lokal lief es, in der CI (neuere Version) nicht.
+    // Arduino-Core 3.x reicht die WebServer-Referenz durch, 2.x nicht.
 #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
     bool canHandle(WebServer &server, HTTPMethod method, const String &uri) override
 #else
@@ -59,7 +57,6 @@ public:
             return false; // Normal handler
         }
 
-        // Use a static URL
         static const char* redirectUrl = "http://192.168.4.1/setup";
         server.sendHeader("Location", redirectUrl, true);
         server.send(302, "text/plain", "");
@@ -67,10 +64,7 @@ public:
     }
 };
 
-// === NTP-Zeit initialisieren ===
-// Nicht-blockierend: startet SNTP-Sync und kehrt sofort zurueck. SNTP synct
-// asynchron im Hintergrund; das Ergebnis wird beim naechsten Aufruf von
-// checkNtpTimeSync() im naechsten Loop-Durchlauf geprueft (statt hier 1s zu blockieren).
+// Nicht blockierend: checkNtpTimeSync() prüft das Ergebnis im nächsten Loop-Durchlauf.
 void initTime() {
     if (WiFi.status() != WL_CONNECTED) {
         debug(F("NTP: Kann Zeit nicht synchronisieren, kein WLAN"));
@@ -79,14 +73,11 @@ void initTime() {
 
     debug(F("NTP: Starte Zeitsynchronisation..."));
 
-    // Simple time config with fewer parameters
     configTime(0, 0, NTP_SERVER, "time.nist.gov");
 
-    // Set timezone
     setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
     tzset();
 
-    // Kein blockierendes delay(1000) mehr — Ergebnis wird asynchron geprueft
 }
 
 // === NTP-Sync-Status pruefen (nicht-blockierend, im naechsten Loop-Durchlauf aufrufen) ===
@@ -112,15 +103,12 @@ bool safeWiFiConnect(const String &ssid, const String &password, unsigned long t
 {
     debug(String(F("Safely connecting to WiFi: ")) + ssid);
 
-    // Always disconnect first
     WiFi.disconnect(true);
     delay(100);
 
-    // Start connection with full power
     WiFi.setSleep(false);
     WiFi.begin(ssid.c_str(), password.c_str());
 
-    // Non-blocking wait with timeout and yield
     unsigned long startTime = millis();
     int dotCounter = 0;
 
@@ -162,7 +150,6 @@ bool startWiFiStation()
     WiFi.setAutoReconnect(true);
     WiFi.persistent(false);
 
-    // Use the safer WiFi connect method
     bool connected = safeWiFiConnect(appState.wifiSSID, appState.wifiPassword, 15000);
 
     if (connected)
@@ -170,7 +157,6 @@ bool startWiFiStation()
         appState.wifiWasConnected = true;
         appState.wifiConnectedSince = millis(); // Stabilitäts-Timer starten
 
-        // Synchronize time via NTP after successful WiFi connection
         initTime();
     }
     else
@@ -218,7 +204,6 @@ void processDNS()
 // === Periodischen WiFi-Reconnect pruefen und durchfuehren ===
 void checkAndReconnectWifi()
 {
-    // Don't try to reconnect if we're in AP mode
     if (appState.isInConfigMode)
     {
         return;
@@ -252,18 +237,15 @@ void checkAndReconnectWifi()
             appState.disconnectStartMs = 0;  // Einmalig setzen
         }
 
-        // Check if it's time for a new reconnect attempt
         if (currentMillis - appState.lastWifiCheck >= appState.wifiReconnectDelay)
         {
             appState.lastWifiCheck = currentMillis;
             appState.wifiReconnectAttempts++;
 
-            // Only try to connect if we have SSID
             if (appState.wifiConfigured && !appState.wifiSSID.isEmpty())
             {
                 debug(String(F("WiFi Reconnect Versuch #")) + appState.wifiReconnectAttempts + String(F(" mit Delay ")) + String(appState.wifiReconnectDelay / 1000) + "s");
 
-                // Try reconnect
                 WiFi.disconnect(true);
                 delay(100);
                 WiFi.begin(appState.wifiSSID.c_str(), appState.wifiPassword.c_str());
@@ -295,7 +277,6 @@ void checkAndReconnectWifi()
                     // Explicitly disable power save mode after connection
                     esp_wifi_set_ps(WIFI_PS_NONE);
 
-                    // Initialize time after successful reconnection if not already done
                     if (!appState.timeInitialized) {
                         initTime();
                     }
@@ -304,7 +285,6 @@ void checkAndReconnectWifi()
                 }
                 else
                 {
-                    // Exponential backoff - with max limit
                     appState.wifiReconnectDelay = min(appState.wifiReconnectDelay * 2, (unsigned long)MAX_RECONNECT_DELAY);
                     debug(String(F("WiFi Reconnect fehlgeschlagen. Naechster Versuch in ")) + String(appState.wifiReconnectDelay / 1000) + "s");
                 }
@@ -313,7 +293,6 @@ void checkAndReconnectWifi()
     }
     else if (!appState.wifiWasConnected)
     {
-        // WiFi is now connected but was disconnected before
         debug(F("WiFi ist wieder verbunden."));
         appState.wifiWasConnected = true;
         appState.wifiReconnectActive = false;  // Reconnect beendet, LEDs wieder freigeben
@@ -322,10 +301,8 @@ void checkAndReconnectWifi()
         appState.wifiReconnectDelay = 5000;
         appState.wifiConnectedSince = millis(); // Stabilitäts-Timer starten
 
-        // Explicitly disable power save mode after connection
         esp_wifi_set_ps(WIFI_PS_NONE);
 
-        // Initialize time after successful reconnection if not already done
         if (!appState.timeInitialized) {
             initTime();
         }
@@ -333,15 +310,7 @@ void checkAndReconnectWifi()
         setStatusLED(0);
     }
 
-    // Selbstheilung der Status-LED. Die Rueckstellungen im Code haengen an
-    // einzelnen Ereignissen und greifen deshalb nicht zuverlaessig:
-    //   - Modus 1 (WiFi) wurde nur beim Wechsel getrennt -> verbunden geloescht;
-    //     stand die Verbindung nach einem Reboot sofort, lief das nie.
-    //   - Modus 2 (API-Fehler) wird erst beim naechsten erfolgreichen
-    //     Sentiment-Abruf geloescht — das ist bis zu 30 Minuten spaeter.
-    // Fuer Nutzende sieht dauerhaftes Blinken nach einem Defekt aus, obwohl
-    // laengst alles laeuft. Der Status wird daher zustandsbasiert gefuehrt:
-    // Wenn WLAN steht und die API erreichbar ist, blinkt nichts.
+    // Status-LED zustandsbasiert: steht WLAN und antwortet die API, blinkt nichts.
     bool wifiOk = (WiFi.status() == WL_CONNECTED);
     bool apiOk  = appState.sentimentAPIAvailable;
 
@@ -362,10 +331,7 @@ void startAPModeWithServer()
 
     // Status-LED via Serial signalisieren, da pixels.show() vermieden wird
     debug(F("AP Mode activated (visual LED indicator skipped during init)."));
-    // pixels.fill(pixels.Color(255, 255, 0));  // Gelb
-    // pixels.show(); // <-- Vermeiden waehrend Setup-Phase
 
-    // AP-Modus konfigurieren
     WiFi.mode(WIFI_AP);
     delay(300); // Laengere Verzoegerung fuer Modus-Wechsel
 
@@ -377,34 +343,28 @@ void startAPModeWithServer()
 
     delay(500);
 
-    // WiFi-Station-Modus explizit deaktivieren
     WiFi.disconnect(true); // Disconnect STA mode if it was somehow active
 
-    // *** ESP-IDF Power Save im AP Modus deaktivieren ***
+    // ESP-IDF Power Save im AP-Modus aus
     esp_wifi_set_ps(WIFI_PS_NONE);
     debug(F("ESP-IDF WiFi Power Save explicitly disabled (AP)."));
 
-    // Jetzt erst den Webserver starten
     server.begin();
     debug(F("Webserver im AP-Modus gestartet"));
 
-    // Setup komplettes Webserver-Routing (ist bereits global erfolgt)
-    // setupWebServer(); // Nicht nochmal aufrufen!
+    // setupWebServer() lief bereits global, nicht erneut aufrufen.
 
-    // DNS-Server starten
     dnsServer.start(DNS_PORT, "*", IP);
     appState.isInConfigMode = true; // Dies markiert, dass wir im AP-Modus sind
 
     debug("AP gestartet mit IP " + WiFi.softAPIP().toString());
     debug(String(F("SSID: ")) + DEFAULT_AP_NAME);
 
-    // Captive Portal Request Handler hinzufuegen
     server.addHandler(new CaptiveRequestHandler());
 
     // Status LED fuer AP-Modus (wird in loop aktualisiert)
     setStatusLED(5);
 
-    // Merke Zeit fuer Timeout
     appState.apModeStartTime = millis();
 }
 
@@ -430,9 +390,7 @@ bool connectWiFiAndStartServices() {
     esp_wifi_set_ps(WIFI_PS_NONE);
     debug(F("ESP-IDF WiFi Power Save explicitly disabled (STA)."));
 
-    // TCP-Stack stabilisieren: Nach schnellem Reboot können verwaiste TCP-Sessions
-    // vom vorherigen Lauf im Router/Broker noch offen sein. Ohne Delay crasht der
-    // lwIP-Stack (LoadProhibited in tcp_free_acked_segments) beim ersten HTTP/MQTT-Request.
+    // Verwaiste TCP-Sessions nach schnellem Reboot lassen lwIP sonst beim ersten Request abstürzen.
     debug(F("Warte auf TCP-Stack-Stabilisierung..."));
     delay(3000);
     watchdog.feed();

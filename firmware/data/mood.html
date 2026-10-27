@@ -10,9 +10,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"
             integrity="sha384-9MhbyIRcBVQiiC7FSd7T38oJNj2Zh+EfxS7/vjhBi4OOT78NlHSnzM31EZRWR1LZ"
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <!-- C-PERF: externe Zeit-Bibliothek + Chart.js-Zeit-Adapter entfernt — alle
-         Charts nutzen category-Achsen (kein Zeit-Adapter noetig), Datumsformatierung
-         erfolgt jetzt ueber native Date-Helfer in mood.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
@@ -253,8 +250,7 @@
     var CURRENT_URL = 'https://analyse.godsapp.de/api/moodlight/current';
     var HEADLINES_URL = 'https://analyse.godsapp.de/api/moodlight/headlines?limit=20';
 
-    // LED-Farben (Index 0–4: sehr negativ → sehr positiv) — Fallback-Werte,
-    // falls /api/settings/colors (Geräte-eigener Endpoint) nicht erreichbar ist
+    // Fallback-Farben, falls /api/settings/colors nicht erreichbar ist
     var LED_COLORS = [
         {r:255,g:0,b:0,     name:'Rot',     label:'sehr negativ'},
         {r:255,g:165,b:0,   name:'Orange',   label:'negativ'},
@@ -273,10 +269,7 @@
         return { r: (num >> 16) & 0xFF, g: (num >> 8) & 0xFF, b: num & 0xFF };
     }
 
-    // Farben vom Gerät selbst laden (gleicher Origin, /api/settings/colors),
-    // damit die Perzentil-Grafik die tatsächlich konfigurierten Custom-Farben
-    // zeigt statt fest codierter Standardwerte. Bei Fehler bleibt der obige
-    // Fallback (LED_COLORS) unverändert bestehen.
+    // Konfigurierte Farben vom Gerät, sonst bleibt LED_COLORS
     function loadLedColors() {
         return fetch('/api/settings/colors')
             .then(function(r) { return r.ok ? r.json() : null; })
@@ -312,12 +305,10 @@
                 var thresh = data.thresholds || {};
                 var ledIdx = data.led_index != null ? data.led_index : 2;
 
-                // Perzentil-Badge
                 document.getElementById('percentileVal').textContent = pct + '. Pzt.';
                 document.getElementById('percentileDesc').textContent =
                     'Der aktuelle Score (' + score.toFixed(2) + ') liegt über ' + pct + ' % der Werte der letzten 7 Tage.';
 
-                // Historische Werte
                 var histMin = parseFloat(hist.min || -1);
                 var histMax = parseFloat(hist.max || 1);
                 var histMed = parseFloat(hist.median || 0);
@@ -329,7 +320,6 @@
                 document.getElementById('histCount').textContent =
                     (hist.count || '—') + ' Datenpunkte in den letzten 7 Tagen';
 
-                // Balken positionieren
                 if (histSpan > 0.001) {
                     var leftPct = ((histMin + 1) / 2 * 100).toFixed(1) + '%';
                     var widthPct = (histSpan / 2 * 100).toFixed(1) + '%';
@@ -337,10 +327,8 @@
                     rangeEl.style.left = leftPct;
                     rangeEl.style.width = widthPct;
 
-                    // Score-Nadel
                     document.getElementById('histNeedle').style.left = scoreToPercent(score);
 
-                    // Schwellwert-Ticks
                     var wrap = document.getElementById('histBarWrap');
                     ['p20','p40','p60','p80'].forEach(function(key) {
                         if (thresh[key] === undefined) return;
@@ -357,10 +345,8 @@
                     });
                 }
 
-                // Fallback-Hinweis
                 document.getElementById('fallbackHint').style.display = thresh.fallback ? 'block' : 'none';
 
-                // LED-Farb-Erklärung
                 var led = LED_COLORS[ledIdx] || LED_COLORS[2];
                 var dot = document.getElementById('ledDot');
                 dot.style.background = 'rgb(' + led.r + ',' + led.g + ',' + led.b + ')';
@@ -405,8 +391,7 @@
             var cls = typeof h.sentiment_score === 'number' ? scoreClass(h.sentiment_score) : 'score-neutral';
             var feed = h.feed_name || h.source_name || '';
 
-            // textContent statt innerHTML — verhindert HTML-Injection ueber
-            // Headline-/Feed-Texte, die vom Backend/RSS-Feeds stammen
+            // textContent statt innerHTML: Headlines stammen aus fremden Feeds
             var item = document.createElement('div');
             item.className = 'headline-item';
 

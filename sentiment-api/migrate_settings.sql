@@ -1,7 +1,4 @@
--- Migration: settings-Tabelle anlegen (Einstellungs-Persistenz)
--- Idempotent: kann mehrfach ausgefuehrt werden (IF NOT EXISTS, ON CONFLICT DO NOTHING)
--- Ausfuehrung auf Produktions-DB:
---   docker exec -i moodlight-postgres psql -U moodlight moodlight < migrate_settings.sql
+-- Legt die settings-Tabelle an, idempotent. Aufruf: psql -U moodlight moodlight < migrate_settings.sql
 
 SET TIME ZONE 'Europe/Berlin';
 
@@ -15,8 +12,7 @@ COMMENT ON TABLE settings IS 'Key-Value-Store für Backend-Konfiguration';
 COMMENT ON COLUMN settings.key IS 'Einstellungs-Schlüssel: analysis_interval, headlines_per_source, anthropic_api_key, admin_password_hash';
 COMMENT ON COLUMN settings.value IS 'Einstellungs-Wert als TEXT (Zahlen werden als String gespeichert)';
 
--- Trigger: Auto-Update updated_at bei Änderung
--- Funktion update_updated_at_column() muss bereits existieren (aus init.sql)
+-- Braucht update_updated_at_column() aus init.sql.
 DROP TRIGGER IF EXISTS trigger_update_settings ON settings;
 CREATE TRIGGER trigger_update_settings
     BEFORE UPDATE ON settings

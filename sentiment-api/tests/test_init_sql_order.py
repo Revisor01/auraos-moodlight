@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Prüfskript für die Definitionsreihenfolge in init.sql (Review-Runde 2, B-KRITISCH-2).
-
-Eine frische DB kann in diesen Tests nicht aufgebaut werden — stattdessen wird
-per Text-Analyse sichergestellt, dass jede Funktion, die von einem Trigger
-referenziert wird, VOR dem ersten referenzierenden CREATE TRIGGER-Statement
-definiert ist. Das reproduziert exakt den Fehler, der eine frische DB beim
-ersten Start brechen würde ("function does not exist").
-"""
+"""Prüfskript für die Definitionsreihenfolge in init.sql."""
 
 import os
 import re
@@ -30,11 +22,7 @@ class TestInitSqlDefinitionOrder(unittest.TestCase):
         return match.start()
 
     def test_update_updated_at_column_vor_erster_verwendung_definiert(self):
-        """
-        update_updated_at_column() wird von den Triggern auf settings und
-        device_statistics referenziert — die Funktionsdefinition muss vor dem
-        ersten EXECUTE FUNCTION-Aufruf stehen.
-        """
+        """update_updated_at_column() wird von den Triggern auf settings und device_statistics referenziert — die Funktionsdefinition muss vor dem ersten EXECUTE FUNCTION-Aufruf stehen."""
         function_def_pos = self._first_index_of(
             r"CREATE OR REPLACE FUNCTION update_updated_at_column\(\)"
         )
@@ -55,11 +43,7 @@ class TestInitSqlDefinitionOrder(unittest.TestCase):
         self.assertLess(helper_section_pos, settings_table_pos)
 
     def test_set_sentiment_category_trigger_entfernt(self):
-        """
-        Kategorie-Duplikat-Logik (B-MITTEL): der DB-seitige Trigger und die
-        zugehörige Funktion dürfen nicht mehr in init.sql vorkommen — Python
-        (shared_config.get_sentiment_category) ist die einzige Quelle.
-        """
+        """Kategorie-Duplikat-Logik: der DB-seitige Trigger und die zugehörige Funktion dürfen nicht mehr in init.sql vorkommen — Python (shared_config.get_sentiment_category) ist die einzige Quelle."""
         self.assertNotIn("trigger_set_category", self.sql)
         self.assertNotIn("FUNCTION set_sentiment_category", self.sql)
         self.assertNotIn("FUNCTION get_sentiment_category", self.sql)

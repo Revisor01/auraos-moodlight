@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Database Layer für Moodlight System
-PostgreSQL + Redis Integration mit robustem Connection-Handling
-"""
+"""Datenbankschicht der Sentiment-API für PostgreSQL und Redis."""
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -27,45 +24,23 @@ SENSITIVE_SETTING_KEYS = ('anthropic_api_key', 'admin_password_hash')
 
 
 def _mask_secret(key: str, value: str) -> str:
-    """
-    Maskiert sensible Settings-Werte fuer die Log-Ausgabe.
-
-    Der Anthropic-API-Key und der Passwort-Hash landen sonst im Klartext im
-    Container-Log. Zurueckgegeben wird nur die Laenge, damit sich ein
-    "gesetzt/leer"-Problem weiterhin debuggen laesst.
-    """
+    """Maskiert sensible Settings-Werte fuer die Log-Ausgabe."""
     if key in SENSITIVE_SETTING_KEYS:
         return f"<maskiert, {len(value) if value else 0} Zeichen>"
     return value
 
 
 class Database:
-    """PostgreSQL Datenbank-Wrapper mit robustem Connection-Handling
-
-    Wichtig (B4): Es gibt KEINE geteilte self.conn mehr. Jeder get_cursor()-Aufruf
-    holt sich eine eigene Verbindung aus dem ThreadedConnectionPool, committet oder
-    rollt bei Fehler zurück, und gibt die Verbindung danach IMMER an den Pool zurück.
-    Vorher teilten sich alle gunicorn-Threads UND der Background-Worker-Thread eine
-    einzige Connection — Commits/Rollbacks trafen dadurch fremde, gleichzeitig
-    laufende Writes, und ein einzelner Fehler ohne Rollback ließ die Verbindung
-    dauerhaft in "current transaction is aborted" hängen.
-    """
+    """PostgreSQL Datenbank-Wrapper mit robustem Connection-Handling."""
 
     def __init__(self, database_url: str):
-        """
-        Initialisiere Datenbankverbindung
-
-        Args:
-            database_url: PostgreSQL Connection String
-                Format: postgresql://user:password@host:port/database
-        """
+        """Initialisiere Datenbankverbindung."""
         self.database_url = database_url
         self._connection_pool = None
 
     def connect(self):
         """Stelle Verbindung zur Datenbank her mit Connection-Pool"""
         try:
-            # Verwende Connection-Pool für bessere Stabilität
             self._connection_pool = pool.ThreadedConnectionPool(
                 minconn=1,
                 maxconn=5,
@@ -91,13 +66,7 @@ class Database:
             logger.info("PostgreSQL Connection-Pool geschlossen")
 
     def _ensure_connection(self) -> bool:
-        """
-        Stelle sicher, dass der Connection-Pool verfügbar ist.
-        Versucht bei fehlendem Pool automatisch eine Neuinitialisierung.
-
-        Returns:
-            True wenn Pool verfügbar, False bei Fehler
-        """
+        """Stelle sicher, dass der Connection-Pool verfügbar ist."""
         if self._connection_pool:
             return True
 
@@ -116,29 +85,14 @@ class Database:
 
     @contextmanager
     def get_cursor(self, cursor_factory=None):
-        """
-        Context Manager für sichere Cursor-Verwendung mit eigener Pool-Connection.
-
-        Holt pro Aufruf eine eigene Verbindung aus dem Pool (pool.getconn()),
-        committet bei Erfolg, rollt bei Exception zurück, und gibt die Verbindung
-        in jedem Fall an den Pool zurück (pool.putconn()) — auch bei Fehlern.
-        Dadurch teilen sich parallele Requests/Threads nie eine Transaktion (B4).
-
-        Args:
-            cursor_factory: Optional Cursor-Factory (z.B. RealDictCursor)
-
-        Yields:
-            Datenbank-Cursor
-        """
+        """Context Manager für sichere Cursor-Verwendung mit eigener Pool-Connection."""
         if not self._ensure_connection():
             raise Exception("Datenbankverbindung nicht verfügbar")
 
         conn = self._connection_pool.getconn()
         cursor = None
         try:
-            # B-MITTEL: conn.cursor() INS try gezogen — schlaegt die Cursor-Erstellung
-            # selbst fehl, muss putconn() im finally trotzdem laufen, sonst leakt
-            # die Connection dauerhaft aus dem Pool
+            # cursor() im try, damit putconn() auch bei dessen Fehler läuft und die Connection nicht leakt.
             cursor = conn.cursor(cursor_factory=cursor_factory) if cursor_factory else conn.cursor()
             yield cursor
             conn.commit()
@@ -162,20 +116,7 @@ class Database:
         api_response_time_ms: Optional[int] = None,
         metadata: Optional[Dict] = None
     ) -> int:
-        """
-        Speichere Sentiment-Analyse in Datenbank
-
-        Args:
-            sentiment_score: Sentiment-Wert (-1.0 bis +1.0)
-            category: Kategorie (sehr negativ, negativ, neutral, positiv, sehr positiv)
-            headlines_analyzed: Anzahl analysierter Headlines
-            source_count: Anzahl der Quellen
-            api_response_time_ms: API Response Time in ms
-            metadata: Zusätzliche Metadaten als Dict
-
-        Returns:
-            ID des eingefügten Datensatzes
-        """
+        """Speichere Sentiment-Analyse in Datenbank."""
         query = """
             INSERT INTO sentiment_history
             (sentiment_score, category, headlines_analyzed, source_count, api_response_time_ms, metadata)
@@ -206,16 +147,7 @@ class Database:
         sentiment_history_id: int,
         results: list
     ) -> int:
-        """
-        Speichere analysierte Headlines in der Datenbank.
-
-        Args:
-            sentiment_history_id: FK zu sentiment_history.id
-            results: Liste von Dicts (headline, source, feed_id, sentiment, strength, link optional)
-
-        Returns:
-            Anzahl gespeicherter Headlines (0 wenn results leer)
-        """
+        """Speichere analysierte Headlines in der Datenbank."""
         if not results:
             return 0
 
@@ -248,12 +180,7 @@ class Database:
             raise
 
     def get_latest_sentiment(self) -> Optional[Dict[str, Any]]:
-        """
-        Hole den letzten Sentiment-Wert aus der Datenbank
-
-        Returns:
-            Dict mit Sentiment-Daten oder None
-        """
+        """Hole den letzten Sentiment-Wert aus der Datenbank."""
         query = """
             SELECT
                 id,
@@ -283,23 +210,11 @@ class Database:
         to_time: Optional[datetime] = None,
         limit: int = 50000
     ) -> List[Dict[str, Any]]:
-        """
-        Hole Sentiment-Historie aus Datenbank
-
-        Args:
-            from_time: Start-Zeitpunkt (None = alle Daten)
-            to_time: End-Zeitpunkt (default: now)
-            limit: Maximale Anzahl Einträge
-
-        Returns:
-            Liste von Sentiment-Daten
-        """
+        """Hole Sentiment-Historie aus Datenbank."""
         if to_time is None:
             to_time = datetime.now(timezone.utc)
 
-        # Query dynamisch bauen je nachdem ob from_time gesetzt ist
         if from_time is None:
-            # Alle Daten bis to_time
             query = """
                 SELECT
                     timestamp,
@@ -313,7 +228,6 @@ class Database:
             """
             params = (to_time, limit)
         else:
-            # Zeitbereich
             query = """
                 SELECT
                     timestamp,
@@ -345,20 +259,7 @@ class Database:
         ip_address: Optional[str] = None,
         location: Optional[str] = None
     ) -> bool:
-        """
-        Registriere oder aktualisiere ein Moodlight-Gerät
-
-        Args:
-            device_id: Eindeutige Geräte-ID
-            device_name: Name des Geräts
-            mac_address: MAC-Adresse
-            firmware_version: Firmware-Version
-            ip_address: IP-Adresse
-            location: Standort
-
-        Returns:
-            True bei Erfolg
-        """
+        """Registriere oder aktualisiere ein Moodlight-Gerät."""
         query = """
             INSERT INTO device_statistics
             (device_id, device_name, mac_address, firmware_version, ip_address, location, total_requests)
@@ -384,15 +285,7 @@ class Database:
             return False
 
     def get_active_devices(self, hours: int = 2) -> List[Dict[str, Any]]:
-        """
-        Hole alle aktiven Geräte (last_seen < X Stunden)
-
-        Args:
-            hours: Zeitfenster in Stunden
-
-        Returns:
-            Liste von Geräten
-        """
+        """Hole alle aktiven Geräte (last_seen < X Stunden)."""
         query = """
             SELECT
                 device_id,
@@ -417,13 +310,7 @@ class Database:
             return []
 
     def get_active_feeds(self) -> List[Dict[str, Any]]:
-        """
-        Hole alle aktiven RSS-Feeds aus der Datenbank.
-
-        Returns:
-            Liste von Dicts mit 'id', 'name' und 'url' Feldern.
-            Leere Liste bei Fehler oder keinen aktiven Feeds.
-        """
+        """Hole alle aktiven RSS-Feeds aus der Datenbank."""
         query = """
             SELECT id, name, url
             FROM feeds
@@ -440,17 +327,7 @@ class Database:
             return []
 
     def update_feed_fetch_status(self, feed_id: int, success: bool) -> bool:
-        """
-        Aktualisiert den Abruf-Status eines Feeds nach einem Fetch-Versuch (B-MITTEL).
-
-        Args:
-            feed_id: ID des Feeds
-            success: True bei erfolgreichem Abruf (setzt last_fetched_at=NOW(), error_count=0),
-                     False bei Fehler (erhoeht error_count um 1)
-
-        Returns:
-            True bei Erfolg, False bei Fehler
-        """
+        """Aktualisiert den Abruf-Status eines Feeds nach einem Fetch-Versuch."""
         if success:
             query = """
                 UPDATE feeds
@@ -472,13 +349,7 @@ class Database:
             return False
 
     def get_all_feeds(self) -> List[Dict[str, Any]]:
-        """
-        Hole alle RSS-Feeds aus der Datenbank (aktiv und inaktiv).
-
-        Returns:
-            Liste von Dicts mit id, name, url, active, last_fetched_at, error_count, created_at.
-            Leere Liste bei Fehler.
-        """
+        """Hole alle RSS-Feeds aus der Datenbank (aktiv und inaktiv)."""
         query = """
             SELECT id, name, url, active, last_fetched_at, error_count, created_at
             FROM feeds
@@ -494,17 +365,7 @@ class Database:
             return []
 
     def get_recent_headlines(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """
-        Gibt die zuletzt analysierten Headlines mit Feed-Zuordnung zurück.
-
-        Args:
-            limit: Maximale Anzahl zurückgegebener Headlines (default: 50)
-
-        Returns:
-            Liste von Dicts mit id, headline, source_name, sentiment_score,
-            strength, link, analyzed_at (ISO-String), feed_name, feed_id.
-            Leere Liste bei Fehler.
-        """
+        """Gibt die zuletzt analysierten Headlines mit Feed-Zuordnung zurück."""
         query = """
             SELECT
                 h.id,
@@ -537,20 +398,7 @@ class Database:
             return []
 
     def add_feed(self, name: str, url: str) -> Optional[Dict[str, Any]]:
-        """
-        Füge neuen RSS-Feed in die Datenbank ein.
-
-        Args:
-            name: Anzeigename des Feeds
-            url: Feed-URL (muss einzigartig sein)
-
-        Returns:
-            Dict mit id, name, url, active, created_at des neu angelegten Feeds.
-            None bei Fehler oder Duplikat (psycopg2.errors.UniqueViolation).
-
-        Raises:
-            ValueError: Wenn die URL bereits existiert (UNIQUE-Constraint).
-        """
+        """Füge neuen RSS-Feed in die Datenbank ein."""
         query = """
             INSERT INTO feeds (name, url, active)
             VALUES (%s, %s, TRUE)
@@ -570,15 +418,7 @@ class Database:
             raise
 
     def delete_feed(self, feed_id: int) -> bool:
-        """
-        Lösche RSS-Feed aus der Datenbank.
-
-        Args:
-            feed_id: ID des zu löschenden Feeds
-
-        Returns:
-            True wenn Feed gefunden und gelöscht, False wenn ID nicht existiert.
-        """
+        """Lösche RSS-Feed aus der Datenbank."""
         query = """
             DELETE FROM feeds
             WHERE id = %s
@@ -600,12 +440,7 @@ class Database:
             raise
 
     def get_statistics(self) -> Dict[str, Any]:
-        """
-        Hole System-Statistiken
-
-        Returns:
-            Dict mit verschiedenen Statistiken
-        """
+        """Hole System-Statistiken."""
         queries = {
             'total_devices': "SELECT COUNT(*) FROM device_statistics;",
             'active_devices_24h': "SELECT COUNT(*) FROM device_statistics WHERE last_seen >= NOW() - INTERVAL '24 hours';",
@@ -622,7 +457,6 @@ class Database:
                     result = cur.fetchone()
                     stats[key] = result[0] if result and result[0] is not None else 0
 
-                # Letztes Update
                 cur.execute("SELECT MAX(timestamp) FROM sentiment_history;")
                 last_update = cur.fetchone()[0]
                 stats['last_update'] = last_update.isoformat() if last_update else None
@@ -633,16 +467,7 @@ class Database:
             return {}
 
     def get_score_percentiles(self, days: int = 7) -> Dict[str, Any]:
-        """
-        Berechnet historische Perzentile der Sentiment-Scores der letzten N Tage.
-
-        Args:
-            days: Anzahl Tage für das historische Fenster (default: 7)
-
-        Returns:
-            Dict mit p20, p40, p60, p80, min, max, median, count, fallback.
-            Bei weniger als 3 Datenpunkten: fallback=True mit festen Standardwerten.
-        """
+        """Berechnet historische Perzentile der Sentiment-Scores der letzten N Tage."""
         FALLBACK = {
             "p20": -0.5, "p40": -0.2, "p60": 0.1, "p80": 0.4,
             "min": -1.0, "max": 1.0, "median": 0.0,
@@ -690,18 +515,7 @@ class Database:
             return FALLBACK
 
     def get_feed_trends(self, days: int = 7) -> List[Dict[str, Any]]:
-        """
-        Berechnet Durchschnitts-Score pro Feed für das angegebene Zeitfenster.
-
-        Args:
-            days: Zeitfenster in Tagen (typisch 7 oder 30)
-
-        Returns:
-            Liste von Dicts, absteigend sortiert nach avg_score.
-            Jeder Eintrag: feed_id, feed_name, avg_score, headline_count, min_score, max_score.
-            Feeds ohne Headlines im Zeitfenster werden ausgeschlossen.
-            Leere Liste bei Fehler.
-        """
+        """Berechnet Durchschnitts-Score pro Feed für das angegebene Zeitfenster."""
         query = """
             SELECT
                 f.id          AS feed_id,
@@ -738,12 +552,7 @@ class Database:
             return []
 
     def check_connection_health(self) -> Dict[str, Any]:
-        """
-        Prüfe Gesundheit der Datenbankverbindung
-
-        Returns:
-            Dict mit Status-Informationen
-        """
+        """Prüfe Gesundheit der Datenbankverbindung."""
         health = {
             'connected': False,
             'pool_available': self._connection_pool is not None,
@@ -764,16 +573,7 @@ class Database:
         return health
 
     def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        """
-        Lese einen Einstellungs-Wert aus der settings-Tabelle.
-
-        Args:
-            key: Einstellungs-Schlüssel (z.B. 'analysis_interval')
-            default: Rückgabewert wenn Key nicht gefunden
-
-        Returns:
-            Wert als String oder default
-        """
+        """Lese einen Einstellungs-Wert aus der settings-Tabelle."""
         query = "SELECT value FROM settings WHERE key = %s;"
         try:
             with self.get_cursor() as cur:
@@ -785,16 +585,7 @@ class Database:
             return default
 
     def set_setting(self, key: str, value: str) -> bool:
-        """
-        Speichere oder aktualisiere einen Einstellungs-Wert (UPSERT).
-
-        Args:
-            key: Einstellungs-Schlüssel
-            value: Einstellungs-Wert als String
-
-        Returns:
-            True bei Erfolg, False bei Fehler
-        """
+        """Speichere oder aktualisiere einen Einstellungs-Wert (UPSERT)."""
         query = """
             INSERT INTO settings (key, value)
             VALUES (%s, %s)
@@ -814,12 +605,7 @@ class Database:
             return False
 
     def get_all_settings(self) -> Dict[str, str]:
-        """
-        Alle Einstellungen als Dict zurückgeben.
-
-        Returns:
-            Dict[key -> value], leer bei Fehler
-        """
+        """Alle Einstellungen als Dict zurückgeben."""
         query = "SELECT key, value FROM settings ORDER BY key ASC;"
         try:
             with self.get_cursor() as cur:
@@ -835,12 +621,7 @@ class RedisCache:
     """Redis Cache-Wrapper"""
 
     def __init__(self, redis_url: str = "redis://localhost:6379/0"):
-        """
-        Initialisiere Redis-Verbindung
-
-        Args:
-            redis_url: Redis Connection String
-        """
+        """Initialisiere Redis-Verbindung."""
         self.redis_url = redis_url
         self.client = None
 
@@ -855,15 +636,7 @@ class RedisCache:
             raise
 
     def get(self, key: str) -> Optional[Dict]:
-        """
-        Hole Wert aus Cache
-
-        Args:
-            key: Cache-Key
-
-        Returns:
-            Dict oder None
-        """
+        """Hole Wert aus Cache."""
         try:
             value = self.client.get(key)
             if value:
@@ -874,14 +647,7 @@ class RedisCache:
             return None
 
     def set(self, key: str, value: Dict, ttl: int = 300):
-        """
-        Setze Wert in Cache
-
-        Args:
-            key: Cache-Key
-            value: Wert als Dict
-            ttl: Time-to-Live in Sekunden (default: 5 Min)
-        """
+        """Setze Wert in Cache."""
         try:
             self.client.setex(key, ttl, json.dumps(value))
             logger.debug(f"Cache gesetzt: {key} (TTL: {ttl}s)")
@@ -897,16 +663,7 @@ class RedisCache:
             logger.error(f"Fehler beim Löschen aus Redis Cache ({key}): {e}")
 
     def delete_pattern(self, pattern: str):
-        """
-        Lösche alle Keys, die zu einem Pattern passen (B-PERF).
-
-        Nutzt scan_iter() statt keys() — scan_iter() iteriert inkrementell mit
-        Cursor statt den kompletten Keyspace in einem Schritt zu blockieren
-        (KEYS blockiert Redis bei vielen Keys, SCAN nicht).
-
-        Args:
-            pattern: Redis-Glob-Pattern (z.B. "moodlight:history:*")
-        """
+        """Lösche alle Keys, die zu einem Pattern passen."""
         try:
             keys = list(self.client.scan_iter(match=pattern, count=100))
             if keys:
@@ -930,12 +687,7 @@ _cache = None
 
 
 def get_database() -> Database:
-    """Hole Database-Instanz (Singleton)
-
-    _db wird erst NACH erfolgreichem connect() zugewiesen (B8) — schlägt connect()
-    fehl, bleibt _db None und der nächste Aufruf versucht einen neuen Verbindungsaufbau,
-    statt eine halbinitialisierte Instanz als Singleton zu behalten.
-    """
+    """Hole Database-Instanz (Singleton)."""
     global _db
     if _db is None:
         database_url = os.environ.get('DATABASE_URL', 'postgresql://moodlight:password@localhost:5432/moodlight')
@@ -956,16 +708,7 @@ def get_cache() -> RedisCache:
 
 
 def compute_led_index(score: float, thresholds: Dict[str, Any]) -> int:
-    """
-    Mappt einen Sentiment-Score auf LED-Index 0–4 basierend auf Perzentil-Schwellwerten.
-
-    Args:
-        score: Sentiment-Score (-1.0 bis +1.0)
-        thresholds: Dict aus get_score_percentiles() mit Schlüsseln p20, p40, p60, p80
-
-    Returns:
-        LED-Index 0 (sehr negativ) bis 4 (sehr positiv)
-    """
+    """Mappt einen Sentiment-Score auf LED-Index 0–4 basierend auf Perzentil-Schwellwerten."""
     if score < thresholds.get('p20', -0.5):
         return 0
     if score < thresholds.get('p40', -0.2):

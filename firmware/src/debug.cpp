@@ -1,8 +1,4 @@
-// ========================================================
-// Debug-Modul
-// ========================================================
-// debug()-Funktionen mit Ringpuffer-Logging und Serial-Ausgabe.
-// floatToString()-Hilfsfunktion fuer Float-zu-String-Konvertierung.
+// Debug-Ausgabe mit Ringpuffer.
 
 #define DEBUG_MODE  // AKTIVIERT fuer besseres Debugging
 #include "debug.h"
@@ -21,9 +17,7 @@ String floatToString(float value, int decimalPlaces)
 }
 
 #ifdef DEBUG_MODE
-// === Debug-Funktion mit Logging ===
-// Verwendet fix-groesse char-Arrays im Ringpuffer statt String-Objekte.
-// Verhindert Heap-Fragmentierung durch staendiges Allokieren/Freigeben.
+// Feste char-Arrays statt String, gegen Heap-Fragmentierung.
 void debug(const String &message) {
     unsigned long ms = millis();
 
@@ -31,7 +25,6 @@ void debug(const String &message) {
     snprintf(appState.logBuffer[appState.logIndex], AppState::LOG_ENTRY_SIZE,
              "[%lus] %s", ms / 1000, message.c_str());
 
-    // Print to Serial
     Serial.print(appState.logBuffer[appState.logIndex]);
     Serial.print(F(" (Mem: "));
     Serial.print(ESP.getFreeHeap());
@@ -47,7 +40,6 @@ void debug(const __FlashStringHelper *message) {
     snprintf(appState.logBuffer[appState.logIndex], AppState::LOG_ENTRY_SIZE,
              "[%lus] %s", ms / 1000, (const char*)message);
 
-    // Print to Serial
     Serial.print(appState.logBuffer[appState.logIndex]);
     Serial.print(F(" (Mem: "));
     Serial.print(ESP.getFreeHeap());

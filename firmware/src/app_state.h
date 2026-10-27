@@ -1,13 +1,7 @@
 #ifndef APP_STATE_H
 #define APP_STATE_H
 
-// Zentrales AppState-Struct fuer alle geteilten globalen Variablen.
-// Hardware-Library-Instanzen (pixels, dht, preferences, server, dnsServer,
-// ArduinoHA-Objekte, WiFiClient, Utility-Instanzen, JsonBufferPool)
-// gehoeren NICHT hierher — sie bleiben als separate Globals in moodlight.cpp.
-//
-// Diese Datei definiert nur das Interface; die Definition von `appState`
-// erfolgt in Plan 02 in moodlight.cpp.
+// Geteilter Zustand; Hardware- und Library-Instanzen bleiben als Globals in moodlight.cpp.
 
 #include "config.h"
 #include <Arduino.h>
@@ -16,9 +10,7 @@
 
 struct AppState {
 
-    // =========================================================
-    // WiFi-Gruppe
-    // =========================================================
+    // WiFi
     String wifiSSID = "";
     String wifiPassword = "";
     bool wifiConfigured = false;
@@ -32,9 +24,7 @@ struct AppState {
     unsigned long apModeStartTime = 0;
     unsigned long wifiConnectedSince = 0;   // Zeitstempel der letzten erfolgreichen Verbindung (für Stabilitäts-Hysterese)
 
-    // =========================================================
-    // LED-Gruppe
-    // =========================================================
+    // LED
     int ledPin = DEFAULT_LED_PIN;
     int numLeds = DEFAULT_NUM_LEDS;
     uint8_t manualBrightness = DEFAULT_LED_BRIGHTNESS;
@@ -53,17 +43,14 @@ struct AppState {
     bool ledSafeToShow = false;  // Wird erst true nach WiFi-Init + NeoPixel-Init
     int statusLedIndex = DEFAULT_NUM_LEDS - 1;
     unsigned long statusLedBlinkStart = 0;
-    // Seit wann der aktuelle Modus aktiv ist — statusLedBlinkStart taugt dafür
-    // nicht, der wird in updateStatusLED() bei jedem Blink-Toggle neu gesetzt
+    // statusLedBlinkStart taugt nicht, es wird bei jedem Blink neu gesetzt.
     unsigned long statusLedModeSince = 0;
     bool statusLedState = false;
     int statusLedMode = 0; // 0=Normal, 1=WiFi-Verbindung, 2=API-Fehler, 3=Update, 4=MQTT-Verbindung, 5=AP-Modus
 
-    // =========================================================
-    // Sentiment-Gruppe
-    // =========================================================
-    float sentimentScore = 0.0;                              // Umbenannt von lastSentimentScore
-    String sentimentCategory = "neutral";                    // Umbenannt von lastSentimentCategory
+    // Sentiment
+    float sentimentScore = 0.0;
+    String sentimentCategory = "neutral";
     unsigned long moodUpdateInterval = DEFAULT_MOOD_UPDATE_INTERVAL;
     unsigned long lastMoodUpdate = 0;
     unsigned long nextMoodPollDelay = 0;      // Servergeführtes Poll-Delay; 0 = kein Serverwert vorhanden — Fallback auf moodUpdateInterval
@@ -85,14 +72,10 @@ struct AppState {
     float histMedian = 0.0;
     int histCount = 0;
     int headlinesAnalyzed = 0;
-    // Stufe 0-4 relativ zur Woche fuer HA ("Weltlage relativ"), -1 = unbekannt
-    // (vor dem ersten Abruf, ohne led_index, bei Fallback-Schwellwerten, nach API-Timeout).
-    // Bewusst getrennt von currentLedIndex, das immer einen Wert fuer die LEDs braucht.
+    // Stufe 0-4 für HA, -1 = unbekannt; getrennt von currentLedIndex, das immer einen Wert braucht.
     int relativeLevel = -1;
 
-    // =========================================================
-    // MQTT-Gruppe
-    // =========================================================
+    // MQTT
     String mqttServer = "";
     String mqttUser = "";
     String mqttPassword = "";
@@ -103,13 +86,10 @@ struct AppState {
     bool sendingInitialStates = false;
     bool mqttRefreshPending = false;        // Force-Refresh aus HA-Callback, wird in loop() ausgeführt
     bool mqttInitialStatesPending = false;  // Initiale Zustände nach MQTT-Reconnect senden
-    // Angezeigte Farbe/Helligkeit hat sich geaendert — loop() meldet sie an HA
-    // (syncHaLightState). Farbe/Helligkeit nur ueber dieses Flag melden.
+    // Farbe und Helligkeit nur über dieses Flag an HA melden (syncHaLightState).
     bool haLightStateDirty = false;
 
-    // =========================================================
-    // DHT/Sensor-Gruppe
-    // =========================================================
+    // DHT
     bool dhtEnabled = true;
     int dhtPin = DEFAULT_DHT_PIN;
     unsigned long dhtUpdateInterval = DEFAULT_DHT_READ_INTERVAL;
@@ -117,9 +97,7 @@ struct AppState {
     float currentTemp = NAN;
     float currentHum = NAN;
 
-    // =========================================================
-    // Update-Gruppe
-    // =========================================================
+    // Update
     bool updateCheckEnabled = true;                  // Stuendliche Suche nach neuer Firmware
     unsigned long lastUpdateCheck = 0;               // millis() der letzten Abfrage
     bool updateAvailable = false;                    // Backend meldet eine neuere Version
@@ -130,9 +108,7 @@ struct AppState {
     bool updateInProgress = false;                   // Laeuft gerade ein Download+Flash
     String updateLastError = "";                     // Letzter Fehlschlag fuer die WebUI
 
-    // =========================================================
-    // System-Gruppe
-    // =========================================================
+    // System
     bool rebootNeeded = false;
     unsigned long rebootTime = 0;
     bool initialStartupPhase = true;
@@ -143,18 +119,14 @@ struct AppState {
     bool settingsNeedSaving = false;
     unsigned long lastSettingsSaved = 0;
 
-    // =========================================================
-    // Log-Gruppe
-    // =========================================================
-    // Fix-Groesse char-Arrays statt String-Objekte — verhindert Heap-Fragmentierung
-    // durch staendiges Allokieren/Freigeben von String-Speicher im Ringpuffer.
+    // Log: feste char-Arrays statt String, gegen Heap-Fragmentierung im Ringpuffer.
     static const int LOG_ENTRY_SIZE = 192;
     char logBuffer[LOG_BUFFER_SIZE][LOG_ENTRY_SIZE];  // Ringpuffer fuer Log-Zeilen (LOG_BUFFER_SIZE aus config.h, Wert 20)
     int logIndex = 0;      // Aktuelle Position im Ringpuffer
 
 };
 
-// Externe Deklaration — Definition erfolgt in moodlight.cpp (Plan 02)
+// Definiert in moodlight.cpp
 extern AppState appState;
 
 #endif // APP_STATE_H

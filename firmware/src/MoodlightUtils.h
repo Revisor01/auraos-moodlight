@@ -1,5 +1,4 @@
-// MoodlightUtils.h - Utility-Bibliothek für Moodlight Projekt
-// Version 1.0.0
+// Hilfsfunktionen für das Moodlight.
 
 #ifndef MOODLIGHT_UTILS_H
 #define MOODLIGHT_UTILS_H
@@ -162,7 +161,6 @@ public:
     bool isRestartRecommended();
 };
 
-// Namespace für globale Funktionen
 namespace MoodlightUtils {
     // Formatiert Millisekunden in lesbare Zeit (dd:hh:mm:ss)
     String formatTime(unsigned long ms);

@@ -1,4 +1,3 @@
-// MoodlightUtils.cpp - Implementierung der Moodlight-Utilities
 
 #include "MoodlightUtils.h"
 #include <time.h>
@@ -42,14 +41,12 @@ bool WatchdogManager::begin(uint32_t timeoutSeconds, bool panicOnTimeout) {
 bool WatchdogManager::registerCurrentTask() {
     if (!_isEnabled) return false;
     
-    // Erhalte den aktuellen Task-Handle (in der Regel der Loop-Task)
     _monitoredTask = xTaskGetCurrentTaskHandle();
     if (_monitoredTask == NULL) {
         debug(F("Konnte Task-Handle nicht erhalten"));
         return false;
     }
     
-    // Registriere Task beim Watchdog
     esp_err_t err = esp_task_wdt_add(_monitoredTask);
     if (err != ESP_OK) {
         debug(F("Fehler beim Registrieren des Tasks beim Watchdog"));
@@ -130,7 +127,6 @@ bool MemoryMonitor::begin(unsigned long reportInterval) {
     _lastNvsWriteTime = millis();
     _isEnabled = true;
 
-    // Lade gespeicherten niedrigsten Heap-Wert, falls vorhanden
     _prefs.begin("memMonitor", false);
     size_t savedLowest = _prefs.getULong("lowestHeap", 0);
     if (savedLowest > 0 && savedLowest < _lowestHeap) {
@@ -149,13 +145,11 @@ void MemoryMonitor::update() {
     unsigned long currentTime = millis();
     size_t currentFree = ESP.getFreeHeap();
 
-    // Aktualisiere niedrigsten Wert (im RAM immer aktuell halten)
     if (currentFree < _lowestHeap) {
         _lowestHeap = currentFree;
     }
 
-    // NVS-Write throttlen: max. alle 10 Minuten ODER wenn sich der Tiefstwert
-    // um mehr als 1 KB seit dem letzten Schreiben verändert hat
+    // NVS schonen: höchstens alle 10 Minuten oder bei mehr als 1 KB Änderung.
     bool intervalElapsed = (currentTime - _lastNvsWriteTime) >= 600000UL; // 10 min
     bool significantDelta = (_lastPersistedLowestHeap > _lowestHeap) &&
                              ((_lastPersistedLowestHeap - _lowestHeap) > 1024);
@@ -167,7 +161,6 @@ void MemoryMonitor::update() {
         _lastNvsWriteTime = currentTime;
     }
 
-    // Berichte periodisch oder bei signifikanten Änderungen
     if (currentTime - _lastReportTime >= _reportInterval || 
         abs((int)(currentFree - _lastFreeHeap)) > 10240) { // 10KB Änderung
         
@@ -208,13 +201,11 @@ void MemoryMonitor::diagnose() {
     debug(String(F("Fragmentierung: ")) + fragmentationPercent + F("%"));
     debug(String(F("Programm läuft seit: ")) + MoodlightUtils::formatTime(uptime * 1000));
     
-    // Heap-Histogramm für detailliertere Analyse
     size_t blocks[6] = {0}; // Anzahl der Blöcke in verschiedenen Größenkategorien
     size_t testSizes[6] = {64, 256, 1024, 4096, 16384, 65536};
     
     debug(F("Heap-Blockgrößen-Test:"));
     for (int i = 0; i < 6; i++) {
-        // Versuche, Blöcke dieser Größe zu allozieren
         void* testBlock = malloc(testSizes[i]);
         if (testBlock) {
             blocks[i] = 1;
@@ -225,7 +216,6 @@ void MemoryMonitor::diagnose() {
         }
     }
     
-    // Empfehlungen basierend auf der Analyse
     if (fragmentationPercent > 70) {
         debug(F("WARNUNG: Hohe Fragmentierung. Neustart könnte helfen."));
     }
@@ -279,7 +269,6 @@ String SafeFileOps::readFile(const char* path, int maxRetries) {
             continue;
         }
         
-        // Prüfe Dateigröße und Speicherverfügbarkeit
         size_t fileSize = file.size();
         size_t freeHeap = ESP.getFreeHeap();
         
@@ -311,21 +300,17 @@ String SafeFileOps::readFile(const char* path, int maxRetries) {
 }
 
 bool SafeFileOps::writeFile(const char* path, const String& content) {
-    // Backup erstellen, falls die Datei existiert und Backups aktiviert sind
     if (_backupEnabled && LittleFS.exists(path)) {
         String backupPath = String(path) + _backupSuffix;
         if (LittleFS.exists(backupPath)) {
             LittleFS.remove(backupPath);
         }
         
-        // Kopiere aktuelle Datei als Backup
         if (!copyFile(path, backupPath)) {
             debug(String(F("WARNUNG: Konnte kein Backup von ")) + path + F(" erstellen"));
-            // Fahre trotzdem fort, aber mit Vorsicht
         }
     }
     
-    // Schreibe zunächst in eine temporäre Datei
     String tempPath = String(path) + _tempSuffix;
     if (LittleFS.exists(tempPath)) {
         LittleFS.remove(tempPath);
@@ -352,7 +337,6 @@ bool SafeFileOps::writeFile(const char* path, const String& content) {
             break;
         }
         
-        // Bei längeren Dateien regelmäßig yield() aufrufen
         if (i % 1024 == 0) {
             yield();
         }
@@ -366,7 +350,6 @@ bool SafeFileOps::writeFile(const char* path, const String& content) {
         return false;
     }
     
-    // Lösche Zieldatei, wenn sie existiert
     if (LittleFS.exists(path)) {
         if (!LittleFS.remove(path)) {
             debug(String(F("Konnte die alte Datei nicht entfernen: ")) + path);
@@ -375,13 +358,11 @@ bool SafeFileOps::writeFile(const char* path, const String& content) {
         }
     }
     
-    // Benenne temp Datei zum finalen Namen um
     if (LittleFS.rename(tempPath.c_str(), path)) {
         return true;
     } else {
         debug(String(F("Umbenennen der temporären Datei fehlgeschlagen: ")) + tempPath + F(" -> ") + path);
         
-        // Versuche Backup wiederherzustellen, wenn vorhanden
         if (_backupEnabled) {
             String backupPath = String(path) + _backupSuffix;
             if (LittleFS.exists(backupPath)) {
@@ -517,7 +498,6 @@ void NetworkDiagnostics::analyzeWiFiSignal() {
     String quality;
     int qualityPercent;
     
-    // RSSI zu Prozent und Qualitätslevel konvertieren
     if (rssi <= -100) {
         qualityPercent = 0;
         quality = F("Sehr schlecht");
@@ -538,11 +518,9 @@ void NetworkDiagnostics::analyzeWiFiSignal() {
           F(" dBm, Qualität=") + quality + 
           F(" (") + qualityPercent + F("%)"));
     
-    // Kanal-Informationen erfassen
     int channel = WiFi.channel();
     debug(String(F("WiFi-Kanal: ")) + channel);
     
-    // Prüfen auf kritisch schwaches Signal
     if (qualityPercent < 30) {
         debug(F("WARNUNG: Sehr schwache WiFi-Signalstärke erkannt!"));
     }
@@ -569,20 +547,15 @@ void NetworkDiagnostics::fullAnalysis() {
 
     debug(F("Starte vollständige Netzwerkanalyse..."));
 
-    // Grundlegende Netzwerkinfos
     analyzeWiFiSignal();
 
-    // A-MITTEL: Stuendlicher aktiver WiFi-Scan entfernt (blockiert loop() bis zu mehrere
-    // Sekunden). Nur RSSI/Kanal des aktuellen Netzwerks loggen — Scan bleibt on-demand
-    // ueber den /wifiscan-Endpunkt verfuegbar.
+    // Kein stündlicher WiFi-Scan, er blockiert loop() für Sekunden; Scan bleibt über /wifiscan.
     int channel = WiFi.channel();
     debug(String(F("Aktueller Kanal: ")) + channel);
 
-    // Router-Verbindungsinformationen
     IPAddress gatewayIP = WiFi.gatewayIP();
     debug(String(F("Gateway-IP: ")) + gatewayIP.toString());
 
-    // DNS-Informationen
     IPAddress dns1 = WiFi.dnsIP(0);
     IPAddress dns2 = WiFi.dnsIP(1);
     debug(String(F("DNS-Server: ")) + dns1.toString() + F(", ") + dns2.toString());
@@ -593,13 +566,11 @@ void NetworkDiagnostics::fullAnalysis() {
 bool NetworkDiagnostics::updateCheck() {
     unsigned long currentTime = millis();
     
-    // Vollständige Analyse beim Intervall
     if (currentTime - _lastFullAnalysis >= _analysisInterval) {
         fullAnalysis();
         return true;
     }
     
-    // Schnelle Überprüfung alle 5 Minuten
     static unsigned long lastQuickCheck = 0;
     if (currentTime - lastQuickCheck >= 300000) {
         quickCheck();
@@ -650,7 +621,6 @@ void SystemHealthCheck::performFullCheck() {
     
     debug(F("====== VOLLSTÄNDIGE SYSTEMPRÜFUNG ======"));
     
-    // Speicher-Status prüfen
     if (_memMonitor != nullptr) {
         _memMonitor->diagnose();
     } else {
@@ -663,7 +633,6 @@ void SystemHealthCheck::performFullCheck() {
               F(" Bytes, Fragmentierung=") + (fragmentationIndex * 100) + F("%"));
     }
     
-    // Netzwerk prüfen
     if (_netDiagnostics != nullptr) {
         _netDiagnostics->fullAnalysis();
     } else if (WiFi.status() == WL_CONNECTED) {
@@ -672,7 +641,6 @@ void SystemHealthCheck::performFullCheck() {
               F(", RSSI=") + WiFi.RSSI() + F(" dBm"));
     }
     
-    // Dateisystem prüfen
     uint64_t total = LittleFS.totalBytes();
     uint64_t used = LittleFS.usedBytes();
     float percentUsed = ((float)used / total) * 100;
@@ -684,7 +652,6 @@ void SystemHealthCheck::performFullCheck() {
         debug(F("WARNUNG: Dateisystem ist fast voll. Bereinigung erforderlich."));
     }
     
-    // CPU-Last und Temperatur
     float temperature = temperatureRead(); // ESP32-Funktion für die interne Temperatur
     debug(String(F("CPU-Temperatur: ")) + temperature + F("°C"));
     
@@ -692,7 +659,6 @@ void SystemHealthCheck::performFullCheck() {
         debug(F("WARNUNG: Hohe CPU-Temperatur erkannt."));
     }
     
-    // Runtime-Statistiken
     unsigned long uptimeSeconds = millis() / 1000;
     debug(String(F("Systemlaufzeit: ")) + MoodlightUtils::formatTime(uptimeSeconds * 1000));
     debug(String(F("Systemneustarts: ")) + (_restartCount + 1));
@@ -707,19 +673,17 @@ void SystemHealthCheck::update() {
 
     unsigned long currentTime = millis();
 
-    // Prüfe, ob es Zeit für eine vollständige Überprüfung ist
     if (currentTime - _lastCheckTime >= _checkInterval) {
         performFullCheck();
     }
 
-    // Laufzeit des AKTUELLEN Boots aus millis() ableiten (steuert isRestartRecommended(), A6)
+    // Laufzeit des aktuellen Boots aus millis(), sie steuert isRestartRecommended().
     unsigned long currentBootHours = currentTime / 3600000;
 
     if (currentBootHours > _bootUptimeHours) {
         _bootUptimeHours = currentBootHours;
         debug(String(F("Boot-Uptime: ")) + _bootUptimeHours + F(" Stunden"));
 
-        // Bei 24h-Intervallen zusätzliche Prüfungen
         if (_bootUptimeHours % 24 == 0) {
             debug(String(F("24-Stunden-Meilenstein: ")) + _bootUptimeHours + F(" Stunden Laufzeit (dieser Boot)"));
             performFullCheck();
@@ -730,7 +694,6 @@ void SystemHealthCheck::update() {
     if (currentBootHours > _uptimeHours) {
         _uptimeHours = currentBootHours;
 
-        // Speichere aktuelle Uptime
         _prefs.begin("syshealth", false);
         _prefs.putULong("uptime", _uptimeHours);
         _prefs.end();
@@ -740,11 +703,9 @@ void SystemHealthCheck::update() {
 String SystemHealthCheck::getMetricsJson() {
     String result = "{";
     
-    // Systemlaufzeit
     unsigned long uptimeSeconds = millis() / 1000;
     result += "\"uptime\":" + String(uptimeSeconds) + ",";
     
-    // Speichernutzung
     result += "\"heap\":" + String(ESP.getFreeHeap()) + ",";
     result += "\"maxBlock\":" + String(ESP.getMaxAllocHeap()) + ",";
     
@@ -752,7 +713,6 @@ String SystemHealthCheck::getMetricsJson() {
         result += "\"lowestHeap\":" + String(_memMonitor->getLowestHeap()) + ",";
     }
     
-    // Netzwerk
     result += "\"wifiConnected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
     
     if (WiFi.status() == WL_CONNECTED) {
@@ -760,7 +720,6 @@ String SystemHealthCheck::getMetricsJson() {
         result += "\"channel\":" + String(WiFi.channel()) + ",";
     }
     
-    // Dateisystem
     uint64_t total = LittleFS.totalBytes();
     uint64_t used = LittleFS.usedBytes();
     float percentUsed = ((float)used / total) * 100;
@@ -769,10 +728,8 @@ String SystemHealthCheck::getMetricsJson() {
     result += "\"fsUsed\":" + String((unsigned long)used) + ",";
     result += "\"fsPercent\":" + String(percentUsed) + ",";
     
-    // Temperatur
     result += "\"temperature\":" + String(temperatureRead()) + ",";
     
-    // Neustarts
     result += "\"restarts\":" + String(_restartCount + 1);
     
     result += "}";
@@ -782,28 +739,22 @@ String SystemHealthCheck::getMetricsJson() {
 bool SystemHealthCheck::isRestartRecommended() {
     if (!_initialized) return false;
 
-    // Alle Schwellwerte gegen die Laufzeit DES AKTUELLEN BOOTS prüfen —
-    // _uptimeHours ist nur eine NVS-Statistik und darf hier nicht verwendet werden,
-    // sonst empfiehlt nach 30 Tagen kumulierter Betriebszeit JEDER Boot einen Neustart.
+    // Laufzeit dieses Boots, nicht _uptimeHours, sonst empfiehlt nach 30 Tagen jeder Boot einen Neustart.
 
-    // Speicher-Fragmentierung prüfen
     size_t freeHeap = ESP.getFreeHeap();
     size_t maxBlock = ESP.getMaxAllocHeap();
     float fragmentationIndex = 1.0 - ((float)maxBlock / freeHeap);
 
-    // Extrem hohe Fragmentierung
     if (fragmentationIndex > 0.85 && _bootUptimeHours > 48) {
         debug(F("Neustart empfohlen: Extreme Speicherfragmentierung"));
         return true;
     }
 
-    // Sehr wenig freier Speicher
     if (freeHeap < 10000 && _bootUptimeHours > 24) {
         debug(F("Neustart empfohlen: Kritisch wenig freier Speicher"));
         return true;
     }
 
-    // Dateisystem fast voll
     uint64_t total = LittleFS.totalBytes();
     uint64_t used = LittleFS.usedBytes();
     float percentUsed = (total > 0) ? (((float)used / total) * 100) : 0;
@@ -813,7 +764,6 @@ bool SystemHealthCheck::isRestartRecommended() {
         return true;
     }
 
-    // Sehr lange Laufzeit dieses Boots
     if (_bootUptimeHours > 720) { // 30 Tage
         debug(F("Neustart empfohlen: Sehr lange Laufzeit (>30 Tage, dieser Boot)"));
         return true;

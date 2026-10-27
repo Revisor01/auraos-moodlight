@@ -351,7 +351,6 @@
       return url.length > 60 ? url.slice(0, 57) + '...' : url;
     }
 
-    // Feeds laden und Tabelle befuellen
     async function loadFeeds() {
       setLoading(true);
       try {
@@ -376,7 +375,6 @@
           tbody.appendChild(tr);
         });
 
-        // Delete-Handler einhaengen
         tbody.querySelectorAll('.btn-delete').forEach(function(btn) {
           btn.addEventListener('click', function() {
             deleteFeed(btn.dataset.id, btn.dataset.name);
@@ -399,7 +397,6 @@
       try {
         const res = await fetch(API + '/' + id, { method: 'DELETE' });
         if (res.status === 204) {
-          // Zeile sofort aus DOM entfernen
           const row = document.querySelector('tr[data-id="' + id + '"]');
           if (row) row.remove();
           const count = document.getElementById('feedCount');
@@ -417,7 +414,6 @@
       }
     }
 
-    // Feed hinzufuegen
     document.getElementById('addForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const errorEl = document.getElementById('addError');
@@ -459,7 +455,6 @@
       }
     });
 
-    // Initial laden
     loadFeeds();
   </script>
 </body>

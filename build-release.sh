@@ -1,8 +1,5 @@
 #!/bin/bash
-# AuraOS Moodlight - Release Build Script
-# Erzeugt versionierte UI-TGZ + Firmware-BIN fuer OTA-Upload
-# Verwendung: ./build-release.sh [major|minor]
-# MOODLIGHT_HOST=<adresse> setzt die Adresse der Lampe in der Upload-Anleitung.
+# Baut UI-TGZ und Firmware-BIN für den OTA-Upload. Aufruf: [MOODLIGHT_HOST=<adresse>] ./build-release.sh [major|minor]
 
 set -e
 
@@ -86,10 +83,7 @@ echo "[2/4] Erstelle Release-Dateien..."
 RELEASE_DIR="releases/v${NEW_VERSION}"
 mkdir -p "$RELEASE_DIR"
 
-# UI-TGZ (nur Web-Dateien, kein Firmware-Binary)
-# Die Diagnostics-Seite existiert nicht mehr (entfernt) — sie wurde aus der
-# Dateiliste genommen, tar wuerde sonst wegen set -e den gesamten
-# Release-Build abbrechen (Datei nicht gefunden)
+# UI-TGZ, nur Web-Dateien
 (cd firmware/data && tar -czf "../../${RELEASE_DIR}/UI-${NEW_VERSION}-AuraOS.tgz" \
     --exclude="*.tmp.*" --exclude="*.tgz" --exclude="*.tar" --exclude=".DS_Store" \
     index.html setup.html mood.html js/ css/)

@@ -1,7 +1,6 @@
 FROM python:3.12-slim
 
-# build-essential entfernt — alle Dependencies in requirements.txt sind Binary-Wheels,
-# keine C-Kompilierung zur Build-Zeit notwendig. curl bleibt für den Docker-Healthcheck.
+# curl für den Healthcheck; alle Abhängigkeiten sind Binary-Wheels.
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

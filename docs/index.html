@@ -13,8 +13,7 @@
   font-display: swap;
 }
 
-/* Moodlicht — Dark-first. Das Objekt ist eine Lampe; sie gehoert in den dunklen Raum.
-   Die Seite wird von Kapitel zu Kapitel heller: die Dramaturgie ist das Argument. */
+/* Moodlicht, dunkel zuerst; die Seite wird von Kapitel zu Kapitel heller. */
 
 :root {
   /* Datenpalette = die fuenf Farbstufen des Geraets */
@@ -47,8 +46,7 @@
   --ease: cubic-bezier(.32,.72,0,1);
 }
 
-/* Helles Theme: bewusst gestaltet, nicht invertiert.
-   Die Farbdramaturgie bleibt, nur die Grundwerte kippen. */
+/* Helles Theme: eigene Grundwerte, nicht invertiert. */
 @media (prefers-color-scheme: light) {
   :root {
     --bg:        #F7F8FA;
@@ -448,10 +446,7 @@ a:focus-visible, [tabindex]:focus-visible {
   .values { grid-template-columns: 1fr; }
 }
 
-/* ================= Aura: die ganze Seite ist der Lichtkoerper =================
-   Zwei ueberlagerte Lichtwolken hinter allem. Sie tragen die aktuelle Farbe
-   der Lampe und werden beim Scrollen staerker: oben ist die Welt schwarz,
-   unten ist sie licht. Der Verlauf ist das Argument. */
+/* ================= Aura: Lichtwolken in der Farbe der Lampe, beim Scrollen stärker ================= */
 .aura {
   position: fixed; inset: 0;
   pointer-events: none; z-index: 0;
@@ -473,8 +468,7 @@ a:focus-visible, [tabindex]:focus-visible {
   background: radial-gradient(closest-side,
     color-mix(in srgb, var(--live-color, var(--accent)) 62%, transparent),
     transparent 72%);
-  /* Oben bewusst zurueckhaltend: im Hero soll der Lichtkegel wirken, nicht
-     die Wolke dahinter. Nach unten hin oeffnet sie sich unveraendert. */
+  /* Oben zurückhaltend, damit im Hero der Lichtkegel wirkt. */
   opacity: calc(.04 + var(--lift) * .58);
 }
 .aura-b {
@@ -656,13 +650,7 @@ body::before {
 .repo-version a:hover { color: var(--accent); }
 .repo-version .sep { margin: 0 .5rem; opacity: .5; }
 
-/* ================= Der Aufhellungsverlauf =================
-   Der eigentliche Gedanke: Wir beginnen im Dunkeln — so, wie sich die Welt
-   nach einer Stunde Nachrichten anfuehlt. Beim Scrollen wird es hell. Nicht
-   als Effekt, sondern als Aussage: es ist heller, als man dachte.
-
-   Umgesetzt ueber --lift (0 oben, 1 unten), das per Scroll gesetzt wird.
-   Alle Farbtokens interpolieren zwischen Nacht- und Tagwert. */
+/* ================= Aufhellung: --lift (0 oben, 1 unten) interpoliert alle Farbtokens ================= */
 :root {
   --lift: 0;
 
@@ -687,8 +675,7 @@ body {
   transition: background .35s linear, color .35s linear;
 }
 
-/* Tokens folgen dem Verlauf — Komponenten bleiben unveraendert,
-   weil sie ausschliesslich ueber die Tokens gestylt sind */
+/* Komponenten nutzen nur Tokens und folgen so dem Verlauf. */
 body {
   --bg:        color-mix(in srgb, var(--day-bg) calc(var(--lift) * 100%), var(--night-bg));
   --surface:   color-mix(in srgb, var(--day-surface) calc(var(--lift) * 100%), var(--night-surface));
@@ -715,11 +702,7 @@ body {
 /* Kein zusaetzlicher Overlay-Verlauf mehr — der Grund selbst hellt auf */
 body::before { content: none; }
 
-/* ---- Lesbarkeit im Umschlag ----
-   Grund und Text duerfen nicht gemeinsam durch die Mitte wandern, sonst
-   treffen sie sich bei aehnlicher Helligkeit und der Kontrast bricht auf ~1.7
-   ein. Loesung: der Grund verlaeuft weich, die Textfarbe kippt hart bei 50 %.
-   --textlift wird per Script auf 0 oder 1 gesetzt, nie dazwischen. */
+/* ---- Textfarbe kippt hart (--textlift 0 oder 1), sonst bricht der Kontrast auf ~1.7 ein ---- */
 body {
   --fg:     color-mix(in srgb, var(--day-fg)     calc(var(--textlift, 0) * 100%), var(--night-fg));
   --fg-mid: color-mix(in srgb, var(--day-fg-mid) calc(var(--textlift, 0) * 100%), var(--night-fg-mid));
@@ -728,10 +711,7 @@ body {
   transition: background .35s linear, color .28s ease;
 }
 
-/* ---- Grund folgt dem Text, nicht umgekehrt ----
-   Der Grund darf erst aufhellen, wenn die Textfarbe bereits gekippt ist.
-   Sonst wandern beide gleichzeitig durch die Mitte und der Kontrast bricht ein.
-   --bglift wird per Script gesetzt: bis zur Textschwelle 0, danach 0..1. */
+/* ---- Grund hellt erst nach dem Kippen der Textfarbe auf (--bglift) ---- */
 body {
   --bg:        color-mix(in srgb, var(--day-bg)      calc(var(--bglift, 0) * 100%), var(--night-bg));
   --surface:   color-mix(in srgb, var(--day-surface) calc(var(--bglift, 0) * 100%), var(--night-surface));
@@ -742,9 +722,7 @@ body {
   background: var(--bg);
 }
 
-/* ---- Harter Umschlag, weich animiert ----
-   Die Tokens springen an einem Punkt, aber die CSS-Transition laesst den
-   Wechsel in ~450 ms als bewussten Moment ablaufen statt als Ruck. */
+/* ---- Umschlag in ~450 ms animiert statt als Ruck ---- */
 body {
   transition: background-color .45s ease, color .45s ease;
 }
@@ -766,10 +744,7 @@ body {
 .sources a { color: var(--fg-mid); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .sources a:hover { color: var(--accent); }
 
-/* ---- Der Umschlag als weicher Fade ----
-   Grund und Textfarbe springen an einer Schwelle (siehe Script), aber die
-   Transition macht daraus einen ruhigen Uebergang von gut einer Sekunde.
-   So bleibt der Eindruck ein Fluss statt eines Schnitts. */
+/* ---- Umschlag als Fade von gut einer Sekunde ---- */
 body,
 .live, .cmp, .part, .wiring, .value, .parts, .values, .repo-link {
   transition:
@@ -786,36 +761,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 }
 
 
-/* =====================================================================
-   HERO — Taschenlampe
-   =====================================================================
-   Der Hero-Text liegt im Dunkeln; ein Lichtkegel folgt dem Zeiger und legt
-   ihn frei. Man muss hinsehen, um zu sehen — das ist die Idee des Geraets.
-
-   Aufbau: zwei zeichengleiche Textebenen in derselben Grid-Zelle.
-
-     .torch-dark   die dunkle Ebene, immer da, bestimmt die Hoehe
-     .torch-lit    die leuchtende Ebene, per radialer Maske auf den
-                   Lichtkegel beschnitten, aria-hidden
-
-   Warum so und nicht per background-clip auf dem Text:
-   background-clip: text macht den Text selbst transparent. Greift die Regel
-   nicht (Firefox-Eigenheiten, alte Engines), ist der Schriftzug nicht bloss
-   ungefaerbt, sondern komplett weg. Ausserdem bezieht sich ein Verlauf immer
-   auf den EIGENEN Kasten — MOOD und MUT als <span> haetten je einen eigenen
-   Lichtkegel an falscher Stelle. Beides entfaellt hier: gefaerbt wird nicht
-   der Text, sondern eine ganze Ebene wird maskiert. Ein Verlauf, eine
-   Koordinate, ein Bezugssystem.
-
-   Die 3D-Rotation sitzt auf dem gemeinsamen Elternknoten .torch-3d. Beide
-   Ebenen liegen dadurch im selben transformierten Raum und koennen nicht
-   gegeneinander verrutschen — die maskierte Ebene bildet zwar einen eigenen
-   Rendering-Kontext, aber die Perspektive wird oberhalb davon aufgeloest.
-
-   Der Kegelradius --tr ist ueber @property als <length> registriert und
-   dadurch animierbar: das Aufblitzen beim Laden und das Ausblenden beim
-   Verlassen laufen weich statt zu springen.
-   ===================================================================== */
+/* ================= HERO: zwei zeichengleiche Ebenen statt background-clip, das bei Ausfall den Text verschluckt ================= */
 
 @property --tr {
   syntax: '<length>';
@@ -840,8 +786,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   transition: --tr .9s cubic-bezier(.4,0,.2,1);
 }
 
-/* Traeger der 3D-Rotation. Beide Ebenen sind seine Kinder und teilen sich
-   dadurch zwangslaeufig dieselbe Geometrie. */
+/* Träger der 3D-Rotation, damit beide Ebenen dieselbe Geometrie teilen. */
 .torch-3d {
   display: grid;
   grid-template-columns: 100%;
@@ -868,10 +813,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   pointer-events: none;
 }
 
-/* ---- Typografie: gilt fuer beide Ebenen gleichermassen ----
-   Die Wortmarke steht in einer Zeile. Damit sie den Container nicht sprengt
-   (und die Ebenen dadurch unterschiedlich breit werden), begrenzt min() sie
-   zusaetzlich per vw. */
+/* ---- Typografie beider Ebenen; min() mit vw hält die Wortmarke in einer Zeile ---- */
 .torch-mark {
   font-family: 'Clash Display', ui-sans-serif, system-ui, sans-serif;
   font-size: min(9.6vw, 8.6rem);
@@ -901,8 +843,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 /* ---- Im Licht: Wortmarke und Wortspiel in der aktuellen Sentiment-Farbe ---- */
 .torch-lit .torch-mark {
   color: var(--live-color, var(--accent));
-  /* Kein Schein: die Farbe allein traegt den Effekt. Ein text-shadow legte
-     sich als Nebel um die Buchstaben und nahm der Schrift die Kante. */
+  /* Kein text-shadow, er nahm der Schrift die Kante. */
 }
 .torch-lit .torch-play { color: var(--fg-mid); }
 .torch-lit .torch-play span { color: var(--live-color, var(--accent)); }
@@ -919,9 +860,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 }
 .torch.touched .torch-hint { opacity: 0; }
 
-/* ---- Ohne Zeigegeraet gaebe es nichts freizulegen ----
-   Auf Touch und bei reduzierter Bewegung zeigt die leuchtende Ebene den Text
-   dauerhaft; die dunkle Ebene weicht, damit sie nicht durchscheint. */
+/* ---- Touch und reduzierte Bewegung: leuchtende Ebene dauerhaft sichtbar ---- */
 @media (hover: none), (prefers-reduced-motion: reduce) {
   .torch-dark { visibility: hidden; }
   .torch-lit {
@@ -935,17 +874,13 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
   .torch-3d { transform: none; }
 }
 
-/* Letzte Sicherung: kennt eine Engine mask-image nicht, bliebe die leuchtende
-   Ebene ungeschnitten ueber der dunklen stehen — der Text waere dann eben
-   dauerhaft sichtbar statt kaputt. */
+/* Ohne mask-image bleibt der Text dauerhaft sichtbar statt kaputt. */
 @supports not ((-webkit-mask-image: radial-gradient(#000, transparent)) or (mask-image: radial-gradient(#000, transparent))) {
   .torch-dark { visibility: hidden; }
   .torch-hint { display: none; }
 }
 
-/* =====================================================================
-   HERO — Aufbau unterhalb des Lichtkegels
-   ===================================================================== */
+/* ================= HERO: Aufbau unterhalb des Lichtkegels ================= */
 .hero { display: block; text-align: center; }
 
 .hero-below {
@@ -1008,11 +943,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 <header class="hero" id="top">
   <div class="glow" aria-hidden="true"></div>
 
-  <!-- Der Hero ist der Lichtkegel. Zwei identische Textebenen liegen in
-       derselben Grid-Zelle: die untere im Dunkeln, die obere leuchtend und
-       vom Zeiger freigelegt. Die Ebenen sind zeichengleich, deshalb kann
-       kein Versatz entstehen. Aria nur auf der dunklen Ebene, damit der
-       Text Screenreadern genau einmal begegnet. -->
+  <!-- Aria nur auf der dunklen Ebene, damit Screenreader den Text einmal lesen -->
   <div class="torch" id="torch">
     <div class="torch-3d">
       <div class="torch-layer torch-dark">
@@ -1439,13 +1370,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
 
       // ---- beide Werte, in der Kachel und im Vergleichs-Kapitel ----
       var roh = typeof d.raw_score === 'number' ? d.raw_score : null;
-      // ACHTUNG: d.percentile ist eine LINEARE Interpolation zwischen min und
-      // max des 7-Tage-Fensters — kein Rang. Bei schiefer Verteilung (Median
-      // -0.46, Max +0.44) ergibt das irrefuehrende Werte: Score -0.59 lag bei
-      // "16 %", war aber nur knapp besser als das schlechteste Fuenftel.
-      // Der Rang wird deshalb aus den Perzentil-Schwellen interpoliert, die
-      // dieselbe Quelle wie die Farbstufe sind — Wort und Zahl passen dann
-      // zwangslaeufig zusammen.
+      // d.percentile ist linear zwischen min und max, kein Rang; daher aus den Perzentil-Schwellen interpolieren.
       var pct = null;
       if (d.thresholds && typeof d.raw_score === 'number') {
         var T = d.thresholds, sc = d.raw_score;
@@ -1539,8 +1464,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
     if (einheit) el.appendChild(einheit);
   }
 
-  // Aktuelle Firmware-Version vom GitHub-Release holen, damit die Angabe
-  // auf der Seite nicht veraltet
+  // Firmware-Version vom GitHub-Release, damit die Angabe nicht veraltet
   fetch('https://api.github.com/repos/Revisor01/auraos-moodlight/releases/latest')
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) {
@@ -1550,10 +1474,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
     })
     .catch(function () { /* der statische Wert im Markup bleibt stehen */ });
 
-  // Taschenlampe auf dem Hero: der Lichtkegel folgt dem Zeiger und legt
-  // Wortmarke, Wortspiel und Headline frei. Gleichzeitig kippt die Schrift
-  // leicht gegen die Zeigerrichtung — das erzeugt Tiefe, ohne aufdringlich
-  // zu wirken. Man muss hinsehen, um zu sehen.
+  // Lichtkegel folgt dem Zeiger, die Schrift kippt leicht dagegen.
   (function () {
     var torch = document.getElementById('torch');
     if (!torch) return;
@@ -1563,9 +1484,7 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
     var RADIUS = 180;      // Groesse des Lichtkegels
     var KIPP  = 7;         // maximaler Kippwinkel in Grad
 
-    // Die Maske sitzt auf .torch-lit, die Rotation auf .torch-3d. Beide
-    // Koordinatensysteme haengen an der maskierten Ebene: --tx/--ty werden
-    // relativ zu IHREM Kasten berechnet, sonst sitzt der Kegel versetzt.
+    // --tx/--ty relativ zum Kasten von .torch-lit, sonst sitzt der Kegel versetzt.
     var lit = torch.querySelector('.torch-lit');
     var dreh = torch.querySelector('.torch-3d');
     if (!lit || !dreh) return;
@@ -1620,27 +1539,14 @@ h1, h2, h3, p, a, code, .fig-num, .cmp-big, .live-word, .step-num, .part-name {
     var f = h > 0 ? window.scrollY / h : 0;
     f = Math.min(1, Math.max(0, f));
     bar.style.width = (f * 100).toFixed(1) + '%';
-    // Je weiter unten, desto lichter — leicht beschleunigt, damit der
-    // Unterschied zwischen oben und unten wirklich spuerbar wird
-    // Leicht beschleunigt, damit die Aufhellung frueh spuerbar wird und
-    // das untere Drittel wirklich hell ankommt
+    // Leicht beschleunigt, damit das untere Drittel wirklich hell ankommt
     var lift = Math.pow(f, 0.8);
     var v = lift.toFixed(3);
     if (aura) aura.style.setProperty('--lift', v);
     document.body.style.setProperty('--lift', v);
     document.documentElement.style.setProperty('--lift', v);
 
-    // Textfarbe kippt hart, damit sie dem Grund nicht auf halber Strecke
-    // begegnet — dort faellt der Kontrast sonst unter das Lesbare.
-    // Etwas Hysterese verhindert Flackern beim Scrollen um die Schwelle.
-    // Der Grund darf nicht durch mittlere Helligkeit wandern: dort erreicht
-    // KEINE Textfarbe mehr 4.5:1 — das ist rechnerisch zwingend, egal wie man
-    // die Kurven gegeneinander versetzt. Deshalb springt der Grund an einer
-    // Schwelle (die CSS-Transition macht daraus einen weichen Fade von 1,1 s).
-    //
-    // Alles andere fliesst weiter kontinuierlich mit: die Aura, ihre Deckkraft,
-    // die Akzentfarbe. Der Eindruck bleibt ein Verlauf — nur der Moment, in dem
-    // die Welt ins Helle kippt, hat einen klaren Punkt.
+    // Grund und Text springen an einer Schwelle mit Hysterese: bei mittlerer Helligkeit erreicht kein Text 4.5:1.
     var ziel = lift > (textHell ? 0.44 : 0.52) ? 1 : 0;
     if (ziel !== textHell) {
       textHell = ziel;

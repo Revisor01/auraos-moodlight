@@ -1,13 +1,4 @@
-// update_checker.cpp — Automatische Firmware-Updates ueber den Backend-Spiegel
-//
-// Ablauf: stuendlich /api/firmware/latest fragen, bei einer neueren freigegebenen
-// Version das Binary per HTTP laden und in die freie OTA-Partition schreiben.
-//
-// Dieser Pfad ist der einzige, der ein Geraet unbrauchbar machen kann, deshalb
-// wird vor jedem Schritt geprueft: genug Heap, plausible Groesse, ESP32-Magic-Byte
-// als erstes Byte, vollstaendig empfangen. Schlaegt irgendetwas fehl, wird
-// abgebrochen — die laufende Partition bleibt unberuehrt und das Geraet startet
-// im Zweifel einfach wieder mit der alten Firmware.
+// Firmware-Updates über den Backend-Spiegel; jeder Schritt wird geprüft, bei Fehlern bleibt die laufende Partition unberührt.
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -26,15 +17,13 @@
 
 extern WatchdogManager watchdog;
 
-// Basis-URL des Backends. Getrennt von apiUrl, weil dort der komplette
-// Sentiment-Pfad drinsteht — hier wird nur der Host gebraucht.
+// Getrennt von apiUrl, die den ganzen Sentiment-Pfad enthält.
 static String updateApiBase()
 {
     return String(DEFAULT_UPDATE_API_BASE);
 }
 
-// Nur die nackte Version ohne Namenszusatz: MOODLIGHT_FULL_VERSION ist
-// "9.16 - AuraOS", das Backend vergleicht aber gegen "9.16".
+// Ohne Namenszusatz, das Backend vergleicht gegen "9.16".
 static String currentVersionForCompare()
 {
     return String(MOODLIGHT_VERSION);
@@ -139,8 +128,7 @@ void handleUpdateCheck()
         return;
     }
 
-    // Nach dem Boot erst zur Ruhe kommen lassen: WLAN, NTP und der erste
-    // Sentiment-Abruf sind wichtiger als die Update-Frage.
+    // Nach dem Boot haben WLAN, NTP und der erste Abruf Vorrang.
     if (millis() < UPDATE_CHECK_INITIAL_DELAY) {
         return;
     }
@@ -172,8 +160,7 @@ bool downloadAndInstallUpdate()
         return false;
     }
 
-    // Ohne ausreichend Heap gar nicht erst anfangen: mitten im Flash-Vorgang
-    // auszugehen ist der schlimmste Zeitpunkt.
+    // Ohne genug Heap nicht anfangen, mitten im Flashen wäre der schlimmste Zeitpunkt.
     uint32_t freeHeap = ESP.getFreeHeap();
     if (freeHeap < UPDATE_MIN_FREE_HEAP) {
         appState.updateLastError = String(F("Zu wenig freier Speicher (")) +
@@ -220,9 +207,7 @@ bool downloadAndInstallUpdate()
 
     int contentLength = http.getSize();
 
-    // Ohne bekannte Laenge kein Update: Update.begin() braucht die Groesse, um
-    // die Zielpartition zu pruefen, und ohne sie faellt die
-    // Vollstaendigkeitskontrolle am Ende weg.
+    // Update.begin() braucht die Länge, sonst fällt auch die Vollständigkeitsprüfung weg.
     if (contentLength <= 0) {
         appState.updateLastError = F("Backend liefert keine Dateigroesse");
         debug(appState.updateLastError);
@@ -287,9 +272,7 @@ bool downloadAndInstallUpdate()
         }
         lastData = millis();
 
-        // Dieselbe Bricking-Vorsorge wie beim Upload ueber die WebUI: eine
-        // ESP32-Firmware beginnt mit 0xE9. Was damit nicht anfaengt, wird nicht
-        // geflasht — egal was das Backend behauptet.
+        // ESP32-Firmware beginnt mit 0xE9, alles andere wird nicht geflasht.
         if (!magicChecked) {
             magicChecked = true;
             if (buffer[0] != 0xE9) {
@@ -320,8 +303,7 @@ bool downloadAndInstallUpdate()
 
     http.end();
 
-    // Abgebrochene Verbindung erkennen: Update.end() wuerde eine halbe Firmware
-    // sonst als gueltig durchwinken, das Geraet startet neu und kommt nicht wieder.
+    // Sonst würde Update.end() eine halbe Firmware als gültig durchwinken.
     if (written != (size_t)contentLength) {
         appState.updateLastError = String(F("Unvollstaendig: ")) + String(written) +
                                    F(" von ") + String(contentLength) + F(" Bytes");
@@ -349,8 +331,7 @@ bool downloadAndInstallUpdate()
         return false;
     }
 
-    // Version festhalten, damit /api/firmware-version nach dem Neustart stimmt —
-    // dieselbe Datei nutzt der Upload-Weg ueber die WebUI.
+    // Damit /api/firmware-version nach dem Neustart stimmt; dieselbe Datei nutzt der WebUI-Upload.
     File versionFile = LittleFS.open("/firmware-version.txt", "w");
     if (versionFile) {
         versionFile.print(appState.updateVersion);
@@ -363,8 +344,7 @@ bool downloadAndInstallUpdate()
     appState.updateAvailable = false;
     appState.updateInProgress = false;
 
-    // Neustart der loop() ueberlassen: so geht die HTTP-Antwort an die WebUI
-    // noch raus, bevor das Geraet weg ist.
+    // Neustart in loop(), damit die Antwort an die WebUI noch rausgeht.
     appState.rebootNeeded = true;
     appState.rebootTime = millis() + 1500;
 

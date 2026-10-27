@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Unit-Tests für Background-Worker-Fehlerbehandlung (B2)
-
-Prüft, dass ein Anthropic-API-Fehler (analyze_function gibt None zurück statt
-eines Ergebnis-Dicts) NICHT als Sentiment-Wert 0.0 in der Datenbank landet —
-das war die Ursache der 30-Tage-Nullserie in der Produktions-DB.
-"""
+"""Unit-Tests für Background-Worker-Fehlerbehandlung."""
 
 import sys
 import os
@@ -38,7 +32,7 @@ class TestPerformUpdateSkipsOnAnalysisFailure(unittest.TestCase):
         return worker
 
     def test_none_ergebnis_fuehrt_zu_keinem_db_write(self):
-        """analyze_function() gibt None zurück (Anthropic-Fehler) → save_sentiment() wird NICHT aufgerufen (B2)."""
+        """analyze_function() gibt None zurück (Anthropic-Fehler) → save_sentiment() wird NICHT aufgerufen."""
         worker = self._make_worker(analyze_return_value=None)
 
         mock_db = MagicMock()

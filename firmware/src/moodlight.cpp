@@ -1,8 +1,4 @@
-// ========================================================
-// AuraOS Moodlight — Main Application
-// ========================================================
-// Orchestriert Module: WiFi, LED, Web-Server, MQTT, Settings, Sensor
-// Zentrale setup()/loop() mit Modul-Initialisierung
+// AuraOS Moodlight: setup() und loop(), initialisiert die Module.
 
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
@@ -44,7 +40,6 @@ SystemHealthCheck sysHealth;
 void setup() {
     Serial.begin(115200);
 
-    // Log-Level konfigurieren
     esp_log_level_set("*", ESP_LOG_INFO);
     esp_log_level_set("wifi", ESP_LOG_WARN);
     esp_log_level_set("rmt", ESP_LOG_INFO);
@@ -78,19 +73,15 @@ void setup() {
     delay(200);
     initDHT();
 
-    // Webserver-Routen definieren
     setupWebServer();
 
-    // WiFi + NTP + mDNS + Server starten, dann MQTT
     if (connectWiFiAndStartServices()) {
         connectMQTTOnStartup();
     }
 
     // NeoPixel-LEDs ZULETZT initialisieren
     delay(500);  // Laengere Pause damit WiFi-Subsystem stabil ist
-    // Instanz mit den echten Parametern erzeugen — exakt wie im minimalen
-    // Testsketch, der nachweislich funktioniert. Nachtraegliches setPin() auf
-    // einem parameterlos konstruierten Objekt hat den GPIO nie konfiguriert.
+    // Mit echten Parametern erzeugen, ein späteres setPin() konfiguriert den GPIO nicht.
     initPixels();
     debug(String(F("NeoPixel initialisiert: Pin ")) + String(appState.ledPin) +
           F(", LEDs ") + String(appState.numLeds) +
@@ -111,8 +102,7 @@ void loop() {
     if (appState.isInConfigMode) {
         dnsServer.processNextRequest();
         server.handleClient();
-        // AP-Timeout nicht auffrischen waehrend aktiv konfiguriert wird —
-        // ein verbundener Client (Handy/Laptop im Setup-WLAN) zaehlt als aktive Nutzung
+        // Ein verbundener Setup-Client hält den AP offen.
         if (WiFi.softAPgetStationNum() > 0) {
             appState.apModeStartTime = millis();
         }
@@ -129,17 +119,16 @@ void loop() {
             delay(200);
             ESP.restart();
         }
-        // AP-Status-LED sichtbar machen und Busy-Loop beenden (A-MITTEL Blockaden in loop())
+        // AP-Status-LED sichtbar machen und Busy-Loop beenden
         processLEDUpdates();
         updateStatusLED();
         delay(LOOP_DELAY_MS);
         return; // Im Config-Modus keine Sentiment/MQTT
     }
 
-    // Erste LED-Initialisierung (nur im Normal-Modus)
     initFirstLEDUpdate();
 
-    // Webserver-Anfragen verarbeiten — Gate entfernt, delay(LOOP_DELAY_MS) am Loop-Ende drosselt bereits
+    // delay(LOOP_DELAY_MS) am Loop-Ende drosselt bereits.
     server.handleClient();
 
     // Neustart-Anforderung prüfen — Overflow-sicherer Vergleich (millis() wrapt nach ~49 Tagen)
@@ -148,23 +137,19 @@ void loop() {
         ESP.restart();
     }
 
-    // Startup-Grace-Period beenden
     if (appState.initialStartupPhase && (millis() - appState.startupTime > STARTUP_GRACE_PERIOD)) {
         appState.initialStartupPhase = false;
         debug(F("Startup grace period ended"));
     }
 
-    // Nicht-blockierende Pruefung der asynchronen NTP-Synchronisation
     checkNtpTimeSync();
 
-    // MQTT-Loop periodisch ausführen
     static unsigned long lastMqttLoop = 0;
     if (appState.mqttEnabled && WiFi.status() == WL_CONNECTED && (millis() - lastMqttLoop >= LOOP_MQTT_INTERVAL_MS)) {
         mqtt.loop();
         lastMqttLoop = millis();
     }
 
-    // Verbindungen prüfen
     static unsigned long lastConnectionCheck = 0;
     if (millis() - lastConnectionCheck >= LOOP_CONNECTION_CHECK_MS) {
         lastConnectionCheck = millis();
@@ -180,19 +165,15 @@ void loop() {
         syncHaRelativeLevel();
     }
 
-    // LED-Updates verarbeiten
     processLEDUpdates();
 
-    // Einstellungen speichern falls geändert
     if (appState.settingsNeedSaving && (millis() - appState.lastSettingsSaved > SETTINGS_SAVE_DEBOUNCE_MS)) {
         saveSettings();
         appState.settingsNeedSaving = false;
         appState.lastSettingsSaved = millis();
     }
 
-    // Sentiment und Sensor bei aktiver WiFi-Verbindung
-    // WiFi-Stabilitäts-Hysterese: 3s nach Verbindungsaufbau warten bevor HTTP-Calls erlaubt sind.
-    // Verhindert LoadProhibited bei fluktuierendem Signal (Verbindung bricht während http.GET() ab).
+    // 3 s nach dem Verbindungsaufbau warten, sonst LoadProhibited, wenn die Verbindung während http.GET() abbricht.
     bool wifiStable = (WiFi.status() == WL_CONNECTED) &&
                       (appState.wifiConnectedSince > 0) &&
                       (millis() - appState.wifiConnectedSince >= 3000);
@@ -203,27 +184,23 @@ void loop() {
             appState.lastMoodUpdate = 0;
             debug(F("Force-Refresh: lastMoodUpdate zurueckgesetzt"));
         }
-        // Abruf auch im Manual-Modus: die Weltlage-Sensoren in HA sollen aktuell
-        // bleiben. getSentiment() faerbt die LEDs nur im Auto-Modus um.
+        // Auch im Manual-Modus abrufen, damit die HA-Sensoren aktuell bleiben.
         getSentiment();
         watchdog.feed();  // WDT nach potentiell langem HTTP-Request fuettern
         readAndPublishDHT();
         watchdog.feed();  // WDT nach DHT-Lesung fuettern
 
-        // Stuendlich beim Backend nach freigegebener Firmware fragen.
-        // Installiert wird nichts von selbst — nur auf Klick in der WebUI.
+        // Stündlich nach freigegebener Firmware fragen; installiert wird nur auf Klick.
         handleUpdateCheck();
         watchdog.feed();
     }
 
     updateStatusLED();
 
-    // System-Gesundheitsüberprüfung
     if (millis() - appState.lastSystemHealthCheckTime >= HEALTH_CHECK_INTERVAL) {
         runSystemHealthCheck();
     }
 
-    // Kurzintervall-Systemcheck
     static unsigned long lastHealthCheck = 0;
     if (millis() - lastHealthCheck > HEALTH_CHECK_SHORT_INTERVAL) {
         sysHealth.update();
@@ -231,7 +208,6 @@ void loop() {
         lastHealthCheck = millis();
     }
 
-    // Regelmäßige Statusprotokollierung
     if (millis() - appState.lastStatusLog >= STATUS_LOG_INTERVAL) {
         logSystemStatus();
         appState.lastStatusLog = millis();

@@ -1,26 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Firmware-Spiegel für OTA-Updates
-
-Die Lampe kommt nicht an GitHub heran: dort liegt alles hinter HTTPS mit zwei
-Redirects über wechselnde Hosts und signierten URLs von mehreren hundert Zeichen.
-Ein ESP32 mit 320 KB RAM kann das zwar prinzipiell, aber jeder TLS-Handshake und
-jede Zertifikatskette ist eine Fehlerquelle in genau dem Pfad, der ein kaputtes
-Gerät retten soll.
-
-Deshalb dieser Spiegel: Die CI meldet ein neues Release, das Backend lädt Binary
-und UI-Archiv einmal herunter und legt sie ab. Die Lampe fragt per einfachem HTTP
-nach und lädt von hier — ohne TLS, ohne Redirects, ohne Zertifikate.
-
-Zwischen Spiegel und Gerät steht die Freigabe: Ein gespiegeltes Release ist
-zunächst nur vorhanden, nicht ausgeliefert. Erst wenn es im Admin freigegeben
-wird, sehen die Geräte es überhaupt. So lässt sich eine Version erst an einem
-Gerät testen, bevor sie auf alle geht.
-
-Integration in app.py:
-    from firmware_mirror import register_firmware_endpoints
-    register_firmware_endpoints(app)
-"""
+"""Firmware-Spiegel für OTA-Updates."""
 
 import hashlib
 import json
@@ -40,19 +19,16 @@ from database import get_database
 
 logger = logging.getLogger(__name__)
 
-# Wo die gespiegelten Dateien liegen. Als Volume gemountet, damit ein
-# Container-Neustart die Binaries nicht verliert.
+# Als Volume, damit ein Neustart die Binaries nicht verliert.
 MIRROR_DIR = Path(os.getenv('FIRMWARE_MIRROR_DIR', '/data/firmware'))
 
 # Das Repository, aus dem gespiegelt wird.
 GITHUB_REPO = os.getenv('FIRMWARE_GITHUB_REPO', 'Revisor01/auraos-moodlight')
 
-# Token, mit dem sich die CI beim Sync-Endpoint ausweist. Ohne gesetzten Token
-# ist der Endpoint gesperrt — sonst könnte jeder einen Spiegel-Lauf auslösen.
+# Ohne Token ist der Sync-Endpoint gesperrt, sonst könnte jeder einen Lauf auslösen.
 SYNC_TOKEN = os.getenv('FIRMWARE_SYNC_TOKEN', '').strip()
 
-# Obergrenze pro Datei. Ein AuraOS-Binary liegt bei ~1,3 MB; alles jenseits
-# davon deutet auf ein falsches Asset hin und würde nur Plattenplatz fressen.
+# Ein Binary hat ~1,3 MB; mehr deutet auf ein falsches Asset.
 MAX_ASSET_BYTES = 8 * 1024 * 1024
 
 # Settings-Keys in der Datenbank
@@ -64,13 +40,7 @@ VERSION_RE = re.compile(r'^\d+\.\d+$')
 
 
 def _parse_version(value: str):
-    """
-    Zerlegt "9.16" in (9, 16) für den Größenvergleich.
-
-    String-Vergleich reicht hier nicht: "9.9" > "9.16" wäre lexikografisch wahr,
-    numerisch aber falsch. Genau dieser Fall tritt in diesem Projekt auf, weil
-    der Nummernkreis bei 9.9 vorbei an 9.10 weiterlief.
-    """
+    """Zerlegt "9.16" in (9, 16) für den Größenvergleich."""
     if not value or not VERSION_RE.match(value.strip()):
         return None
     major, minor = value.strip().split('.')
@@ -84,8 +54,7 @@ def _is_newer(candidate: str, current: str) -> bool:
     if c is None:
         return False
     if n is None:
-        # Gerät meldet keine oder eine unlesbare Version — dann gilt jedes
-        # gespiegelte Release als neuer, sonst käme so ein Gerät nie an ein Update
+        # Ohne lesbare Version gilt jedes Release als neuer, sonst käme das Gerät nie an ein Update.
         return True
     return c > n
 
@@ -115,16 +84,7 @@ def _read_meta(version: str):
 
 
 def _download_asset(url: str, target: Path) -> tuple:
-    """
-    Lädt ein Release-Asset von GitHub und legt es unter target ab.
-
-    Erst in eine temporäre Datei, dann verschieben: Bricht der Download ab,
-    bleibt keine halbe Datei liegen, die später als gültige Firmware
-    ausgeliefert würde.
-
-    Returns:
-        (sha256, groesse) bei Erfolg, (None, Fehlermeldung) sonst.
-    """
+    """Lädt ein Release-Asset von GitHub und legt es unter target ab."""
     tmp_fd, tmp_name = tempfile.mkstemp(dir=str(target.parent), suffix='.part')
     os.close(tmp_fd)
     tmp_path = Path(tmp_name)
@@ -165,12 +125,7 @@ def _download_asset(url: str, target: Path) -> tuple:
 
 
 def _verify_firmware_magic(path: Path) -> bool:
-    """
-    Prüft das ESP32-Magic-Byte 0xE9 am Dateianfang.
-
-    Dieselbe Prüfung macht die Firmware vor dem Flashen noch einmal. Hier
-    verhindert sie, dass ein falsches Asset überhaupt in den Spiegel gelangt.
-    """
+    """Prüft das ESP32-Magic-Byte 0xE9 am Dateianfang."""
     try:
         with open(path, 'rb') as fh:
             return fh.read(1) == b'\xe9'
@@ -181,24 +136,14 @@ def _verify_firmware_magic(path: Path) -> bool:
 def register_firmware_endpoints(app):
     """Registriert die Firmware-Endpoints an der Flask-App."""
 
-    # api_login_required lebt in moodlight_extensions; hier importiert, um einen
-    # Zirkelbezug beim Modulimport zu vermeiden
+    # Hier importiert, um einen Zirkelbezug zu vermeiden.
     from moodlight_extensions import api_login_required
 
     MIRROR_DIR.mkdir(parents=True, exist_ok=True)
 
     @app.route('/api/firmware/sync', methods=['POST'])
     def firmware_sync():
-        """
-        Spiegelt ein GitHub-Release. Wird von der CI nach einem Build aufgerufen.
-
-        Geschützt über FIRMWARE_SYNC_TOKEN im X-Sync-Token-Header. Ein
-        gespiegeltes Release ist danach vorhanden, aber noch nicht freigegeben —
-        die Geräte sehen es erst nach /api/firmware/release.
-
-        Body (optional): {"version": "9.16"} — ohne Angabe wird das
-        aktuellste Release des Repos gespiegelt.
-        """
+        """Spiegelt ein GitHub-Release."""
         if not SYNC_TOKEN:
             logger.error("Firmware-Sync angefragt, aber FIRMWARE_SYNC_TOKEN ist nicht gesetzt")
             return jsonify({
@@ -207,8 +152,7 @@ def register_firmware_endpoints(app):
             }), 503
 
         provided = request.headers.get('X-Sync-Token', '')
-        # compare_digest statt == : verhindert, dass die Antwortzeit verrät,
-        # wie viele Zeichen des Tokens stimmen
+        # compare_digest, damit die Antwortzeit nichts über den Token verrät.
         if not secrets.compare_digest(provided, SYNC_TOKEN):
             logger.warning(f"Firmware-Sync mit falschem Token von {request.remote_addr}")
             return jsonify({"status": "error", "message": "Nicht autorisiert"}), 401
@@ -222,7 +166,6 @@ def register_firmware_endpoints(app):
                 "message": "version muss die Form 9.16 haben"
             }), 400
 
-        # Release-Metadaten bei GitHub holen
         if requested:
             api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/tags/v{requested}'
         else:
@@ -258,7 +201,6 @@ def register_firmware_endpoints(app):
         paths = _mirror_paths(version)
         paths['dir'].mkdir(parents=True, exist_ok=True)
 
-        # Passende Assets im Release suchen
         assets = {a.get('name', ''): a for a in release.get('assets', [])}
         fw_name = f'Firmware-{version}-AuraOS.bin'
         ui_name = f'UI-{version}-AuraOS.tgz'
@@ -269,7 +211,6 @@ def register_firmware_endpoints(app):
                 "message": f"{fw_name} fehlt im Release"
             }), 404
 
-        # Firmware laden und prüfen
         fw_sha, fw_size = _download_asset(
             assets[fw_name].get('browser_download_url', ''), paths['firmware']
         )
@@ -326,14 +267,7 @@ def register_firmware_endpoints(app):
 
     @app.route('/api/firmware/latest', methods=['GET'])
     def firmware_latest():
-        """
-        Was die Lampe stündlich fragt.
-
-        Antwortet nur mit freigegebenen Versionen — ein gespiegeltes, aber nicht
-        freigegebenes Release ist hier unsichtbar.
-
-        Query: ?current=9.16 (aktuelle Version des Geräts)
-        """
+        """Was die Lampe stündlich fragt."""
         current = str(request.args.get('current', '')).strip()
 
         db = get_database()
@@ -361,8 +295,7 @@ def register_firmware_endpoints(app):
             "update_available": available,
             "current": current,
             "latest": released,
-            # Die Lampe zeigt keine Release-Notes an, sondern verlinkt hierhin —
-            # spart RAM auf dem Gerät und die Notes bleiben vollständig lesbar
+            # Die Lampe verlinkt hierhin statt Notes anzuzeigen, das spart RAM.
             "release_url": meta.get('release_url', ''),
         }
 
@@ -379,12 +312,7 @@ def register_firmware_endpoints(app):
 
     @app.route('/api/firmware/download/<version>/<kind>', methods=['GET'])
     def firmware_download(version, kind):
-        """
-        Liefert Binary oder UI-Archiv per HTTP aus — das lädt die Lampe.
-
-        Nur die freigegebene Version ist abrufbar. Sonst könnte ein Gerät eine
-        zurückgezogene Version nachladen, weil es die alte URL noch kennt.
-        """
+        """Liefert Binary oder UI-Archiv per HTTP aus — das lädt die Lampe."""
         if not VERSION_RE.match(version or ''):
             return jsonify({"status": "error", "message": "Ungueltige Version"}), 400
 
@@ -448,21 +376,12 @@ def register_firmware_endpoints(app):
     @app.route('/api/firmware/release', methods=['POST'])
     @api_login_required
     def firmware_release():
-        """
-        Gibt eine gespiegelte Version für die Geräte frei — oder zieht sie zurück.
-
-        Das ist der Punkt, an dem du entscheidest: erst am eigenen Gerät testen,
-        dann freigeben. Vorher sieht keine Lampe die neue Version.
-
-        Body: {"version": "9.16"} zum Freigeben,
-              {"version": null} zum Zurückziehen.
-        """
+        """Gibt eine gespiegelte Version für die Geräte frei — oder zieht sie zurück."""
         data = request.get_json(silent=True) or {}
         raw = data.get('version')
 
         db = get_database()
 
-        # Zurückziehen
         if raw is None or str(raw).strip() == '':
             db.set_setting(KEY_RELEASED, '')
             logger.info("Firmware-Freigabe zurueckgezogen")
@@ -486,8 +405,7 @@ def register_firmware_endpoints(app):
                 "message": f"Version {version} ist nicht gespiegelt"
             }), 404
 
-        # Vor der Freigabe noch einmal prüfen — die Datei könnte seit dem
-        # Spiegeln beschädigt worden sein
+        # Die Datei könnte seit dem Spiegeln beschädigt sein.
         if not _verify_firmware_magic(paths['firmware']):
             logger.error(f"Freigabe {version} abgelehnt: Magic-Byte fehlt")
             return jsonify({

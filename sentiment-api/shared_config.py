@@ -1,8 +1,6 @@
-# sentiment-api/shared_config.py
-# get_sentiment_category() wird noch von app.py und background_worker.py genutzt — NICHT entfernen.
+# Gemeinsame Konstanten und Kategorie-Zuordnung der Sentiment-API.
 
-# --- Redis-Cache-Keys (zentral, damit Worker/Extensions nicht auseinanderdriften) ---
-# Aktuell genutzter Key für /api/moodlight/current (moodlight_extensions.py)
+# Redis-Keys zentral, damit Worker und Extensions nicht auseinanderdriften.
 CACHE_KEY_CURRENT = 'moodlight:current:v2'
 # Alter/Legacy-Key — wird beim Invalidieren mitgeloescht, falls noch irgendwo gesetzt
 CACHE_KEY_CURRENT_LEGACY = 'moodlight:current'

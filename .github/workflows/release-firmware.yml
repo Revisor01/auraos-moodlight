@@ -1,15 +1,6 @@
 name: Release Firmware
 
-# Baut Firmware-BIN und UI-TGZ und haengt sie an das GitHub-Release.
-# Ausgeloest durch einen Versions-Tag (v9.15, v10.0, ...).
-#
-# Ablauf lokal:
-#   ./build-release.sh minor    # bumpt config.h, baut lokal, committet
-#   git push origin main
-#   git tag v9.15 && git push origin v9.15
-#
-# Die CI baut danach unabhaengig neu und legt die Artefakte ans Release.
-# Der Build ist reproduzierbar: die Version kommt aus config.h, nicht aus dem Tag.
+# Baut Firmware-BIN und UI-TGZ für einen Versions-Tag; die Version kommt aus config.h, nicht aus dem Tag.
 
 on:
   push:
@@ -140,13 +131,7 @@ jobs:
             release-artifacts/Firmware-${{ steps.version.outputs.version }}-AuraOS.bin
             release-artifacts/UI-${{ steps.version.outputs.version }}-AuraOS.tgz
 
-      # Backend anstossen, das frische Release zu spiegeln. Die Geraete koennen
-      # GitHub nicht selbst erreichen (HTTPS, Redirects, Zertifikate) und holen
-      # ihre Updates deshalb vom Spiegel.
-      #
-      # Gespiegelt heisst noch nicht ausgeliefert: Die Version muss im Admin
-      # freigegeben werden, vorher sieht sie kein Geraet. So laesst sich erst an
-      # einem Geraet testen, bevor sie auf alle geht.
+      # Geräte erreichen GitHub nicht und laden vom Spiegel; ausgeliefert wird erst nach Freigabe im Admin.
       - name: Firmware-Spiegel benachrichtigen
         if: success()
         continue-on-error: true   # Ein fehlender Spiegel darf das Release nicht kippen

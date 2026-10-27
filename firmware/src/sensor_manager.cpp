@@ -44,7 +44,6 @@ void initDHT() {
 // === Map Sentiment Score (-1 bis +1) zu LED Index (0-4) ===
 int mapSentimentToLED(float sentimentScore)
 {
-    // Angepasste Schwellenwerte für die Stimmungsfarben
     if (sentimentScore >= 0.20)
         return 4; // sehr positiv
     if (sentimentScore >= 0.10)
@@ -56,16 +55,11 @@ int mapSentimentToLED(float sentimentScore)
     return 0;     // sehr negativ
 }
 
-// === Verarbeite den empfangenen Sentiment Score (-1 bis +1) ===
-// Aktualisiert nur MQTT/HA-Werte — LED-Steuerung erfolgt über led_index aus der API
-// apiCategory: von der API gelieferte Kategorie (falls vorhanden), sonst leer für lokale Berechnung.
-// Wichtig: appState.sentimentCategory wird HIER (nach dem Alt-Wert-Vergleich) gesetzt,
-// nicht vom Aufrufer VOR dem Aufruf — sonst ist der Änderungsvergleich unten immer false.
+// sentimentCategory erst hier nach dem Altwert-Vergleich setzen, sonst ist er immer false.
 void handleSentiment(float sentimentScore, const String &apiCategory)
 {
     sentimentScore = constrain(sentimentScore, -1.0, 1.0);
 
-    // Sende Score an HA nur bei Änderung
     if (abs(sentimentScore - appState.sentimentScore) >= 0.01 || !appState.initialAnalysisDone)
     {
         String haValue = floatToString(sentimentScore, 2);
@@ -79,7 +73,6 @@ void handleSentiment(float sentimentScore, const String &apiCategory)
         debug("Neuer Sentiment Score: " + haValue);
     }
 
-    // Kategorie aus API-Response nutzen falls vorhanden, sonst lokal bestimmen
     String categoryText = apiCategory;
     if (categoryText.isEmpty())
     {
@@ -116,8 +109,7 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
         return false;
     }
 
-    // Stats-URL aus appState.apiUrl ableiten (Suffix "/current" -> "/history"),
-    // Fallback auf DEFAULT_STATS_API_URL falls apiUrl nicht dem erwarteten Muster folgt
+    // Stats-URL aus apiUrl ("/current" -> "/history"), sonst DEFAULT_STATS_API_URL.
     String baseApiUrl = appState.apiUrl;
     String statsBaseUrl;
     if (baseApiUrl.endsWith("/current")) {
@@ -132,7 +124,6 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
     http.setReuse(false);
     http.setUserAgent("MoodlightClient/1.0");
 
-    // Ensure any previous connection is closed
     if (wifiClientHTTP.connected()) {
         wifiClientHTTP.stop();
         delay(10);
@@ -143,9 +134,8 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
         return false;
     }
 
-    http.setTimeout(8000);  // A-HOCH-3: 15s -> 8s
+    http.setTimeout(8000);
 
-    // A-NIEDRIG: Schein-try/catch entfernt — Arduino HTTPClient wirft hier keine C++-Exceptions
     int httpCode = http.GET();
     debug(String(F("Backend-Statistiken HTTP Code: ")) + String(httpCode));
 
@@ -153,7 +143,6 @@ bool fetchBackendStatistics(JsonDocument &doc, int hours)
     watchdog.feed();
 
     if (httpCode == HTTP_CODE_OK) {
-        // Parse JSON direkt vom Stream wie safeHttpGet
         DeserializationError error = deserializeJson(doc, http.getStream());
         http.end();
 
@@ -178,22 +167,18 @@ bool safeHttpGet(const String &url, JsonDocument &doc)
 
     debug(String(F("Making safe HTTP request to: ")) + url);
 
-    // Create client in local scope
     HTTPClient http;
     http.setReuse(false);
     http.setUserAgent("MoodlightClient/1.0");
 
-    // Ensure any previous connection is closed
     if (wifiClientHTTP.connected()) {
         wifiClientHTTP.stop();
         delay(10);
     }
 
-    // Begin HTTP connection with proper error handling
     if (http.begin(wifiClientHTTP, url)) {
         http.setTimeout(10000);
 
-        // A-NIEDRIG: Schein-try/catch entfernt — Arduino HTTPClient wirft hier keine C++-Exceptions
         int httpCode = http.GET();
         debug(String(F("HTTP response code: ")) + httpCode);
 
@@ -213,14 +198,12 @@ bool safeHttpGet(const String &url, JsonDocument &doc)
             }
         }
 
-        // Always end the connection
         http.end();
     }
     else {
         debug(F("Failed to begin HTTP connection"));
     }
 
-    // Force close WiFi client if somehow still connected
     if (wifiClientHTTP.connected()) {
         wifiClientHTTP.stop();
     }
@@ -232,13 +215,10 @@ bool safeHttpGet(const String &url, JsonDocument &doc)
 static const unsigned long POLL_BUFFER_MS = 90000UL;       // Puffer nach Server-Analyse-Zeitpunkt
 static const unsigned long POLL_MIN_DELAY_MS = 60000UL;    // Untergrenze gegen Poll-Schleifen
 
-// Portabler Ersatz für timegm() — auf der ESP32-Toolchain (newlib) nicht verfügbar.
-// Wandelt ein UTC struct tm in eine time_t um, unabhängig von der gesetzten TZ
-// (das Gerät läuft mit TZ=CET-1CEST, siehe wifi_manager.cpp).
+// Ersatz für timegm(), das newlib auf dem ESP32 nicht hat.
 static time_t utcMkTime(struct tm *tmUtc)
 {
-    // mktime() interpretiert tmUtc als lokale Zeit (gemäß gesetzter TZ) und liefert UTC-time_t.
-    // Um dies zu kompensieren, wird die TZ temporär auf UTC gesetzt und danach zurückgesetzt.
+    // mktime() rechnet in lokaler Zeit, daher TZ kurz auf UTC.
     char *oldTz = getenv("TZ");
     String savedTz = oldTz ? String(oldTz) : String();
     setenv("TZ", "UTC0", 1);
@@ -262,7 +242,6 @@ void getSentiment()
     // Wirksames Poll-Delay: servergeführter Wert falls vorhanden, sonst konfiguriertes Intervall
     unsigned long effectiveDelay = appState.nextMoodPollDelay > 0 ? appState.nextMoodPollDelay : appState.moodUpdateInterval;
 
-    // Debug output for Interval Status (reduced frequency)
     static unsigned long lastIntervalDebug = 0;
     if (currentMillis - lastIntervalDebug >= 300000)
     {
@@ -270,7 +249,6 @@ void getSentiment()
         lastIntervalDebug = currentMillis;
     }
 
-    // Check for API timeout logic
     if (appState.sentimentAPIAvailable && appState.lastSuccessfulSentimentUpdate > 0 && currentMillis - appState.lastSuccessfulSentimentUpdate > SENTIMENT_FALLBACK_TIMEOUT)
     {
         debug(F("API-Timeout: Kein erfolgreicher Sentiment-Abruf seit über einer Stunde."));
@@ -285,19 +263,16 @@ void getSentiment()
         {
             updateLEDs();
         }
-        // API-Fehler am Status-Pixel nur im Auto-Modus — im Manual-Modus haengt die
-        // Lampe nicht an der API (Abruf laeuft dort nur fuer die HA-Sensoren)
+        // Im Manual-Modus hängt die Lampe nicht an der API, daher kein Fehler-Pixel.
         if (appState.autoMode)
         {
             setStatusLED(2);
         }
     }
 
-    // Avoid concurrent updates
     if (isUpdating)
         return;
 
-    // Check if it's time for an update
     if (!(currentMillis - appState.lastMoodUpdate >= effectiveDelay || !appState.initialAnalysisDone))
         return;
 
@@ -309,10 +284,8 @@ void getSentiment()
     static JsonDocument doc;
     doc.clear();
 
-    // Use the safe HTTP request function
     bool success = safeHttpGet(appState.apiUrl, doc);
 
-    // Always update timing state
     appState.lastMoodUpdate = currentMillis;
 
     if (success && doc["sentiment"].is<float>())
@@ -320,8 +293,7 @@ void getSentiment()
         float receivedSentiment = doc["sentiment"].as<float>();
         debug(String(F("Sentiment empfangen: ")) + String(receivedSentiment, 2));
 
-        // Phase 18: led_index aus API-Response lesen (dynamische Skalierung)
-        // Fallback auf mapSentimentToLED() wenn Feld fehlt (altes Backend)
+        // Ohne led_index (altes Backend) über mapSentimentToLED().
         int apiLedIndex = -1;
         bool hasApiLedIndex = doc["led_index"].is<int>();
         if (hasApiLedIndex)
@@ -344,19 +316,14 @@ void getSentiment()
             debug(F("led_index nicht in Response — lokaler Fallback über mapSentimentToLED()"));
         }
 
-        // Kategorie aus API-Response lesen (für MQTT/HA) — Zuweisung an
-        // appState.sentimentCategory erfolgt INNERHALB handleSentiment(),
-        // damit der Änderungsvergleich dort gegen den alten Wert läuft
+        // Zuweisung erst in handleSentiment(), damit der Änderungsvergleich gegen den Altwert läuft.
         String apiCategory = doc["category"].is<const char*>() ? doc["category"].as<String>() : String();
 
-        // handleSentiment() für MQTT/HA-Werte (Score + Kategorie)
         handleSentiment(receivedSentiment, apiCategory);
 
-        // Perzentil-Daten für Dashboard-Visualisierung speichern
         if (doc["percentile"].is<float>())
         {
             appState.percentile = doc["percentile"].as<float>();
-            // Perzentil an HA publizieren (Umrechnung auf 0-100%)
             if (appState.mqttEnabled && mqtt.isConnected())
             {
                 haSentimentPercentile.setValue(floatToString(appState.percentile * 100.0, 0).c_str());
@@ -381,8 +348,7 @@ void getSentiment()
         debug(String(F("LED-Index setzen: ")) + String(apiLedIndex));
         appState.currentLedIndex = apiLedIndex;
         appState.lastLedIndex = apiLedIndex;
-        // Stufe fuer HA "Weltlage relativ" — nur ein echter Wochenvergleich zaehlt,
-        // gesendet wird in loop() (syncHaRelativeLevel)
+        // Nur ein echter Wochenvergleich zählt; gesendet wird in loop().
         appState.relativeLevel = relativeLevelFromResponse(hasApiLedIndex, apiLedIndex,
                                                            doc["thresholds"]["fallback"] | false);
         // LEDs nur im Auto-Modus — im Manual-Modus aktualisiert der Abruf nur die Sensoren
@@ -394,9 +360,7 @@ void getSentiment()
         appState.initialAnalysisDone = true;
         appState.lastSuccessfulSentimentUpdate = currentMillis;
 
-        // Servergeführtes Poll-Delay aus next_update_minutes + Analyse-Alter berechnen.
-        // next_update_minutes ist das konstante Worker-Intervall des Servers (kein Countdown),
-        // daher wird die tatsächliche Restzeit über das Analyse-Alter (timestamp) ermittelt.
+        // next_update_minutes ist das feste Worker-Intervall, die Restzeit ergibt sich aus dem Analyse-Alter.
         appState.nextMoodPollDelay = 0; // Default: Fallback auf moodUpdateInterval
         if (doc["next_update_minutes"].is<int>())
         {
@@ -446,11 +410,9 @@ void getSentiment()
             debug(F("next_update_minutes fehlt in API-Response — Fallback auf moodUpdateInterval"));
         }
 
-        // Reset error tracking
         appState.consecutiveSentimentFailures = 0;
         appState.sentimentAPIAvailable = true;
 
-        // Reset status LED if there was a previous API error
         if (appState.statusLedMode == 2)
         {
             setStatusLED(0);
@@ -465,18 +427,15 @@ void getSentiment()
         // Bei API-Ausfall garantiert auf konfiguriertes moodUpdateInterval zurückfallen
         appState.nextMoodPollDelay = 0;
 
-        // Error handling for consecutive failures
         if (appState.consecutiveSentimentFailures >= MAX_SENTIMENT_FAILURES && appState.sentimentAPIAvailable)
         {
             appState.sentimentAPIAvailable = false;
             debug(F("API nicht erreichbar nach mehreren Fehlversuchen. Wechsel in Neutral-Modus."));
 
-            // Set neutral mood if no previous value exists
             if (!appState.initialAnalysisDone)
             {
                 handleSentiment(0.0);
-                // LEDs auf Neutral-Zustand aktualisieren — handleSentiment() aktualisiert
-                // nur MQTT/HA-Werte, nicht die LEDs selbst
+                // handleSentiment() aktualisiert nur MQTT/HA, nicht die LEDs.
                 if (appState.autoMode && appState.lightOn)
                 {
                     updateLEDs();
@@ -484,16 +443,12 @@ void getSentiment()
             }
         }
 
-        // API-Fehler am Status-Pixel anzeigen — nur im Auto-Modus (im Manual-Modus
-        // haengt die Lampenfarbe nicht an der API). Nach einem Wechsel auf Auto
-        // erscheint die Anzeige beim naechsten fehlgeschlagenen Abruf; WLAN-/MQTT-/
-        // Update-Blinken (Modus != 0) wird nicht ueberschrieben.
+        // Nur im Auto-Modus und ohne WLAN-, MQTT- oder Update-Blinken zu überschreiben.
         if (!appState.sentimentAPIAvailable && appState.autoMode && appState.statusLedMode == 0)
         {
             setStatusLED(2);
         }
 
-        // Update HA values with last known value anyway
         if (appState.mqttEnabled && mqtt.isConnected())
         {
             haSentimentScore.setValue(floatToString(appState.sentimentScore, 2).c_str());
@@ -502,7 +457,6 @@ void getSentiment()
         }
     }
 
-    // Always clean up
     isUpdating = false;
 
     unsigned long finalEffectiveDelay = appState.nextMoodPollDelay > 0 ? appState.nextMoodPollDelay : appState.moodUpdateInterval;
@@ -512,7 +466,6 @@ void getSentiment()
 // === Lese DHT Sensor und sende an HA ===
 void readAndPublishDHT()
 {
-    // First check if DHT is enabled and initialized
     if (!appState.dhtEnabled || !dhtSensor)
     {
         return; // Skip DHT processing entirely
@@ -527,8 +480,6 @@ void readAndPublishDHT()
         bool tempValid = false;
         bool humValid = false;
 
-        // A-NIEDRIG: Schein-try/catch entfernt — DHT-Library wirft keine C++-Exceptions,
-        // ungueltige Lesungen werden bereits ueber isnan()-Checks abgefangen
         temp = dhtSensor->readTemperature();
         tempValid = !isnan(temp);
 
@@ -538,7 +489,6 @@ void readAndPublishDHT()
         hum = dhtSensor->readHumidity();
         humValid = !isnan(hum);
 
-        // Process temperature if valid
         if (tempValid)
         {
             bool tempChanged = abs(temp - appState.currentTemp) >= 0.1; // 0.1°C Schwelle
@@ -561,7 +511,6 @@ void readAndPublishDHT()
             debug(F("DHT Temp Lesefehler!"));
         }
 
-        // Process humidity if valid
         if (humValid)
         {
             bool humChanged = abs(hum - appState.currentHum) >= 0.5; // 0.5% Schwelle

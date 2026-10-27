@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Unit-Tests für das Login-Rate-Limiting in app.py (Review-Runde 2, B-HOCH-4).
-
-app.py importiert Flask/psycopg2/redis/anthropic auf Modulebene, daher werden
-diese wie in den bestehenden Tests (test_percentiles.py) mit MagicMock-Stubs
-ersetzt, damit die Tests ohne installierte Pakete lokal lauffähig sind.
-Die Rate-Limit-Hilfsfunktionen (_login_rate_limit_*) sind reine Python-Logik
-ohne Flask-Request-Kontext und daher direkt testbar.
-"""
+"""Unit-Tests für das Login-Rate-Limiting in app.py."""
 
 import sys
 import os
@@ -26,11 +18,7 @@ sys.modules.setdefault('requests', MagicMock())
 
 
 def _install_flask_stub():
-    """
-    Minimaler Flask-Stub für den app.py-Modulimport. Nur die von app.py auf
-    Modulebene benötigten Namen werden bereitgestellt (Flask-Klasse, jsonify,
-    request, render_template, session, redirect, url_for).
-    """
+    """Minimaler Flask-Stub für den app.py-Modulimport."""
     flask_stub = MagicMock()
 
     class _FakeFlaskApp:
@@ -84,8 +72,7 @@ class TestLoginRateLimit(unittest.TestCase):
         _install_flask_stub()
         os.environ['SECRET_KEY'] = 'test-secret-key-for-unit-tests'
 
-        # database.get_database() wird beim Modulimport von app.py aufgerufen
-        # (load_settings_from_db) — mocken um DB-Zugriff zu vermeiden
+        # get_database() läuft schon beim Import von app.py, daher gemockt.
         mock_db = MagicMock()
         mock_db.get_setting.return_value = None
         mock_db.get_active_feeds.return_value = []

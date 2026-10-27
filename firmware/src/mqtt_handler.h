@@ -3,8 +3,7 @@
 #include "app_state.h"
 #include <ArduinoHA.h>
 
-// === Externe HA-Entity-Deklarationen ===
-// Definitionen liegen in mqtt_handler.cpp
+// Definiert in mqtt_handler.cpp
 
 extern HAMqtt mqtt;
 extern HASensor haSentimentScore;

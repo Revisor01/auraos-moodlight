@@ -14,15 +14,10 @@
 
 ## Worum es geht
 
-Nachrichten erzählen fast immer von dem, was schiefgeht. Ob die Lage heute
-tatsächlich schlechter ist als letzte Woche, sagt einem niemand.
-
-Das Moodlight beantwortet genau das, ohne ein Wort: Ein Dienst liest
-regelmäßig die Schlagzeilen deutscher Nachrichtenquellen, lässt sie
-bewerten und ordnet das Ergebnis gegen die letzten sieben Tage ein. Die
-Lampe zeigt diese Einordnung als Farbe, von Rot (viel schlechter als die
-Woche) bis Violett (viel besser). Was gut oder schlecht war, muss man nicht
-lesen; man sieht es.
+Ein Dienst liest regelmäßig die Schlagzeilen deutscher Nachrichtenquellen,
+lässt sie bewerten und ordnet das Ergebnis gegen die letzten sieben Tage ein.
+Die Lampe zeigt diese Einordnung als Farbe, von Rot (viel schlechter als die
+Woche) bis Violett (viel besser).
 
 Mehr zur Idee: **[revisor01.github.io/auraos-moodlight](https://revisor01.github.io/auraos-moodlight)**
 
@@ -98,9 +93,7 @@ werden:
 
 ## Versionen
 
-Was sich wann geändert hat, steht in [CHANGELOG.md](CHANGELOG.md) — nach
-[Keep a Changelog](https://keepachangelog.com/de/1.1.0/), aus Sicht der
-Nutzer:innen geschrieben. Die
+Was sich wann geändert hat, steht in [CHANGELOG.md](CHANGELOG.md). Die
 [Releases](https://github.com/Revisor01/auraos-moodlight/releases) tragen je
 Version die fertige Firmware und Weboberfläche.
 
@@ -127,9 +120,7 @@ docker compose up -d
 
 Das Datenbankschema samt voreingestellten Quellen legt `init.sql` beim ersten
 Start an. In den Einstellungen der Lampe dann die Adresse des eigenen
-Dienstes eintragen. Mehr zu Endpunkten und Admin-Bereich steht in
-[sentiment-api/README.md](sentiment-api/README.md), zur Firmware in
-[firmware/README.md](firmware/README.md).
+Dienstes eintragen.
 
 **Tests.**
 

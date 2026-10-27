@@ -1,13 +1,9 @@
 // Default API URL (moodlight endpoint with caching)
 const DEFAULT_NEWS_API_URL = 'http://analyse.godsapp.de/api/moodlight/current';
 
-// RSS-Feed Verwaltung (REMOVED in v9.0)
 let feeds = [];
 
-// Tab-gebundenes Log-Polling: #logContent lebt seit dem UI-Umzug im Info-Tab
-// und darf nur pollen, waehrend dieser Tab tatsaechlich sichtbar ist. Nutzt
-// die in script.js deklarierte globale refreshLogInterval und refreshLog() —
-// script.js wird vor setup.js geladen (setup.html), die Reihenfolge stimmt.
+// Log-Polling nur, solange der Info-Tab sichtbar ist; nutzt refreshLog() aus script.js.
 function startLogPolling() {
     if (!document.getElementById('logContent')) return;
     clearInterval(refreshLogInterval);
@@ -21,35 +17,24 @@ function stopLogPolling() {
 }
 
 function pageInit() {
-    // Fügt Event-Listener für alle Tab-Links hinzu
     document.querySelectorAll('.tab-link').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const tabId = this.getAttribute('data-tab');
 
-            // Aktiviert den ausgewählten Tab und deaktiviert alle anderen
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabId + '-tab').classList.add('active');
             document.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
             this.classList.add('active');
 
-            // Log-Polling bei jedem Tab-Wechsel stoppen, unabhaengig davon,
-            // welcher Tab vorher aktiv war — wird unten fuer 'about' wieder gestartet
+            // Bei jedem Wechsel stoppen, für 'about' startet es unten neu.
             stopLogPolling();
 
-            // Lädt tab-spezifische Daten
-            // REMOVED v9.0: RSS feeds tab
-            // if (tabId === 'feeds') {
-            //     loadFeeds();
-            // } else
             if (tabId === 'api') {
                 loadApiSettings();
             } else if (tabId === 'colors') {
                 loadColorSettings();
             } else if (tabId === 'about') {
-                // C-MITTEL: loadStorageInfo2() vom Hardware- zum Info-Tab verschoben —
-                // die Speicherinfo-Anzeige (#storage-progress-bar etc.) liegt im Info-Tab,
-                // nicht im Hardware-Tab
                 loadSystemInfo();
                 loadStorageInfo2();
                 startLogPolling();
@@ -63,12 +48,9 @@ function pageInit() {
         });
     });
 
-    // BUG-01: loadSystemInfo() unabhaengig vom aktiven Tab beim Initialisieren
-    // aufrufen, damit die Version im Header sofort erscheint (Standard-Tab ist
-    // "wifi", nicht "about" — vorher wurde die Version nie geladen).
+    // Sofort laden, damit die Version im Header erscheint; Standard-Tab ist "wifi".
     loadSystemInfo();
 
-    // Initialen Tab laden (falls benötigt)
     const activeTab = document.querySelector('.tab-link.active');
     if (activeTab) {
         const tabId = activeTab.getAttribute('data-tab');
@@ -80,9 +62,7 @@ function pageInit() {
         }
     }
 
-    // Browser-Tab in den Hintergrund: Log-Polling anhalten, damit nicht ins
-    // Leere gepollt wird, waehrend die Seite nicht sichtbar ist. Bei Rueckkehr
-    // nur dann fortsetzen, wenn der Info-Tab weiterhin aktiv ist.
+    // Im Hintergrund kein Log-Polling; danach nur weiter, wenn der Info-Tab aktiv ist.
     document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
             stopLogPolling();
@@ -95,7 +75,7 @@ function pageInit() {
     });
 }
 
-// C-NIEDRIG: #wifi-status-info mit aktueller SSID befuellen (war zuvor leeres Element)
+// #wifi-status-info mit der aktuellen SSID füllen
 function loadWifiStatusInfo() {
     const el = document.getElementById('wifi-status-info');
     if (!el) return;
@@ -137,7 +117,6 @@ function formatFileSize(bytes) {
     }
 }
 
-// Neue Funktionen zum Laden der Einstellungen
 function loadApiSettings() {
     fetch('/api/settings/api')
     .then(r => r.json())
@@ -170,7 +149,6 @@ function loadColorSettings() {
     .then(data => {
         console.log('Farbeinstellungen geladen:', data);
         if (data.colors && Array.isArray(data.colors)) {
-            // Zeige Farben in der UI an
             const colorSettingsDiv = document.getElementById('color-settings');
             if (colorSettingsDiv) {
                 colorSettingsDiv.innerHTML = ''; // Bestehenden Inhalt löschen
@@ -250,9 +228,7 @@ function showAllSettings() {
     .then(data => {
         console.log('Alle Einstellungen:', data);
 
-        // C-HOCH-1: Tabelle per DOM-API statt innerHTML-Template-String erstellen —
-        // key/value koennen aus der Geraetekonfiguration (z.B. WiFi-SSID) stammen
-        // und muessen nicht escaped werden, wenn sie via textContent gesetzt werden
+        // DOM-API statt innerHTML: Werte stammen aus der Gerätekonfiguration.
         const modalContent = document.createElement('div');
         modalContent.className = 'modal-content';
 
@@ -489,7 +465,6 @@ function testAPI() {
         return;
     }
 
-    // Show spinner
     const spinner = document.getElementById('test-spinner');
     spinner.innerHTML = '<div class="loading"></div>';
 
@@ -657,20 +632,16 @@ function scanWifi() {
                 item.onclick = function() {
                     document.getElementById('wifi-ssid').value = network.ssid;
 
-                    // Remove selected class from all items
                     document.querySelectorAll('.wifi-item').forEach(el => {
                         el.classList.remove('wifi-selected');
                     });
 
-                    // Add selected class to this item
                     this.classList.add('wifi-selected');
                 };
 
                 const rssiStrength = network.rssi > -60 ? 'Stark' : (network.rssi > -80 ? 'Mittel' : 'Schwach');
 
-                // C-HOCH-1: SSIDs per DOM-API/textContent rendern statt innerHTML-
-                // Template-String — verhindert XSS ueber eine boesartig benannte
-                // SSID in Funkreichweite
+                // textContent statt innerHTML: SSIDs in Funkreichweite sind fremde Eingaben.
                 const nameDiv = document.createElement('div');
                 nameDiv.className = 'wifi-name';
                 nameDiv.textContent = network.ssid;
@@ -709,10 +680,7 @@ function loadSystemInfo() {
         console.log('Systeminformationen geladen:', data);
         if (data.version) {
             document.getElementById('software-version').textContent = data.version;
-            // Header-Version befuellen (BUG-01: blieb bisher dauerhaft auf "Laedt...",
-            // weil script.js::refreshStatus() das nur bei vorhandenem #leds tut,
-            // welches auf setup.html nicht existiert). Element defensiv holen,
-            // da der Header-Span nicht auf jeder Seite existiert, die setup.js laedt.
+            // Der Header-Span fehlt auf manchen Seiten, die setup.js laden.
             const headerVersion = document.getElementById('version');
             if (headerVersion) {
                 headerVersion.textContent = 'v' + data.version;
@@ -730,8 +698,7 @@ function loadSystemInfo() {
     })
     .catch(err => {
         console.error('Fehler beim Laden der Systeminformationen:', err);
-        // Neutralen Text setzen statt dauerhaft "Laedt..." stehen zu lassen,
-        // wenn das Geraet nicht erreichbar ist.
+        // Sonst bliebe „Lädt…“ stehen, wenn das Gerät nicht antwortet.
         const headerVersion = document.getElementById('version');
         if (headerVersion) {
             headerVersion.textContent = '-';
@@ -754,10 +721,7 @@ function loadMqttSettings() {
         if (data.user) {
             document.getElementById('mqtt-user').value = data.user;
         }
-        // A-HOCH-2/C-MITTEL: Passwortfeld LEER lassen statt die Maske "****"
-        // einzutragen — sonst wuerde ein Speichern ohne Passwort-Aenderung das
-        // echte Passwort durch die Maske ueberschreiben (Firmware-Gegenstueck
-        // prueft "pass != '****' && pass.length() > 0" in /savemqtt)
+        // Leer statt "****", sonst überschriebe Speichern das echte Passwort mit der Maske.
         const passField = document.getElementById('mqtt-pass');
         if (passField) {
             passField.value = '';
@@ -778,12 +742,7 @@ function toggleMqttSettings(enabled) {
     }
 }
 
-// Direktsprung per Hash: /setup#ui-update landet gleich im Update-Tab.
-//
-// Bewusst NICHT in pageInit(): das haengt an window.onload und wartet damit auf
-// alle Ressourcen, auch die Icons vom CDN. Haengt eins davon, bliebe der
-// Tab-Wechsel aus — genau dann, wenn man vom Update-Banner herkommt und den
-// Update-Tab sehen will. DOMContentLoaded reicht, die Tabs stehen im HTML.
+// /setup#ui-update öffnet den Update-Tab; DOMContentLoaded, weil onload auf CDN-Icons wartet.
 function applyTabFromHash() {
     const hash = (window.location.hash || '').replace('#', '');
     if (!hash) return;
@@ -791,8 +750,7 @@ function applyTabFromHash() {
     const target = document.querySelector('.tab-link[data-tab="' + hash + '"]');
     if (!target) return;
 
-    // Tab direkt umschalten statt click() — der Klick-Handler wird erst in
-    // pageInit() registriert und existiert hier moeglicherweise noch nicht
+    // Direkt umschalten, der Klick-Handler entsteht erst in pageInit().
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     const pane = document.getElementById(hash + '-tab');
     if (pane) pane.classList.add('active');
@@ -806,6 +764,5 @@ if (document.readyState === 'loading') {
     applyTabFromHash();
 }
 
-// Wechselt der Hash bei bereits offener Seite (zweiter Klick aufs Banner),
-// muss der Tab trotzdem folgen
+// Auch bei schon offener Seite dem Hash folgen (zweiter Klick aufs Banner).
 window.addEventListener('hashchange', applyTabFromHash);

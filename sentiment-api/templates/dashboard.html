@@ -161,7 +161,7 @@
     .score-positiv       { color: #6c3dbf; }
     .score-sehr-positiv  { color: #8e44ad; }
 
-    /* ===== SCORE-VISUALISIERUNG (HEAD-03) ===== */
+    /* ===== SCORE-VISUALISIERUNG ===== */
     .score-bar-container {
       background: var(--surface);
       border-radius: 8px;
@@ -241,7 +241,7 @@
       font-style: italic;
     }
 
-    /* ===== SKALIERUNGS-KONTEXT (VIS-01) ===== */
+    /* ===== SKALIERUNGS-KONTEXT ===== */
     .scale-section {
       background: var(--surface);
       border-radius: 8px;
@@ -593,7 +593,7 @@
     .btn-delete:hover:not(:disabled) { background: #c0392b; }
     .btn-delete:disabled             { opacity: 0.6; cursor: not-allowed; }
 
-    /* ===== ANALYSE-TRIGGER (CTRL-01/02) ===== */
+    /* ===== ANALYSE-TRIGGER ===== */
     .btn-trigger {
       padding: 8px 20px;
       background: var(--primary);
@@ -666,7 +666,7 @@
       to { transform: rotate(360deg); }
     }
 
-    /* ===== EINSTELLUNGS-TAB (UI-01/02/03/04/05) ===== */
+    /* ===== EINSTELLUNGS-TAB ===== */
     .settings-section {
       background: var(--surface);
       border-radius: 8px;
@@ -827,7 +827,7 @@
       }
     }
 
-    /* ===== FEED-TRENDS (VIS-01/02/03) ===== */
+    /* ===== FEED-TRENDS ===== */
     .trends-header {
       display: flex;
       align-items: center;
@@ -1023,7 +1023,7 @@
       </div>
     </div>
 
-    <!-- Score-Visualisierung: Farbverlauf + Formelanzeige (HEAD-03) -->
+    <!-- Score-Visualisierung: Farbverlauf + Formelanzeige -->
     <div class="score-bar-container">
       <h2>Score-Berechnung</h2>
 
@@ -1056,7 +1056,7 @@
       </p>
     </div>
 
-    <!-- Skalierungs-Kontext (VIS-01) -->
+    <!-- Skalierungs-Kontext -->
     <div class="scale-section" id="scaleSection">
       <h2>Skalierungs-Kontext <span class="count-badge" id="histDays">7 Tage</span></h2>
 
@@ -1090,7 +1090,7 @@
       </div>
     </div>
 
-    <!-- ===== MANUELLER ANALYSE-TRIGGER (CTRL-01/02/03) ===== -->
+    <!-- ===== MANUELLER ANALYSE-TRIGGER ===== -->
     <div class="trigger-section">
       <div>
         <strong>Analyse jetzt starten</strong>
@@ -1155,7 +1155,7 @@
 
   </div>
 
-  <!-- ===== TAB: EINSTELLUNGEN (UI-01/02/03/04/05) ===== -->
+  <!-- ===== TAB: EINSTELLUNGEN ===== -->
   <div id="tab-settings" class="tab-pane">
 
     <!-- Sektion: Analyse -->
@@ -1242,7 +1242,7 @@
 
   </div>
 
-  <!-- ===== TAB: FEED-TRENDS (VIS-01/02/03) ===== -->
+  <!-- ===== TAB: FEED-TRENDS ===== -->
   <div id="tab-trends" class="tab-pane">
     <div class="feed-rank-section">
       <div class="trends-header">
@@ -1341,22 +1341,19 @@ async function loadOverview() {
     if (current.status === 'success') {
       var score = parseFloat(current.sentiment);
 
-      // Karten-Werte setzen
       var scoreEl = document.getElementById('scoreValue');
       scoreEl.textContent = score.toFixed(2);
       scoreEl.className = 'value ' + scoreClass(score);
       document.getElementById('scoreCategory').textContent = current.category || '';
       document.getElementById('lastUpdate').textContent = relativeTime(current.timestamp);
 
-      // Header-Status aktualisieren
       document.getElementById('headerStatus').textContent =
         'Score: ' + score.toFixed(2) + ' · ' + (current.category || '') +
         ' · ' + relativeTime(current.timestamp);
 
-      // Zeiger auf Farbverlauf positionieren
       document.getElementById('barNeedle').style.left = scoreToPercent(score);
 
-      // VIS-01: Skalierungs-Kontext befüllen
+      // Skalierungs-Kontext
       if (current.percentile !== undefined && current.thresholds && current.historical) {
         var pct      = Math.round(current.percentile * 100);
         var hist     = current.historical;
@@ -1366,20 +1363,17 @@ async function loadOverview() {
         var histMed  = parseFloat(hist.median);
         var histSpan = histMax - histMin;
 
-        // Perzentil-Badge
         document.getElementById('percentileVal').textContent = pct + '. Pzt.';
         document.getElementById('percentileDesc').textContent =
           'Der aktuelle Score liegt über ' + pct + ' % der Werte der letzten 7 Tagen.';
 
-        // Historische Min/Median/Max-Werte
         document.getElementById('histMin').textContent    = histMin.toFixed(3);
         document.getElementById('histMedian').textContent = histMed.toFixed(3);
         document.getElementById('histMax').textContent    = histMax.toFixed(3);
         document.getElementById('histCount').textContent  =
           (hist.count || '—') + ' Datenpunkte in den letzten 7 Tagen';
 
-        // Farbverlauf-Balken: linke Kante = histMin, rechte Kante = histMax
-        // Gesamtbreite des Tracks = [-1, +1] = 100 %
+        // Linke Kante = histMin, rechte = histMax; der Track deckt [-1, +1] ab.
         if (histSpan > 0.001) {
           var leftPct  = ((histMin + 1) / 2 * 100).toFixed(1) + '%';
           var widthPct = (histSpan / 2 * 100).toFixed(1) + '%';
@@ -1387,7 +1381,6 @@ async function loadOverview() {
           rangeEl.style.left  = leftPct;
           rangeEl.style.width = widthPct;
 
-          // Score-Nadel innerhalb des Tracks positionieren
           document.getElementById('histNeedle').style.left = scoreToPercent(score);
 
           // Schwellwert-Ticks P20/P40/P60/P80
@@ -1407,13 +1400,11 @@ async function loadOverview() {
           });
         }
 
-        // Fallback-Hinweis
         document.getElementById('fallbackHint').style.display =
           thresh.fallback ? 'block' : 'none';
       }
 
-      // Formelzeile: Roh-Durchschnitt näherungsweise aus Gesamt-Score zurückrechnen
-      // score = tanh(raw_avg * 2)  ⟹  raw_avg ≈ atanh(score) / 2
+      // Roh-Durchschnitt zurückrechnen: score = tanh(raw_avg * 2), also raw_avg ≈ atanh(score) / 2
       var clamped    = Math.max(-0.9999, Math.min(0.9999, score));
       var rawApprox  = (Math.atanh(clamped) / 2).toFixed(3);
       var stretched  = (parseFloat(rawApprox) * 2).toFixed(3);
@@ -1442,13 +1433,12 @@ async function loadOverview() {
   }
 }
 
-// ===== MANUELLER ANALYSE-TRIGGER (CTRL-01/02/03) =====
+// ===== MANUELLER ANALYSE-TRIGGER =====
 async function triggerAnalysis() {
   var btn      = document.getElementById('analyzeBtn');
   var resultEl = document.getElementById('triggerResult');
   var errorEl  = document.getElementById('triggerError');
 
-  // UI: Button deaktivieren, Spinner anzeigen
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Analysiere…';
   resultEl.style.display = 'none';
@@ -1459,7 +1449,6 @@ async function triggerAnalysis() {
     var data = await res.json();
 
     if (res.ok && data.status === 'success') {
-      // Erfolg: Meldung zeigen, Dashboard-Übersicht neu laden
       resultEl.textContent = 'Analyse abgeschlossen: Score ' +
         parseFloat(data.sentiment_score).toFixed(3) +
         ' (' + (data.category || '') + ')' +
@@ -1467,11 +1456,9 @@ async function triggerAnalysis() {
         ' in ' + (data.duration_seconds || '?') + 's';
       resultEl.style.display = 'block';
 
-      // Übersicht neu laden (CTRL-03)
       overviewLoaded = false;
       await loadOverview();
     } else {
-      // API-Fehler mit Meldung
       errorEl.textContent = 'Fehler: ' + (data.message || 'Unbekannter Fehler (HTTP ' + res.status + ')');
       errorEl.style.display = 'block';
     }
@@ -1480,7 +1467,6 @@ async function triggerAnalysis() {
     errorEl.style.display = 'block';
     console.error('Fehler beim Analyse-Trigger:', e);
   } finally {
-    // UI: Button wieder aktivieren
     btn.disabled = false;
     btn.innerHTML = 'Jetzt analysieren';
   }
@@ -1651,7 +1637,7 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
   }
 });
 
-// ===== EINSTELLUNGEN (UI-01/02/03/04/05) =====
+// ===== EINSTELLUNGEN =====
 var apiKeyEditing = false;
 
 async function loadSettings() {
@@ -1662,7 +1648,6 @@ async function loadSettings() {
 
     var s = data.settings;
 
-    // Analyse-Felder befüllen
     document.getElementById('settingInterval').value  = s.analysis_interval_minutes;
     document.getElementById('settingHeadlines').value = s.headlines_per_source;
 
@@ -1856,7 +1841,7 @@ function showSettingsMsg(el, type, text) {
   el.style.display = text ? 'block' : 'none';
 }
 
-// ===== FEED-TRENDS (VIS-01/02/03) =====
+// ===== FEED-TRENDS =====
 var trendsLoaded = false;
 var currentTrendDays = 7;
 
@@ -1939,7 +1924,6 @@ function switchWindow(days) {
   currentTrendDays = days;
   trendsLoaded = false;
 
-  // Button-Status aktualisieren
   document.querySelectorAll('.window-btn').forEach(function(btn) {
     btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
   });
@@ -2035,7 +2019,6 @@ async function setFirmwareRelease(version) {
 }
 
 // ===== INITIALISIERUNG =====
-// Übersicht sofort beim Laden der Seite befüllen (erster Tab aktiv)
 loadOverview();
 loadFirmwareVersions();
 </script>
