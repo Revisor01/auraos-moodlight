@@ -82,7 +82,7 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
 ### Sonstiges
-- Englische Fassung der README und der Vorlagen für Fehlermeldungen.
+- README, Vorlagen und Hinweise gibt es nur noch auf Deutsch.
 
 ## [9.24] – 2026-10-17
 

@@ -1,7 +1,5 @@
 # Sicherheit
 
-**Deutsch** · [English](#security)
-
 ## Eine Lücke melden
 
 Bitte melde Sicherheitslücken **nicht** als öffentliches Issue, sondern
@@ -18,24 +16,3 @@ Auswirkung. Du bekommst innerhalb von sieben Tagen eine Antwort.
 
 Sicherheitskorrekturen gibt es für das jeweils neueste Release der Firmware
 und den aktuellen Stand der Sentiment-API auf `main`.
-
----
-
-# Security
-
-## Reporting a vulnerability
-
-Please do **not** report security issues as a public issue. Report them
-privately instead:
-
-- via [“Report a vulnerability”](../../security/advisories/new) in this
-  repository (GitHub Private Vulnerability Reporting), or
-- by email to mail@simonluthe.de with the subject “Security: AuraOS Moodlight”.
-
-Helpful: affected version, steps to reproduce, possible impact. You will get a
-reply within seven days. Reports in English or German are welcome.
-
-## Supported versions
-
-Security fixes are provided for the latest firmware release and the
-current state of the sentiment API on `main`.

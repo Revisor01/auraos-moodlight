@@ -6,10 +6,6 @@
 </p>
 
 <p align="center">
-  <b>Deutsch</b> · <a href="README.en.md">English</a>
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/Plattform-ESP32-green" alt="Plattform">
   <img src="https://img.shields.io/badge/Backend-Python%203.12-yellow" alt="Backend">
   <img src="https://img.shields.io/github/v/release/Revisor01/auraos-moodlight?label=Firmware" alt="Firmware-Version">
