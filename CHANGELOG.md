@@ -82,7 +82,7 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   ausliefern. Der ungenutzte `chartjs-adapter-moment` wurde entfernt
 
 ### Sonstiges
-- Englische Fassung der README und der Vorlagen für Fehlermeldungen.
+- README, Vorlagen und Hinweise gibt es nur noch auf Deutsch.
 
 ## [9.24] – 2026-10-17
 
@@ -438,7 +438,14 @@ seit Monaten beobachteten LED-Pulsierens und der Spontan-Reboots ist gefunden.
 - Backend mit RSS-Feed-Analyse, Statistik-Dashboard und Trend-Ansicht
 - Projekt-Homepage mit Live-Statistiken
 
-[Unreleased]: https://github.com/Revisor01/auraos-moodlight/compare/v9.15...HEAD
+[Unreleased]: https://github.com/Revisor01/auraos-moodlight/compare/v9.24...HEAD
+[9.24]: https://github.com/Revisor01/auraos-moodlight/compare/v9.23...v9.24
+[9.23]: https://github.com/Revisor01/auraos-moodlight/compare/v9.20...v9.23
+[9.20]: https://github.com/Revisor01/auraos-moodlight/compare/v9.19...v9.20
+[9.19]: https://github.com/Revisor01/auraos-moodlight/compare/v9.18...v9.19
+[9.18]: https://github.com/Revisor01/auraos-moodlight/compare/v9.17...v9.18
+[9.17]: https://github.com/Revisor01/auraos-moodlight/compare/v9.16...v9.17
+[9.16]: https://github.com/Revisor01/auraos-moodlight/compare/v9.15...v9.16
 [9.15]: https://github.com/Revisor01/auraos-moodlight/compare/v9.14...v9.15
 [9.14]: https://github.com/Revisor01/auraos-moodlight/compare/v9.13...v9.14
 [9.13]: https://github.com/Revisor01/auraos-moodlight/compare/v9.12...v9.13

@@ -6,10 +6,6 @@
 </p>
 
 <p align="center">
-  <b>Deutsch</b> · <a href="README.en.md">English</a>
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/Plattform-ESP32-green" alt="Plattform">
   <img src="https://img.shields.io/badge/Backend-Python%203.12-yellow" alt="Backend">
   <img src="https://img.shields.io/github/v/release/Revisor01/auraos-moodlight?label=Firmware" alt="Firmware-Version">
@@ -29,9 +25,6 @@ Woche) bis Violett (viel besser). Was gut oder schlecht war, muss man nicht
 lesen; man sieht es.
 
 Mehr zur Idee: **[revisor01.github.io/auraos-moodlight](https://revisor01.github.io/auraos-moodlight)**
-
-Die erste Fassung von 2022 steht in
-[Zustand-der-Welt](https://github.com/Revisor01/Zustand-der-Welt).
 
 ## Funktionen
 
