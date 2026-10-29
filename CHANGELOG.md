@@ -84,6 +84,13 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 ### Sonstiges
 - README, Vorlagen und Hinweise gibt es nur noch auf Deutsch.
 
+## [9.25] – 2026-10-29
+
+### Behoben
+- Ist die Lampe ohne Strom oder ohne WLAN, zeigt Home Assistant sie und alle ihre
+  Sensoren als „nicht verfügbar“. Bisher stand dort weiter der letzte Stand, etwa
+  „OK“, auch wenn die Lampe seit Tagen aus war
+
 ## [9.24] – 2026-10-17
 
 ### Hinzugefügt
@@ -438,7 +445,8 @@ seit Monaten beobachteten LED-Pulsierens und der Spontan-Reboots ist gefunden.
 - Backend mit RSS-Feed-Analyse, Statistik-Dashboard und Trend-Ansicht
 - Projekt-Homepage mit Live-Statistiken
 
-[Unreleased]: https://github.com/Revisor01/auraos-moodlight/compare/v9.24...HEAD
+[Unreleased]: https://github.com/Revisor01/auraos-moodlight/compare/v9.25...HEAD
+[9.25]: https://github.com/Revisor01/auraos-moodlight/compare/v9.24...v9.25
 [9.24]: https://github.com/Revisor01/auraos-moodlight/compare/v9.23...v9.24
 [9.23]: https://github.com/Revisor01/auraos-moodlight/compare/v9.20...v9.23
 [9.20]: https://github.com/Revisor01/auraos-moodlight/compare/v9.19...v9.20
