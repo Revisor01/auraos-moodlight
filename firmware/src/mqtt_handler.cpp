@@ -260,6 +260,9 @@ void setupHA()
     device.setSoftwareVersion(MOODLIGHT_VERSION);
     device.setManufacturer("Bridging Faith Tech");
     device.setModel("Moodlight ESP32 Proto v1");
+    // Ohne Last Will zeigt Home Assistant nach einem Ausfall weiter den letzten Stand.
+    device.enableSharedAvailability();
+    device.enableLastWill();
 
 
     // Numerischer Sentiment Score (-1.00 bis +1.00)
