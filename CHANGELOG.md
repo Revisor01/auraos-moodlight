@@ -55,6 +55,8 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   „öfter hell" — im Hero und im `<title>`. „Hell" war eine Lichtmetapher, gemessen
   wird aber Stimmung. Die Meta-Description behält „hell", dort geht es wörtlich um
   die Farbe der Lampe
+- Die Schlagzeilen bewertet jetzt die aktuelle Generation von Claude Haiku. In den
+  ersten Tagen kann die Lampe etwas negativer anzeigen, bis die Wochenwerte nachgezogen haben
 
 ### Entfernt
 - `releases/v9.2/AuraOS-9.2.tgz` und `releases/v9.12/RELEASE-NOTES.md` aus dem
