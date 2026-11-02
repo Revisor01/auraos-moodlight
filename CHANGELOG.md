@@ -85,6 +85,7 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 
 ### Sonstiges
 - README, Vorlagen und Hinweise gibt es nur noch auf Deutsch.
+- Der Sentiment-Dienst läuft auf der aktuellen Python-Fassung; die Tests prüfen dieselbe.
 
 ## [9.25] – 2026-10-29
 
