@@ -124,6 +124,8 @@ def login_required(f):
 
 
 # --- Funktion zur Sentiment-Analyse mit Anthropic API ---
+SENTIMENT_MODEL = "claude-haiku-5-5"
+
 def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
     """Analysiert Headlines per Anthropic API."""
     if not anthropic_client:
@@ -166,16 +168,18 @@ def analyze_sentiment_claude(headlines_batch: list) -> Optional[list]:
     scores = [0.0] * len(headlines_batch)
 
     try:
-        logging.info(f"Sende {len(headlines_batch)} Headlines zur Analyse an Anthropic API (claude-haiku-4-5-20251001)...")
+        logging.info(f"Sende {len(headlines_batch)} Headlines zur Analyse an Anthropic API ({SENTIMENT_MODEL})...")
         response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            # Zu knappe max_tokens schneiden Scores ab und verzerren zu neutral.
-            max_tokens=max(1024, len(headlines_batch) * 25),
-            # temperature=0: deterministisches Scoring statt zufälliger Variation
-            temperature=0,
+            model=SENTIMENT_MODEL,
+            # Denken zählt zu max_tokens; zu knapp schneidet Scores ab und verzerrt zu neutral.
+            max_tokens=max(2048, len(headlines_batch) * 25 + 1024),
+            # Niedriger Aufwand hält die Scores stabil; temperature nimmt die API nicht mehr an.
+            output_config={"effort": "low"},
             messages=[{"role": "user", "content": full_prompt}]
         )
-        raw_response_content = response.content[0].text.strip()
+        raw_response_content = "".join(
+            block.text for block in response.content if block.type == "text"
+        ).strip()
         logging.info("Antwort von Anthropic API erhalten.")
         logging.debug(f"Anthropic Raw Response:\n{raw_response_content}")
 
