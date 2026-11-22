@@ -14,6 +14,9 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
 ## [Unreleased]
 
 ### Hinzugefügt
+- Der Statusendpunkt der Stimmungs-API meldet einen Fehler, wenn seit drei
+  Aktualisierungen keine neue Analyse gespeichert wurde; der Server erkennt
+  eine stehengebliebene Analyse damit selbst.
 - Debug-Dokumentation für zwei abgeschlossene Diagnosen: spontane ESP32-Neustarts
   (`isRestartRecommended()` prüft Fragmentierung ohne geladene Uptime aus NVS) und
   rhythmisches LED-Pulsieren (`isPulsing` wurde beim Sentiment-Abruf gesetzt)
