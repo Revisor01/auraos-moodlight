@@ -8,6 +8,7 @@ import feedparser
 import requests
 import logging
 from collections import Counter
+import ipaddress
 import os
 import re
 import math
@@ -16,6 +17,7 @@ import threading
 import anthropic
 from anthropic import Anthropic, APIConnectionError, RateLimitError, APIStatusError
 from shared_config import get_sentiment_category
+from moodlight_extensions import api_login_required
 
 app = Flask(__name__)
 
@@ -25,7 +27,9 @@ if not _secret_key:
     raise RuntimeError("SECRET_KEY muss gesetzt sein")
 app.secret_key = _secret_key
 app.permanent_session_lifetime = timedelta(hours=24)
-# Kein SESSION_COOKIE_SECURE, die Seite läuft über http.
+# Die Lampe braucht http, die Admin-Sitzung darf trotzdem nie unverschlüsselt laufen.
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 logging.basicConfig(
@@ -429,6 +433,7 @@ def _fetch_single_feed_for_news(source: str, url: str, num_headlines_per_source:
 
 # --- Flask-Routen ---
 @app.route('/api/news', methods=['GET'])
+@api_login_required
 def get_news():
     if not anthropic_client: return jsonify({"status": "error", "message": "Sentiment-Analyse-Dienst nicht bereit (Anthropic Problem)."}), 503
 
@@ -555,6 +560,16 @@ _LOGIN_LOCKOUT_SECONDS = 60
 _LOGIN_MAX_TRACKED_IPS = 1000
 
 
+# Der vorgeschaltete Proxy überschreibt X-Real-IP; remote_addr ist für alle Clients dieselbe Proxy-Adresse.
+def _client_ip() -> str:
+    real = (request.headers.get('X-Real-IP') or '').strip()
+    try:
+        ipaddress.ip_address(real)
+        return real
+    except ValueError:
+        return request.remote_addr or 'unknown'
+
+
 def _login_rate_limit_check(ip: str):
     """Gibt (allowed: bool, retry_after_seconds: int) zurück."""
     now = time.time()
@@ -593,7 +608,7 @@ def login_page():
     """Login-Seite für das Backend-Interface."""
     error = None
     if request.method == 'POST':
-        client_ip = request.remote_addr or 'unknown'
+        client_ip = _client_ip()
         allowed, retry_after = _login_rate_limit_check(client_ip)
         if not allowed:
             logging.warning(f"Login-Versuch von {client_ip} waehrend aktiver Sperre abgelehnt.")
