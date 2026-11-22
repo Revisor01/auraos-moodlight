@@ -53,6 +53,12 @@ class TestLoginClientIp(unittest.TestCase):
                 patch.object(self.app_module, '_admin_password_hash', None):
             return self.app_module.login_page()[1]
 
+    def test_sitzungs_cookie_nur_ueber_https_und_nicht_fuer_skripte(self):
+        config = self.app_module.app.config
+        self.assertIs(config['SESSION_COOKIE_SECURE'], True)
+        self.assertIs(config['SESSION_COOKIE_HTTPONLY'], True)
+        self.assertEqual(config['SESSION_COOKIE_SAMESITE'], 'Lax')
+
     def test_client_ip_aus_x_real_ip(self):
         with patch.object(self.app_module, 'request', self._anfrage('203.0.113.7')):
             self.assertEqual(self.app_module._client_ip(), '203.0.113.7')

@@ -64,6 +64,7 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   GitHub-Releases, die Release-Notes sind in diesen CHANGELOG übernommen
 
 ### Sicherheit
+- Die Anmeldung im Dashboard gilt nur noch über eine verschlüsselte Verbindung. Wer das Dashboard über http öffnet, muss auf https wechseln.
 - Die Sperre nach falschen Passwörtern im Dashboard gilt jetzt je Absender. Bisher sperrten fünf Fehlversuche von irgendwem die Anmeldung für alle.
 - Die Schlagzeilen-Analyse auf Abruf startet nur noch mit Anmeldung im Dashboard. Bisher konnte jeder sie ohne Anmeldung auslösen und damit Kosten bei der KI-Analyse verursachen; die Lampe ist nicht betroffen.
 - GitHub Vulnerability-Alerts, Dependabot Security Updates und CodeQL Default Setup

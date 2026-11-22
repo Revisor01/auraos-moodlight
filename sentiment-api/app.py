@@ -27,7 +27,9 @@ if not _secret_key:
     raise RuntimeError("SECRET_KEY muss gesetzt sein")
 app.secret_key = _secret_key
 app.permanent_session_lifetime = timedelta(hours=24)
-# Kein SESSION_COOKIE_SECURE, die Seite läuft über http.
+# Die Lampe braucht http, die Admin-Sitzung darf trotzdem nie unverschlüsselt laufen.
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 logging.basicConfig(
