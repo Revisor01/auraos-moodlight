@@ -20,7 +20,7 @@ services:
       - FIRMWARE_MIRROR_DIR=/data/firmware
     volumes:
       # Muss Neustarts überleben, sonst käme kein Gerät mehr an ein Update.
-      - /opt/stacks/auraos-moodlight/data/firmware:/data/firmware
+      - ./data/firmware:/data/firmware
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,7 +51,7 @@ services:
       POSTGRES_USER: moodlight
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - /opt/stacks/auraos-moodlight/data/postgres:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     # Ports nur intern im Docker-Netzwerk
     expose:
@@ -71,7 +71,7 @@ services:
     container_name: moodlight-redis
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
     volumes:
-      - /opt/stacks/auraos-moodlight/data/redis:/data
+      - ./data/redis:/data
     # Ports nur intern im Docker-Netzwerk
     expose:
       - "6379"

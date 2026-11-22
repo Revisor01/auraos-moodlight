@@ -384,11 +384,28 @@ def health_check():
     health["checks"]["database"] = {"status": "unhealthy", "error": "Datenbank nicht erreichbar"}
     health["status"] = "unhealthy"
 
+  # Nur Verbindung und Schlüssel zu prüfen übersieht einen Worker, der still keine Analysen mehr schreibt.
+  try:
+    from background_worker import get_background_worker
+    from gesundheit import analyse_frische
+    worker = get_background_worker()
+    intervall = worker.interval_seconds if worker else 1800
+    letzte = get_database().get_latest_sentiment()
+    frische = analyse_frische(letzte.get("timestamp") if letzte else None, intervall)
+  except Exception as e:
+    logging.error(f"Health-Check: letzte Analyse nicht lesbar: {e}", exc_info=True)
+    frische = {"status": "unhealthy", "error": "letzte Analyse nicht lesbar"}
+  health["checks"]["analysis"] = frische
+  if frische["status"] == "unhealthy":
+    health["status"] = "unhealthy"
+  elif frische["status"] == "degraded" and health["status"] == "healthy":
+    health["status"] = "degraded"
+
   health["checks"]["anthropic"] = {
     "status": "healthy" if anthropic_client else "unhealthy",
     "available": anthropic_client is not None
   }
-  if not anthropic_client:
+  if not anthropic_client and health["status"] == "healthy":
     health["status"] = "degraded"
 
   status_code = 200 if health["status"] == "healthy" else 503 if health["status"] == "unhealthy" else 200

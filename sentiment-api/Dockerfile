@@ -15,5 +15,9 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 6237
 
+# Im Image, damit der Healthcheck auch ohne Eintrag in der Compose-Datei greift.
+HEALTHCHECK --interval=60s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -fsS -o /dev/null http://localhost:6237/api/health || exit 1
+
 # Gunicorn mit einem Worker (-w 1) damit Background Worker genau einmal laeuft
 CMD ["gunicorn", "-w", "1", "--threads", "4", "-b", "0.0.0.0:6237", "--timeout", "120", "--access-logfile", "-", "app:app"]
