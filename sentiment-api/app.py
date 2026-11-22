@@ -8,6 +8,7 @@ import feedparser
 import requests
 import logging
 from collections import Counter
+import ipaddress
 import os
 import re
 import math
@@ -557,6 +558,16 @@ _LOGIN_LOCKOUT_SECONDS = 60
 _LOGIN_MAX_TRACKED_IPS = 1000
 
 
+# Der vorgeschaltete Proxy überschreibt X-Real-IP; remote_addr ist für alle Clients dieselbe Proxy-Adresse.
+def _client_ip() -> str:
+    real = (request.headers.get('X-Real-IP') or '').strip()
+    try:
+        ipaddress.ip_address(real)
+        return real
+    except ValueError:
+        return request.remote_addr or 'unknown'
+
+
 def _login_rate_limit_check(ip: str):
     """Gibt (allowed: bool, retry_after_seconds: int) zurück."""
     now = time.time()
@@ -595,7 +606,7 @@ def login_page():
     """Login-Seite für das Backend-Interface."""
     error = None
     if request.method == 'POST':
-        client_ip = request.remote_addr or 'unknown'
+        client_ip = _client_ip()
         allowed, retry_after = _login_rate_limit_check(client_ip)
         if not allowed:
             logging.warning(f"Login-Versuch von {client_ip} waehrend aktiver Sperre abgelehnt.")
