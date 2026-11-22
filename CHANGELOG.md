@@ -64,6 +64,7 @@ die Versionierung folgt [Semantic Versioning 2.0.0](https://semver.org/lang/de/)
   GitHub-Releases, die Release-Notes sind in diesen CHANGELOG übernommen
 
 ### Sicherheit
+- Die Schlagzeilen-Analyse auf Abruf startet nur noch mit Anmeldung im Dashboard. Bisher konnte jeder sie ohne Anmeldung auslösen und damit Kosten bei der KI-Analyse verursachen; die Lampe ist nicht betroffen.
 - GitHub Vulnerability-Alerts, Dependabot Security Updates und CodeQL Default Setup
   für das Repository aktiviert
 - Backend-Abhängigkeiten aktualisiert: Flask 3.1.0 → 3.1.3 (fehlender `Vary: Cookie`-

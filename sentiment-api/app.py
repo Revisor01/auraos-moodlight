@@ -16,6 +16,7 @@ import threading
 import anthropic
 from anthropic import Anthropic, APIConnectionError, RateLimitError, APIStatusError
 from shared_config import get_sentiment_category
+from moodlight_extensions import api_login_required
 
 app = Flask(__name__)
 
@@ -429,6 +430,7 @@ def _fetch_single_feed_for_news(source: str, url: str, num_headlines_per_source:
 
 # --- Flask-Routen ---
 @app.route('/api/news', methods=['GET'])
+@api_login_required
 def get_news():
     if not anthropic_client: return jsonify({"status": "error", "message": "Sentiment-Analyse-Dienst nicht bereit (Anthropic Problem)."}), 503
 
